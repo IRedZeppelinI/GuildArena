@@ -1,0 +1,69 @@
+# Ficheiro .gitignore para soluções .NET (Visual Studio, Rider, VS Code)
+
+# Ficheiros e pastas gerados pelo utilizador e pelo IDE
+# -------------------------------------------------------------------
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Ficheiros específicos do Rider e ReSharper
+_ReSharper*/
+*.sln.iml
+.idea/
+
+# Resultados da Compilação (Build)
+# -------------------------------------------------------------------
+# Estes ficheiros são gerados sempre que compila o projeto.
+[Bb]in/
+[Oo]bj/
+
+# Configuração e Segredos Locais
+# -------------------------------------------------------------------
+# É uma boa prática ignorar as configurações de desenvolvimento para
+# evitar partilhar connection strings locais ou outros segredos.
+appsettings.Development.json
+*.secrets.json
+secrets.json
+
+# Ficheiros de Pacotes NuGet
+# -------------------------------------------------------------------
+# O gestor de pacotes NuGet moderno restaura os pacotes com base
+# no ficheiro .csproj, por isso não precisamos de guardar os pacotes.
+packages/
+*.nupkg
+*.nuget.props
+*.nuget.targets
+
+# Ficheiros Gerados pelo Sistema Operativo
+# -------------------------------------------------------------------
+# Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Ficheiros de Testes e Logs
+# -------------------------------------------------------------------
+[Tt]est[Rr]esult*/
+*.trx
+*.log
+*.log.*
+
+# Outros
+# -------------------------------------------------------------------
+*.zip
+*.rar
+*.7z
