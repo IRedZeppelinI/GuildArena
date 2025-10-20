@@ -6,9 +6,3 @@ public enum ModifierTrigger
     ON_TURN_START,
     ON_TURN_END
 }
-
-public enum ModifierType
-{
-    BUFF,
-    DEBUFF
-}
