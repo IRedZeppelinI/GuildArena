@@ -9,6 +9,6 @@ public class EffectDefinition
     public StatType ScalingStat { get; set; }
     public float ScalingFactor { get; set; }
 
-    public string ModifierDefinitionId { get; set; } // O ID do buff/debuff (ex: "MOD_POISON_WEAK")
+    public string? ModifierDefinitionId { get; set; } // O ID do buff/debuff (ex: "MOD_POISON_WEAK")
     public int DurationInTurns { get; set; } // Quantos turnos? (-1 para permanente)
 }

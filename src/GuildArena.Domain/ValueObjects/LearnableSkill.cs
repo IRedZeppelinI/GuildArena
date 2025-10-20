@@ -3,5 +3,5 @@
 public class LearnableSkill
 {
     public int LevelRequired { get; set; }
-    public string AbilityID { get; set; }
+    public required string AbilityID { get; set; }
 }

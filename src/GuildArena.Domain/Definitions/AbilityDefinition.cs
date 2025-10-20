@@ -2,9 +2,9 @@
 
 public class AbilityDefinition
 {
-    public string Id { get; set; }
-    public string Name { get; set; }    
-    public List<EffectDefinition> Effects { get; set; }
+    public required string Id { get; set; }
+    public required string Name { get; set; }    
+    public List<EffectDefinition> Effects { get; set; } = new();
 }
 
 
