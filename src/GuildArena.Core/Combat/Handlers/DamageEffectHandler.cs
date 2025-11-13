@@ -2,17 +2,20 @@
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Handlers;
 
 public class DamageEffectHandler : IEffectHandler
 {
     private readonly IStatCalculationService _statService;
+    private readonly ILogger<DamageEffectHandler> _logger;
 
     // 1. Rigoroso: Usamos Injeção de Dependência (DI) para obter os nossos serviços.
-    public DamageEffectHandler(IStatCalculationService statService)
+    public DamageEffectHandler(IStatCalculationService statService, ILogger<DamageEffectHandler> logger)
     {
         _statService = statService;
+        _logger = logger;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
@@ -33,6 +36,13 @@ public class DamageEffectHandler : IEffectHandler
 
         if (finalDamage < 1) finalDamage = 1;
 
-        target.CurrentHP -= (int)finalDamage;
+        int damageToApply = (int)finalDamage;
+
+        _logger.LogInformation(
+            "Applying {Damage} damage to {TargetName} (Raw: {RawDamage}, Def: {TargetDefense})",
+            damageToApply, target.Name, rawDamage, targetDefense
+        );
+
+        target.CurrentHP -= damageToApply;
     }
 }
