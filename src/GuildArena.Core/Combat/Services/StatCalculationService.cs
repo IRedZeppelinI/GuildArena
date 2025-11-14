@@ -23,6 +23,7 @@ public class StatCalculationService : IStatCalculationService
             StatType.Defense => combatant.CalculatedStats.Defense,
             StatType.Agility => combatant.CalculatedStats.Agility,
             StatType.Magic => combatant.CalculatedStats.Magic,
+            StatType.MagicDefense => combatant.CalculatedStats.MagicDefense,
             _ => 0f
         };
     }

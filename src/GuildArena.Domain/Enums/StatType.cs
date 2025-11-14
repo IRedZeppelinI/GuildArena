@@ -5,5 +5,6 @@ public enum StatType
     Attack,
     Defense,
     Agility,
-    Magic
+    Magic,
+    MagicDefense
 }
