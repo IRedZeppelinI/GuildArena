@@ -22,37 +22,73 @@ public class DamageEffectHandlerTests
         // ARRANGE Global 
         _statCalculationServiceMock = Substitute.For<IStatCalculationService>();
         _loggerMock = Substitute.For<ILogger<DamageEffectHandler>>();
-
-        // Criamos a classe que vamos testar, injetando os mocks
         _handler = new DamageEffectHandler(_statCalculationServiceMock, _loggerMock);
     }
 
-    [Fact]
-    public void Apply_WithStandardDamage_ShouldReduceTargetHP()
+    [Theory]
+    // Cenário 1: Melee (Attack vs Defense)
+    [InlineData(DeliveryMethod.Melee, DamageType.Physical, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
+    // Cenário 2: Ranged (Agility vs Defense)
+    [InlineData(DeliveryMethod.Ranged, DamageType.Physical, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
+    // Cenário 3: Spell (Magic vs MagicDefense) <-- CORRIGIDO
+    [InlineData(DeliveryMethod.Spell, DamageType.Magic, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
+    // Cenário 4: Passive (ignora stats) <-- CORRIGIDO
+    [InlineData(DeliveryMethod.Passive, DamageType.Nature, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
+    public void Apply_DamageEffect_ShouldReduceTargetHP_BasedOnDeliveryMethod(
+        DeliveryMethod delivery, DamageType damageType, StatType sourceStat, float sourceStatValue,
+        StatType targetStat, float targetStatValue, int expectedDamage)
     {
-        //  ARRANGE         
+        // ARRANGE
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
-            ScalingStat = StatType.Attack,
+            Delivery = delivery,
+            DamageType = damageType, 
+            ScalingStat = sourceStat, 
             ScalingFactor = 1.0f,
-            BaseAmount = 0
+            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f
         };
 
-        // Criar os combatentes
-        var source = new Combatant { Id = 1, Name = "Hero", CalculatedStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Mob", CurrentHP = 50, CalculatedStats = new BaseStats() };
+        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, CalculatedStats = new BaseStats() };
 
-        // Configurar os Mocks 
-        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(2f);
+        
+        _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
 
-        // ACT 
+        _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
+
+        // ACT
         _handler.Apply(effectDef, source, target);
 
-        // ASSERT 
-        // Dano = 10 (Ataque) - 2 (Defesa) = 8
-        // HP Final = 50 - 8 = 42
-        target.CurrentHP.ShouldBe(42);
+        // ASSERT
+        // HP Final = 50 - expectedDamage
+        target.CurrentHP.ShouldBe(50 - expectedDamage);
+    }
+
+    [Fact]
+    public void Apply_DamageEffect_ShouldDealMinimumOneDamage()
+    {
+        // 1. ARRANGE
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageType = DamageType.Physical,
+            ScalingFactor = 1.0f
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, CalculatedStats = new BaseStats() };
+
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(5f); // 5 de Ataque
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(10f); // 10 de Defesa
+
+        // ACT
+        _handler.Apply(effectDef, source, target);
+
+        // ASSERT
+        // Dano = 5 - 10 = -5. Deve ser 1.
+        // HP Final = 50 - 1 = 49
+        target.CurrentHP.ShouldBe(49);
     }
 }
