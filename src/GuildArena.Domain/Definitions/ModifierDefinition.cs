@@ -14,7 +14,7 @@ public class ModifierDefinition
     public BaseStats? StatAdjustments { get; set; } // Ex: { Attack: 10, Defense: -5, ... }
 
     // Opção B: Despoleta uma ação (ex: Dano de Veneno)?
-    public ModifierTrigger Trigger { get; set; } // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
+    public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
 
     // Se despoleta, qual a "mini-habilidade" que ele executa?
     public string? TriggeredAbilityId { get; set; } // Ex: "INTERNAL_POISON_TICK"

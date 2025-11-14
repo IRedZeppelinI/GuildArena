@@ -15,5 +15,6 @@ public class Combatant
     // A "receita" do ataque básico que este combatente usa
     public AbilityDefinition? BasicAttack { get; set; }
 
+    public List<ActiveCooldown> ActiveCooldowns { get; set; } = new();
     public List<ActiveModifier> ActiveModifiers { get; set; } = new();
 }

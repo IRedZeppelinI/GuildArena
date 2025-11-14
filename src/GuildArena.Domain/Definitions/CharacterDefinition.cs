@@ -11,5 +11,7 @@ public class CharacterDefinition
     public required BaseStats Stats { get; set; }
     public required BaseStats StatsGrowthPerLevel { get; set; }
 
+    public string? BasicAttackAbilityId { get; set; }
+
     public List<LearnableSkill> SkillTree { get; set; } = new();
 }
