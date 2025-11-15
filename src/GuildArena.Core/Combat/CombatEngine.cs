@@ -44,7 +44,10 @@ public class CombatEngine : ICombatEngine
         {
             if (!_handlers.TryGetValue(effect.Type, out var handler))
             {
-                _logger.LogWarning("No IEffectHandler found for {EffectType}", effect.Type);
+                _logger.LogWarning
+                    ("No IEffectHandler found for EffectType {EffectType} in Ability {AbilityId}.",
+                    effect.Type,
+                    ability.Id);
                 continue;
             }
 
