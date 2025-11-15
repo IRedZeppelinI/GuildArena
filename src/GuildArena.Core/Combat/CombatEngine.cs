@@ -32,7 +32,8 @@ public class CombatEngine : ICombatEngine
         GameState currentState,
         AbilityDefinition ability,
         Combatant source,
-        List<int> selectedTargetIds)
+        AbilityTargets targets 
+    )
     {
         _logger.LogInformation("Executing ability {AbilityId} from {SourceId}",
             ability.Id, source.Id);
@@ -47,9 +48,10 @@ public class CombatEngine : ICombatEngine
                 continue;
             }
 
-            //cada efeito só tem um targetingRule, uma habilidade é que pode ter várias.
+            
             var rule = ability.TargetingRules
                 .FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
+
             if (rule == null)
             {
                 _logger.LogWarning("No TargetRuleId '{RuleId}' found in Ability {AbilityId}",
@@ -57,15 +59,15 @@ public class CombatEngine : ICombatEngine
                 continue;
             }
 
-            // O "coração" da lógica: Encontrar os alvos
+            
             var finalTargets = GetTargetsForRule(
                 rule,
                 source,
                 currentState,
-                selectedTargetIds
+                targets 
             );
 
-            // Aplicar o efeito a todos os alvos (para AoE)
+            
             foreach (var target in finalTargets)
             {
                 handler.Apply(effect, source, target);
@@ -73,58 +75,101 @@ public class CombatEngine : ICombatEngine
         }
     }
 
-    
+
+   
+
     private List<Combatant> GetTargetsForRule(
         TargetingRule rule,
         Combatant source,
         GameState currentState,
-        List<int> selectedTargetIds)
+        AbilityTargets abilityTargets)
     {
-        // 1. Resolver os alvos selecionados pela UI (transformar IDs em Combatants)
-        var selected = currentState.Combatants
-            .Where(c => selectedTargetIds.Contains(c.Id))
-            .ToList();
+        // Obter a lista base de alvos 
+        List<Combatant> baseTargetList;
 
-        // 2. Filtrar com base na regra
         switch (rule.Type)
         {
-            // --- Casos Simples (Não precisam da lista 'selected') ---
-            case TargetType.Self:
-                return new List<Combatant> { source };
+            // Casos de "Clique" (usam o 'mapa' da UI)
+            case TargetType.Enemy:
+            case TargetType.Ally:
+            case TargetType.Friendly:
+                {
+                    if (!abilityTargets.SelectedTargets.TryGetValue(rule.RuleId, out var selectedTargetIds))
+                    {
+                        _logger.LogWarning("No targets provided by UI for TargetRuleId '{RuleId}'", rule.RuleId);
+                        return new List<Combatant>();
+                    }
+                    baseTargetList = currentState.Combatants
+                        .Where(c => selectedTargetIds.Contains(c.Id))
+                        .ToList();
+                    break;
+                }
 
+            // Casos de "Não Clique" (AoE / Self)
+            case TargetType.Self:
+                baseTargetList = new List<Combatant> { source };
+                break;
             case TargetType.AllEnemies:
-                return currentState.Combatants
+                baseTargetList = currentState.Combatants
                     .Where(c => c.OwnerId != source.OwnerId)
                     .ToList();
-
+                break;
             case TargetType.AllAllies:
-                return currentState.Combatants
+                baseTargetList = currentState.Combatants
                     .Where(c => c.OwnerId == source.OwnerId && c.Id != source.Id)
                     .ToList();
+                break;
 
             case TargetType.AllFriendlies:
-                return currentState.Combatants
+                baseTargetList = currentState.Combatants
                     .Where(c => c.OwnerId == source.OwnerId)
                     .ToList();
+                break;
+            default:
+                baseTargetList = new List<Combatant>();
+                break;
+        }
 
-            // --- Casos que dependem do clique (usam a lista 'selected') ---
+        // Aplicar Filtros de Validação 
+        List<Combatant> validatedTargets = new();
+
+        // Filtro de "Vivo/Morto"
+        if (!rule.CanTargetDead)
+        {            
+            validatedTargets = baseTargetList.Where(c => c.IsAlive).ToList();
+        }
+        else
+        {
+            // Regra de "Reviver": Só pode atingir alvos mortos.            
+            validatedTargets = baseTargetList.Where(c => !c.IsAlive).ToList();
+        }
+
+        // Filtro de Tipo (Inimigo/Aliado) 
+        switch (rule.Type)
+        {
             case TargetType.Enemy:
-                return selected
+            case TargetType.AllEnemies:
+                return validatedTargets
                     .Where(t => t.OwnerId != source.OwnerId)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetType.Ally:
-                return selected
+            case TargetType.AllAllies:
+                return validatedTargets
                     .Where(t => t.OwnerId == source.OwnerId && t.Id != source.Id)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetType.Friendly:
-                return selected
+            case TargetType.AllFriendlies:
+                return validatedTargets
                     .Where(t => t.OwnerId == source.OwnerId)
                     .Take(rule.Count)
                     .ToList();
+
+            case TargetType.Self:
+                return validatedTargets; // Já é 'source', não precisa de mais filtros
 
             default:
                 return new List<Combatant>();

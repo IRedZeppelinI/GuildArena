@@ -1,5 +1,6 @@
 ﻿using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
+using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Domain.Abstractions.Services;
 
@@ -9,6 +10,6 @@ public interface ICombatEngine
         GameState currentState,
         AbilityDefinition ability,
         Combatant source,
-        List<int> selectedTargetIds // Apenas os IDs que a UI enviou
+        AbilityTargets targets 
     );
 }
