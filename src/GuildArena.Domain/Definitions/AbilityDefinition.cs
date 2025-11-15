@@ -1,4 +1,6 @@
-﻿namespace GuildArena.Domain.Definitions;
+﻿using GuildArena.Domain.ValueObjects;
+
+namespace GuildArena.Domain.Definitions;
 
 public class AbilityDefinition
 {
@@ -9,6 +11,7 @@ public class AbilityDefinition
     public int EssenceCost { get; set; }  //TODO: ImplementarEssence
     public int HPCost { get; set; }
     public int BaseCooldown { get; set; }
+    public List<TargetingRule> TargetingRules { get; set; } = new();
     public List<EffectDefinition> Effects { get; set; } = new();
 }
 

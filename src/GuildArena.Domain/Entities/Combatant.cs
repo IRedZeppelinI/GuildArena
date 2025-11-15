@@ -6,6 +6,7 @@ namespace GuildArena.Domain.Entities;
 public class Combatant
 {
     public int Id { get; set; } // Pode ser o ID do Hero, ou um ID de Mob
+    public int OwnerId { get; set; } // ID do Player (ou 0 para "Mundo/AI")
     public required string Name { get; set; }
     public int CurrentHP { get; set; }
 

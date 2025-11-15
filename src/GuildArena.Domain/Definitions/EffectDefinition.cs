@@ -13,6 +13,8 @@ public class EffectDefinition
 
     public List<string> Tags { get; set; } = new();
 
+    public required string TargetRuleId { get; set; }
+
     public string? ModifierDefinitionId { get; set; } // O ID do buff/debuff (ex: "MOD_POISON_WEAK")
     public int DurationInTurns { get; set; } // Quantos turnos? (-1 para permanente)
 }

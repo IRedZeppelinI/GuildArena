@@ -3,6 +3,7 @@ using GuildArena.Domain.Abstractions.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
+using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat;
@@ -27,29 +28,106 @@ public class CombatEngine : ICombatEngine
     /// <summary>
     /// Executes a given ability by orchestrating the required effect handlers.
     /// </summary>
-    public void ExecuteAbility(AbilityDefinition ability, Combatant source, Combatant target)
+    public void ExecuteAbility(
+        GameState currentState,
+        AbilityDefinition ability,
+        Combatant source,
+        List<int> selectedTargetIds)
     {
-        _logger.LogInformation(
-            "Executing ability {AbilityId} from {SourceId} on {TargetId}",
-            ability.Id, source.Id, target.Id
-        );
+        _logger.LogInformation("Executing ability {AbilityId} from {SourceId}",
+            ability.Id, source.Id);
+
+        // (Lógica de Cooldown e Custo de Essence/HP viria aqui)
 
         foreach (var effect in ability.Effects)
         {
-            if (_handlers.TryGetValue(effect.Type, out var handler))
+            if (!_handlers.TryGetValue(effect.Type, out var handler))
             {
-                _logger.LogDebug("Applying effect type {EffectType} via {HandlerName}",
-                    effect.Type, handler.GetType().Name);
+                _logger.LogWarning("No IEffectHandler found for {EffectType}", effect.Type);
+                continue;
+            }
 
+            //cada efeito só tem um targetingRule, uma habilidade é que pode ter várias.
+            var rule = ability.TargetingRules
+                .FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
+            if (rule == null)
+            {
+                _logger.LogWarning("No TargetRuleId '{RuleId}' found in Ability {AbilityId}",
+                    effect.TargetRuleId, ability.Id);
+                continue;
+            }
+
+            // O "coração" da lógica: Encontrar os alvos
+            var finalTargets = GetTargetsForRule(
+                rule,
+                source,
+                currentState,
+                selectedTargetIds
+            );
+
+            // Aplicar o efeito a todos os alvos (para AoE)
+            foreach (var target in finalTargets)
+            {
                 handler.Apply(effect, source, target);
             }
-            else
-            {
-                _logger.LogWarning(
-                    "No IEffectHandler found for EffectType {EffectType} in Ability {AbilityId}.",
-                    effect.Type, ability.Id
-                );
-            }
+        }
+    }
+
+    
+    private List<Combatant> GetTargetsForRule(
+        TargetingRule rule,
+        Combatant source,
+        GameState currentState,
+        List<int> selectedTargetIds)
+    {
+        // 1. Resolver os alvos selecionados pela UI (transformar IDs em Combatants)
+        var selected = currentState.Combatants
+            .Where(c => selectedTargetIds.Contains(c.Id))
+            .ToList();
+
+        // 2. Filtrar com base na regra
+        switch (rule.Type)
+        {
+            // --- Casos Simples (Não precisam da lista 'selected') ---
+            case TargetType.Self:
+                return new List<Combatant> { source };
+
+            case TargetType.AllEnemies:
+                return currentState.Combatants
+                    .Where(c => c.OwnerId != source.OwnerId)
+                    .ToList();
+
+            case TargetType.AllAllies:
+                return currentState.Combatants
+                    .Where(c => c.OwnerId == source.OwnerId && c.Id != source.Id)
+                    .ToList();
+
+            case TargetType.AllFriendlies:
+                return currentState.Combatants
+                    .Where(c => c.OwnerId == source.OwnerId)
+                    .ToList();
+
+            // --- Casos que dependem do clique (usam a lista 'selected') ---
+            case TargetType.Enemy:
+                return selected
+                    .Where(t => t.OwnerId != source.OwnerId)
+                    .Take(rule.Count)
+                    .ToList();
+
+            case TargetType.Ally:
+                return selected
+                    .Where(t => t.OwnerId == source.OwnerId && t.Id != source.Id)
+                    .Take(rule.Count)
+                    .ToList();
+
+            case TargetType.Friendly:
+                return selected
+                    .Where(t => t.OwnerId == source.OwnerId)
+                    .Take(rule.Count)
+                    .ToList();
+
+            default:
+                return new List<Combatant>();
         }
     }
 }
