@@ -23,8 +23,8 @@ public static class DependencyInjection
         // Regista todos os Handlers de Efeito
         // O .NET DI vai automaticamente injetar o IEnumerable<IEffectHandler> no CombatEngine
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
-        // services.AddScoped<IEffectHandler, HealEffectHandler>(); // (Quando o criares)
-        // services.AddScoped<IEffectHandler, ApplyModifierHandler>(); // (Quando o criares)
+        // services.AddScoped<IEffectHandler, HealEffectHandler>(); // 
+        services.AddScoped<IEffectHandler, ApplyModifierHandler>();
 
         // ... (Regista outros serviços do Core, como IDungeonService, etc.)
 
