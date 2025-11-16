@@ -9,11 +9,11 @@ public class ModifierDefinition
     public required string Name { get; set; } // "Veneno Fraco"
     public ModifierType Type { get; set; } // Enum: BUFF, DEBUFF
 
-    // O que este modificador faz?
-    // Opção A: Altera Stats passivamente?
+    
     public List<StatModification> StatModifications { get; set; } = new(); // Ex: { Attack: 10, Defense: -5, ... }
 
-    // Opção B: Despoleta uma ação (ex: Dano de Veneno)?
+    public List<DamageModification> DamageModifications { get; set; } = new();
+
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
 
     // Se despoleta, qual a "mini-habilidade" que ele executa?
