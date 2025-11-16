@@ -33,8 +33,8 @@ public class ApplyModifierHandlerTests
             TargetRuleId = "T_Self" 
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CalculatedStats = new BaseStats() };
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", BaseStats = new BaseStats() };
 
         target.ActiveModifiers.ShouldBeEmpty();
 
@@ -62,8 +62,8 @@ public class ApplyModifierHandlerTests
             TargetRuleId = "T_Self" 
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CalculatedStats = new BaseStats() };
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", BaseStats = new BaseStats() };
 
         target.ActiveModifiers.Add(new ActiveModifier
         {

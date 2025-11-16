@@ -12,8 +12,8 @@ public class Combatant
     public int CurrentHP { get; set; }
     public bool IsAlive => CurrentHP > 0;
 
-    // Os stats finais já calculados (Nível + Equipamento)
-    public required BaseStats CalculatedStats { get; set; }
+    // Os stats finais já calculados (Nível + Equipamento) (sem modifiers)
+    public required BaseStats BaseStats { get; set; }
 
     // A "receita" do ataque básico que este combatente usa
     public AbilityDefinition? BasicAttack { get; set; }

@@ -46,8 +46,8 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget"
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, CalculatedStats = new BaseStats() };
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
 
         _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
         _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
@@ -72,8 +72,8 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget"
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", CalculatedStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, CalculatedStats = new BaseStats() };
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
 
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(5f);
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(10f);

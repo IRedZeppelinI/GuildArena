@@ -52,7 +52,7 @@ public class CombatEngineTests
             Name = "Source",
             CurrentHP = 100,
             MaxHP = 100,
-            CalculatedStats = new BaseStats()
+            BaseStats = new BaseStats()
         };
         var target = new Combatant
         {
@@ -61,7 +61,7 @@ public class CombatEngineTests
             Name = "Target",
             CurrentHP = 100,
             MaxHP = 100,
-            CalculatedStats = new BaseStats()
+            BaseStats = new BaseStats()
         };
         var gameState = new GameState { Combatants = new List<Combatant> { source, target } };
 
@@ -109,7 +109,7 @@ public class CombatEngineTests
             OwnerId = 1,
             CurrentHP = 50,
             MaxHP = 100,
-            CalculatedStats = new BaseStats()
+            BaseStats = new BaseStats()
         };
         var gameState = new GameState { Combatants = new List<Combatant> { attacker } };
         var targets = new AbilityTargets(); // Mapa vazio
