@@ -1,5 +1,4 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Domain.Abstractions.Repositories; 
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -11,21 +10,16 @@ public class DamageEffectHandler : IEffectHandler
 {
     private readonly IStatCalculationService _statCalculationService;
     private readonly ILogger<DamageEffectHandler> _logger;
+    private readonly IDamageModificationService _damageModService;
 
-    // cache de modifiers defimitions
-    private readonly IReadOnlyDictionary<string, ModifierDefinition> _modifierDefinitions;
-
-    
     public DamageEffectHandler(
-        IStatCalculationService statService,
+        IStatCalculationService statCalculationService, 
         ILogger<DamageEffectHandler> logger,
-        IModifierDefinitionRepository modifierRepository) 
+        IDamageModificationService damageModificationService)
     {
-        _statCalculationService = statService;
+        _statCalculationService = statCalculationService; 
         _logger = logger;
-
-        // Cria a cache O(1) quando o handler é instanciado
-        _modifierDefinitions = modifierRepository.GetAllDefinitions();
+        _damageModService = damageModificationService;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
@@ -37,6 +31,7 @@ public class DamageEffectHandler : IEffectHandler
     {
         // --- 1. CÁLCULO DE DANO BASE (Mitigado) ---
         float sourceStatValue = 0;
+        
         switch (def.Delivery)
         {
             case DeliveryMethod.Melee:
@@ -49,13 +44,14 @@ public class DamageEffectHandler : IEffectHandler
                 sourceStatValue = _statCalculationService.GetStatValue(source, StatType.Magic);
                 break;
             case DeliveryMethod.Passive:
-                sourceStatValue = 0;
+                sourceStatValue = 0; // Dano passivo não escala
                 break;
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;
         float targetDefenseValue = 0;
 
+        // CORREÇÃO: Preencher a lógica de defesa que faltava
         if (def.Delivery != DeliveryMethod.Passive && def.DamageType != DamageType.True)
         {
             switch (def.DamageType)
@@ -63,6 +59,7 @@ public class DamageEffectHandler : IEffectHandler
                 case DamageType.Physical:
                     targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.Defense);
                     break;
+
                 case DamageType.Magic:
                 case DamageType.Mental:
                 case DamageType.Holy:
@@ -70,64 +67,24 @@ public class DamageEffectHandler : IEffectHandler
                 case DamageType.Nature:
                     targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.MagicDefense);
                     break;
+
+                    // (O DamageType.True é ignorado pelo 'if' exterior)
             }
         }
 
         float mitigatedDamage = rawDamage - targetDefenseValue;
 
-        // --- 2. MODIFIERS DE BÓNUS (Do Atacante) ---
-        float flatBonus = 0;
-        float percentBonus = 0; // (ex: 0.20 para +20%)
+        // --- 2. CHAMAR O ESPECIALISTA DE MODIFIERS ---
+        // Delegamos a lógica de Tags (Bónus/Resistências)
+        float finalDamage = _damageModService.CalculateModifiedValue(
+            mitigatedDamage,
+            def,
+            source,
+            target
+        );
 
-        foreach (var activeMod in source.ActiveModifiers)
-        {
-            // CORREÇÃO: Usar o Dicionário, não o GetById()
-            if (!_modifierDefinitions.TryGetValue(activeMod.DefinitionId, out var modDef)) continue;
-
-            foreach (var dmgMod in modDef.DamageModifications)
-            {
-                // Este buff (+DMG) aplica-se a esta habilidade?
-                if (def.Tags.Contains(dmgMod.RequiredTag) && dmgMod.Value > 0)
-                {
-                    if (dmgMod.Type == ModificationType.FLAT)
-                        flatBonus += dmgMod.Value;
-                    else if (dmgMod.Type == ModificationType.PERCENTAGE)
-                        percentBonus += dmgMod.Value;
-                }
-            }
-        }
-
-        // --- 3. MODIFIERS DE RESISTÊNCIA (Do Alvo) ---
-        // (A lógica que faltava)
-        float flatReduction = 0;
-        float percentReduction = 0; // (ex: -0.20 para 20% res)
-
-        foreach (var activeMod in target.ActiveModifiers)
-        {
-            if (!_modifierDefinitions.TryGetValue(activeMod.DefinitionId, out var modDef)) continue;
-
-            // Reutilizamos a *mesma* lista de DamageModifications
-            // Resistências são apenas valores negativos.
-            foreach (var dmgMod in modDef.DamageModifications)
-            {
-                // Esta resistência (-DMG) aplica-se a esta habilidade?
-                if (def.Tags.Contains(dmgMod.RequiredTag) && dmgMod.Value < 0)
-                {
-                    if (dmgMod.Type == ModificationType.FLAT)
-                        flatReduction += dmgMod.Value; // (Soma um valor negativo)
-                    else if (dmgMod.Type == ModificationType.PERCENTAGE)
-                        percentReduction += dmgMod.Value; // (Soma -0.20)
-                }
-            }
-        }
-
-        // --- 4. CÁLCULO FINAL ---
-        // Fórmula: (Dano_Mitigado + Bónus_Flat) * (1 + Bónus_% + Redução_%)
-        // (Onde Redução_% é negativo)
-        float finalDamage = (mitigatedDamage + flatBonus + flatReduction) * (1 + percentBonus + percentReduction);
-
+        // --- 3. APLICAÇÃO ---
         if (finalDamage < 1) finalDamage = 1;
-
         int damageToApply = (int)finalDamage;
 
         _logger.LogInformation(

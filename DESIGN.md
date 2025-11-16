@@ -70,24 +70,40 @@ O `CombatEngine` (Orquestrador) não tem lógica. Ele delega o trabalho a "Espec
 
 ### 3.4. O Processo de Cálculo (Stats e Dano)
 
-Este é o "caminho crítico" (hot path) e é dividido em duas fases:
+Este é o "caminho crítico" (*hot path*) do combate. Para garantir o **Princípio da Responsabilidade Única (SRP)**, o cálculo de um simples ataque está dividido em três serviços de "Especialistas" distintos:
 
-**Fase 1: Cálculo de Stats (O `StatCalculationService`)**
-* **Responsabilidade:** Calcular o *stat* final de um `Combatant` (ex: `Attack`).
+#### Fase 1: Cálculo de Stats (O `StatCalculationService`)
+* **Responsabilidade:** Calcular o *stat* final de um `Combatant` (ex: `Attack` final).
 * **Fórmula:** `(Base + Flat) * (1 + Percent)`
 * **Lógica:**
     1.  Lê o `BaseStats` (nu) do `Combatant`.
     2.  Injeta o `IModifierDefinitionRepository` (para aceder à cache de JSONs).
     3.  Itera pela lista `ActiveModifiers` do `Combatant`.
-    4.  Lê as `StatModifications` de cada *modifier* (ex: `+10 Attack [FLAT]`).
-    5.  Calcula e devolve o *stat* final.
+    4.  Lê as `StatModifications` de cada *modifier* (ex: `+10 Attack [FLAT]` ou `+20% Attack [PERCENTAGE]`).
+    5.  Calcula e devolve o *stat* final (ex: `(100 + 10) * (1 + 0.20) = 132` de Ataque).
 
-**Fase 2: Cálculo de Dano (O `DamageEffectHandler`)**
-* **Responsabilidade:** Calcular o dano final de um efeito.
+---
+
+#### Fase 2: Cálculo de Dano Mitigado (O `DamageEffectHandler`)
+* **Responsabilidade:** Calcular o dano *base* da habilidade, subtraindo a defesa. **Não sabe** o que é um bónus de *tag*.
 * **Lógica:**
-    1.  **Ataque:** Lê o `DeliveryMethod` (ex: `Melee`) e chama o `IStatCalculationService` para obter o *stat* de ataque final (ex: `GetStatValue(source, StatType.Attack)`).
+    1.  **Ataque:** Lê o `DeliveryMethod` (ex: `Melee`) e chama o `IStatCalculationService` para obter o *stat* de ataque final do *atacante* (ex: 132 de Ataque).
     2.  **Dano Bruto:** Calcula `(Stat * ScalingFactor) + BaseAmount`.
-    3.  **Defesa:** Lê o `DamageType` (ex: `Holy`) e chama o `IStatCalculationService` para obter o *stat* de defesa final (ex: `GetStatValue(target, StatType.MagicDefense)`).
-    4.  **Dano Mitigado:** `Dano Bruto - Defesa`.
-    5.  **Bónus (Tags):** Itera pelos `ActiveModifiers` do *atacante* (para bónus de `Tags` ex: "+10% Holy") e do *alvo* (para resistências ex: "-20% Holy") e ajusta o `Dano Mitigado`.
-    6.  **Aplicação:** Aplica o dano final ao `CurrentHP` do alvo.
+    3.  **Defesa:** Lê o `DamageType` (ex: `Holy`) e chama o `IStatCalculationService` para obter o *stat* de defesa final do *alvo* (ex: `GetStatValue(target, StatType.MagicDefense)`).
+    4.  **Dano Mitigado:** Calcula `Dano Bruto - Defesa` (ex: 132 - 30 = 102).
+    5.  **Delegação:** Passa este `Dano Mitigado` (102) para a Fase 3.
+
+---
+
+#### Fase 3: Cálculo de Bónus/Resistências (O `IDamageModificationService`)
+* **Responsabilidade:** Aplicar bónus de dano (ex: "+10% Holy") e resistências (ex: "-20% Nature") ao dano que lhe é entregue.
+* **Lógica:**
+    1.  Recebe o `Dano Mitigado` (ex: 102) do `DamageEffectHandler`.
+    2.  Injeta o `IModifierDefinitionRepository` (para aceder à cache de "moldes" de *modifiers*).
+    3.  Verifica as `Tags` da habilidade (ex: `["Magic", "Nature"]`).
+    4.  **Bónus:** Itera pelos `ActiveModifiers` do *atacante*. Procura `DamageModifications` que dêm *match* com as `Tags` (ex: "+10% Holy") e aplica-os.
+    5.  **Resistência:** Itera pelos `ActiveModifiers` do *alvo*. Procura `DamageModifications` (com valores negativos) que dêm *match* com as `Tags` (ex: "-20% Nature") e aplica-os.
+    6.  **Devolve:** Retorna o `Dano Final` (ex: 102 \* 1.10 \* 0.80) ao `DamageEffectHandler`.
+
+* **Aplicação (de volta ao `DamageEffectHandler`):**
+    * O `DamageEffectHandler` recebe o `Dano Final` do serviço (Fase 3) e aplica-o ao `CurrentHP` do alvo.
