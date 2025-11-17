@@ -13,6 +13,7 @@ public class ModifierDefinition
     public List<StatModification> StatModifications { get; set; } = new(); // Ex: { Attack: 10, Defense: -5, ... }
 
     public List<DamageModification> DamageModifications { get; set; } = new();
+    public List<CooldownModification> CooldownModifications { get; set; } = new();
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
 

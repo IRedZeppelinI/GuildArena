@@ -13,16 +13,18 @@ namespace GuildArena.Core.Combat;
 /// </summary>
 public class CombatEngine : ICombatEngine
 {
-    // 2. Rigoroso: Usa um Dicionário para lookup O(1) (performance)
+    // Usa um Dicionário para lookup O(1) 
     private readonly IReadOnlyDictionary<EffectType, IEffectHandler> _handlers;
     private readonly ILogger<CombatEngine> _logger;
+    private readonly ICooldownCalculationService _cooldownCalcService;
 
-    public CombatEngine(IEnumerable<IEffectHandler> handlers, ILogger<CombatEngine> logger)
+    public CombatEngine(IEnumerable<IEffectHandler> handlers, ILogger<CombatEngine> logger, ICooldownCalculationService cooldownCalcService)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
         _handlers = handlers.ToDictionary(h => h.SupportedType, h => h);
         _logger = logger;
+        _cooldownCalcService = cooldownCalcService;
     }
 
     /// <summary>
@@ -35,10 +37,39 @@ public class CombatEngine : ICombatEngine
         AbilityTargets targets 
     )
     {
+        //Validar cooldown extra UI
+        var existingCooldown = source.ActiveCooldowns
+            .FirstOrDefault(c => c.AbilityId == ability.Id); 
+
+        if (existingCooldown != null) //Se existe ActiveCooldown Activo para essa habilidade, não executa
+        {
+            _logger.LogWarning(
+                "Ability {AbilityId} on cooldown for {SourceId}. {Turns} turns remaining.",
+                ability.Id, source.Id, existingCooldown.TurnsRemaining);
+            return; 
+        }
+
         _logger.LogInformation("Executing ability {AbilityId} from {SourceId}",
             ability.Id, source.Id);
 
-        // (Lógica de Cooldown e Custo de Essence/HP viria aqui)
+        // (Lógica de Custo de Essence/HP viria aqui)
+
+        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability);
+
+        if (finalCooldownTurns > 0)
+        {
+            var newCooldown = new ActiveCooldown
+            {
+                AbilityId = ability.Id,
+                TurnsRemaining = finalCooldownTurns // Armazena o valor calculado
+            };
+            source.ActiveCooldowns.Add(newCooldown); 
+            
+            _logger.LogInformation(
+                "Applied {Turns} turn(s) cooldown for Ability {AbilityId} to {SourceId}",
+                finalCooldownTurns, ability.Id, source.Id);
+        }
+
 
         foreach (var effect in ability.Effects)
         {

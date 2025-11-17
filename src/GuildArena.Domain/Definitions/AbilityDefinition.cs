@@ -13,6 +13,8 @@ public class AbilityDefinition
     public int BaseCooldown { get; set; }
     public List<TargetingRule> TargetingRules { get; set; } = new();
     public List<EffectDefinition> Effects { get; set; } = new();
+
+    public List<string> Tags { get; set; } = new();
 }
 
 
