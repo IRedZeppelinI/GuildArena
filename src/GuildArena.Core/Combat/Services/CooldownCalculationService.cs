@@ -68,7 +68,7 @@ public class CooldownCalculationService : ICooldownCalculationService
         float finalValue = (baseCooldown + flatBonus) * (1 + percentBonus);
 
         // Arredondar e garantir que nunca é negativo
-        int finalIntCooldown = (int)Math.Round(finalValue);
+        int finalIntCooldown = (int)Math.Round(finalValue, MidpointRounding.AwayFromZero);
 
         return Math.Max(0, finalIntCooldown);
     }

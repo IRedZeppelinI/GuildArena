@@ -36,39 +36,20 @@ public class CombatEngine : ICombatEngine
         Combatant source,
         AbilityTargets targets 
     )
-    {
-        //Validar cooldown extra UI
-        var existingCooldown = source.ActiveCooldowns
-            .FirstOrDefault(c => c.AbilityId == ability.Id); 
+    {        
 
-        if (existingCooldown != null) //Se existe ActiveCooldown Activo para essa habilidade, não executa
+        // 1. VERIFICAR PRÉ-CONDIÇÕES
+        if (!CanExecuteAbility(source, ability))
         {
-            _logger.LogWarning(
-                "Ability {AbilityId} on cooldown for {SourceId}. {Turns} turns remaining.",
-                ability.Id, source.Id, existingCooldown.TurnsRemaining);
-            return; 
+            return; //TODO: Adicionar validação de essence
         }
 
         _logger.LogInformation("Executing ability {AbilityId} from {SourceId}",
-            ability.Id, source.Id);
+            ability.Id, source.Id);        
 
+        // 2. APLICAR CUSTOS DE EXECUÇÃO
         // (Lógica de Custo de Essence/HP viria aqui)
-
-        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability);
-
-        if (finalCooldownTurns > 0)
-        {
-            var newCooldown = new ActiveCooldown
-            {
-                AbilityId = ability.Id,
-                TurnsRemaining = finalCooldownTurns // Armazena o valor calculado
-            };
-            source.ActiveCooldowns.Add(newCooldown); 
-            
-            _logger.LogInformation(
-                "Applied {Turns} turn(s) cooldown for Ability {AbilityId} to {SourceId}",
-                finalCooldownTurns, ability.Id, source.Id);
-        }
+        ApplyAbilityCooldown(source, ability);
 
 
         foreach (var effect in ability.Effects)
@@ -109,8 +90,50 @@ public class CombatEngine : ICombatEngine
         }
     }
 
+    /// <summary>
+    /// Verifiys all pre-conditions to execute hability (Cooldowns and EssenceCost)
+    /// </summary>
+    private bool CanExecuteAbility(Combatant source, AbilityDefinition ability)
+    {
+        // Verificação de Cooldown
+        var existingCooldown = source.ActiveCooldowns
+            .FirstOrDefault(c => c.AbilityId == ability.Id); 
 
-   
+        if (existingCooldown != null)
+        {
+            _logger.LogWarning(
+                "Ability {AbilityId} on cooldown for {SourceId}. {Turns} turns remaining.",
+                ability.Id, source.Id, existingCooldown.TurnsRemaining);
+            return false;
+        }
+
+        // (Verificação de Custo de Essence/HP viria aqui)        
+
+        return true;
+    }
+
+    /// <summary>
+    /// Calculates final countdown value aind applies it to source.
+    /// </summary>
+    private void ApplyAbilityCooldown(Combatant source, AbilityDefinition ability)
+    {
+        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability); //
+
+        if (finalCooldownTurns > 0)
+        {
+            var newCooldown = new ActiveCooldown
+            {
+                AbilityId = ability.Id,
+                TurnsRemaining = finalCooldownTurns
+            };
+            source.ActiveCooldowns.Add(newCooldown); //
+
+            _logger.LogInformation(
+                "Applied {Turns} turn(s) cooldown for Ability {AbilityId} to {SourceId}",
+                finalCooldownTurns, ability.Id, source.Id);
+        }
+    }
+
 
     private List<Combatant> GetTargetsForRule(
         TargetingRule rule,
