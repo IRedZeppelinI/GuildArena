@@ -1,4 +1,5 @@
 ﻿using GuildArena.Application.Combat.EndTurn;
+using GuildArena.Application.Combat.StartCombat;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +15,20 @@ public class CombatController : ControllerBase
     {
         _mediator = mediator;
     }
+
+
+    /// <summary>
+    /// Initializes a new combat instance (PvE demo) and returns its unique ID.
+    /// </summary>
+    /// <returns>The GUID of the created combat.</returns>
+    [HttpPost("start")]
+    public async Task<IActionResult> StartCombat()
+    {
+        var command = new StartCombatCommand();
+        var combatId = await _mediator.Send(command);
+        return Ok(new { combatId });
+    }
+
 
     /// <summary>
     /// Ends current  turn from specific combat.
