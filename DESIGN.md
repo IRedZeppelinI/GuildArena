@@ -1,6 +1,6 @@
 # [GuildArena] Documento de Design de Arquitetura
 
-Este documento descreve a arquitetura de software de alto nível do projeto GuildArena, com foco na lógica de combate e na estrutura do `Domain`.
+Este documento descreve a arquitetura de software de alto nível do projeto GuildArena, com foco na lógica de combate, persistência de estado e na estrutura do `Domain`.
 
 ## 1. Visão Geral da Arquitetura
 
@@ -8,102 +8,74 @@ O projeto segue os princípios da **Clean Architecture** com uma separação cla
 
 * **Frontend (`GuildArena.Web`):** Um cliente **Blazor WebAssembly (Wasm)**. É responsável apenas pela UI. É "burro" e não contém lógica de jogo.
 * **Backend (`GuildArena.Api`):** Um servidor **ASP.NET Core Web API**. Atua como **Servidor Autoritário** (defesa anti-cheat) e "Árbitro" do jogo. Processa todas as ações.
-* **Padrão de Lógica:** **CQRS (com MediatR)**. A API recebe "Comandos" (intenções de escrita) e "Queries" (pedidos de leitura) da UI.
+* **Padrão de Lógica:** **CQRS (com MediatR)**. A API recebe "Comandos" (intenções de escrita, ex: `EndTurnCommand`) e "Queries" (pedidos de leitura, ex: `GetCombatStateQuery`) da UI.
 
 ---
 
-## 2. Estratégia de Dados (SQL + JSON)
+## 2. Estratégia de Dados (SQL + JSON + Redis)
 
-A persistência é dividida em dois tipos de dados:
+A persistência é dividida em três tipos de dados, otimizados para diferentes necessidades:
 
 ### 2.1. Dados Dinâmicos (Estado do Jogador)
-
-* **O que são:** O progresso do jogador (Nível, XP, Ouro, Heróis desbloqueados, Equipamento).
+* **O que são:** O progresso persistente do jogador (Nível, XP, Ouro, Heróis desbloqueados).
 * **Tecnologia:** **Base de Dados SQL (Postgres/MySQL)**.
-* **Porquê:** Necessidade de transações ACID (para compras na loja, recompensas de combate, etc.).
+* **Porquê:** Necessidade de transações ACID e relacionamentos fortes.
 * **Entidades Principais:** `HeroCharacter`, `Player`, `Guild`.
 
 ### 2.2. Dados Estáticos (Regras do Jogo)
-
 * **O que são:** Os "moldes" (blueprints) do jogo definidos pelo developer.
 * **Exemplos:** `CharacterDefinition`, `AbilityDefinition`, `ModifierDefinition`.
-* **Tecnologia:** **Ficheiros JSON** (ex: `abilities.json`, `modifiers.json`).
-* **Implementação:** A camada `Infrastructure` será responsável por ler estes JSONs no arranque da API e guardá-los numa **Cache Singleton (Dicionário O(1))**.
-* **Interface:** `IModifierDefinitionRepository`, `IAbilityDefinitionRepository` (definidas no `Domain`).
+* **Tecnologia:** **Ficheiros JSON** (ex: `abilities.json`).
+* **Implementação:** Lidos no arranque para uma **Cache Singleton (Dicionário O(1))**.
+* **Interface:** `IModifierDefinitionRepository`.
+
+### 2.3. Dados Voláteis (Estado do Combate Ativo)
+* **O que são:** O estado em tempo real de um combate a decorrer (`GameState`).
+* **Tecnologia:** **Redis (Chave-Valor)**.
+* **Porquê:** Performance extrema (leitura/escrita em milissegundos) e suporte para reconexão (o estado vive no servidor, não no cliente).
+* **Ciclo de Vida:** Criado no `StartCombat`, atualizado a cada ação, apagado no fim do combate.
+* **Interface:** `ICombatStateRepository` (Implementação: `RedisCombatStateRepository`).
 
 ---
 
 ## 3. Arquitetura do Motor de Combate (Core)
 
-A lógica de combate é construída usando o **Padrão Strategy** (Especialistas) e o **Padrão Orchestrator** (Orquestrador).
+A lógica de combate segue o **Padrão Strategy** (Especialistas) e o **Padrão Orchestrator** (Orquestrador).
 
 ### 3.1. Os Participantes (O "Quem")
+* **`Combatant`:** A unidade no tabuleiro. Contém `CurrentHP`, `ActiveCooldowns`, `ActiveModifiers`.
+* **`CombatPlayer`:** Representa o controlador (Humano ou AI). Gere recursos globais como `Essence`.
+* **`GameState`:** O objeto raiz que contém a lista de `Combatants`, `Players`, e o `CurrentPlayerId` (de quem é a vez).
 
-* **`CharacterDefinition` (Molde):** Dados estáticos (JSON). Define os *stats* base, *skills* e `Tags` de um tipo de Herói ou Mob.
-* **`HeroCharacter` (Entidade):** Dados dinâmicos (SQL). Representa o Herói *específico* de um jogador (com Nível, XP, Perks).
-* **`Combatant` (Estado em Memória):** A classe temporária usada *dentro* do combate. É "construída" no início da batalha a partir dos `HeroCharacter` (para jogadores) ou `CharacterDefinition` (para Mobs). Contém o `CurrentHP`, `MaxHP`, `OwnerId`, `BaseStats` (calculados de Nível+Equipamento) e `ActiveModifiers`.
+### 3.2. O Processo de Execução de Habilidade (`CombatEngine`)
+O `CombatEngine` é o orquestrador principal.
+1.  **Validação:** Verifica se o `Combatant` pode agir (Cooldowns, Stuns, Custos).
+2.  **Targeting:** Resolve os alvos (`GetTargetsForRule`) baseado na `AbilityDefinition` e na seleção da UI.
+3.  **Aplicação:** Itera pelos `Effects` e delega a execução aos `IEffectHandler`.
+4.  **Cooldown:** Aplica o cooldown calculado via `ICooldownCalculationService`.
 
-### 3.2. O Processo de Targeting (A "Ação")
+### 3.3. O Processo de Cálculo (Stats, Dano e Cooldowns)
+Para garantir o **SRP**, os cálculos são delegados a serviços "Especialistas":
 
-A execução de uma habilidade é um *pipeline* complexo que lida com múltiplos alvos (AoE, mistos).
-
-1.  **Definição (`AbilityDefinition`):**
-    * `TargetingRules` (Lista): Define a "lista de compras" de alvos (ex: [1 Inimigo, 1 Aliado]).
-    * `Effects` (Lista): Define as ações. Cada `EffectDefinition` tem um `TargetRuleId` que o "liga" a um item da "lista de compras".
-2.  **UI (Blazor):**
-    * Lê as `TargetingRules`.
-    * Pede ao jogador para selecionar os alvos para cada regra.
-    * Constrói um `AbilityTargets` (um `Dictionary<string, List<int>>`) que mapeia o `RuleId` (ex: "T_StunTarget") aos IDs dos alvos (ex: `[5]`).
-3.  **Execução (`CombatEngine`):**
-    * O `ICombatEngine.ExecuteAbility` recebe o `GameState`, `source`, `ability` e o `AbilityTargets` (o "mapa").
-    * O motor itera pelos `Effects` da habilidade.
-    * Para cada `Effect`, ele usa o `TargetRuleId` para encontrar os IDs dos alvos no "mapa" `AbilityTargets`.
-    * Ele chama o `Handler` (Especialista) apropriado para esses alvos.
-
-### 3.3. O Processo de Efeitos (A "Lógica")
-
-O `CombatEngine` (Orquestrador) não tem lógica. Ele delega o trabalho a "Especialistas" (`IEffectHandler`).
-
-* **`IEffectHandler` (Interface):** Um contrato para um especialista (ex: `DamageEffectHandler`, `ApplyModifierHandler`).
-* **Injeção:** O `CombatEngine` recebe um `IEnumerable<IEffectHandler>` e organiza-os num Dicionário O(1).
-* **Fluxo:** O motor lê o `EffectType` (ex: `DAMAGE`) e chama o *handler* registado para esse tipo.
-
-### 3.4. O Processo de Cálculo (Stats e Dano)
-
-Este é o "caminho crítico" (*hot path*) do combate. Para garantir o **Princípio da Responsabilidade Única (SRP)**, o cálculo de um simples ataque está dividido em três serviços de "Especialistas" distintos:
-
-#### Fase 1: Cálculo de Stats (O `StatCalculationService`)
-* **Responsabilidade:** Calcular o *stat* final de um `Combatant` (ex: `Attack` final).
-* **Fórmula:** `(Base + Flat) * (1 + Percent)`
-* **Lógica:**
-    1.  Lê o `BaseStats` (nu) do `Combatant`.
-    2.  Injeta o `IModifierDefinitionRepository` (para aceder à cache de JSONs).
-    3.  Itera pela lista `ActiveModifiers` do `Combatant`.
-    4.  Lê as `StatModifications` de cada *modifier* (ex: `+10 Attack [FLAT]` ou `+20% Attack [PERCENTAGE]`).
-    5.  Calcula e devolve o *stat* final (ex: `(100 + 10) * (1 + 0.20) = 132` de Ataque).
+* **`IStatCalculationService`:** Calcula stats finais: `(Base + Flat) * (1 + Percent)`.
+* **`IDamageModificationService`:** Aplica bónus/resistências baseados em **Tags** (ex: "+10% Fire Damage").
+* **`ICooldownCalculationService` [NOVO]:** Calcula o cooldown final de uma habilidade, aplicando modificadores (ex: "Haste: -1 turno em habilidades Nature").
 
 ---
 
-#### Fase 2: Cálculo de Dano Mitigado (O `DamageEffectHandler`)
-* **Responsabilidade:** Calcular o dano *base* da habilidade, subtraindo a defesa. **Não sabe** o que é um bónus de *tag*.
-* **Lógica:**
-    1.  **Ataque:** Lê o `DeliveryMethod` (ex: `Melee`) e chama o `IStatCalculationService` para obter o *stat* de ataque final do *atacante* (ex: 132 de Ataque).
-    2.  **Dano Bruto:** Calcula `(Stat * ScalingFactor) + BaseAmount`.
-    3.  **Defesa:** Lê o `DamageType` (ex: `Holy`) e chama o `IStatCalculationService` para obter o *stat* de defesa final do *alvo* (ex: `GetStatValue(target, StatType.MagicDefense)`).
-    4.  **Dano Mitigado:** Calcula `Dano Bruto - Defesa` (ex: 132 - 30 = 102).
-    5.  **Delegação:** Passa este `Dano Mitigado` (102) para a Fase 3.
+## 4. Gestão de Turnos e Fluxo de Jogo
 
----
+A gestão do fluxo de tempo é separada da execução de habilidades.
 
-#### Fase 3: Cálculo de Bónus/Resistências (O `IDamageModificationService`)
-* **Responsabilidade:** Aplicar bónus de dano (ex: "+10% Holy") e resistências (ex: "-20% Nature") ao dano que lhe é entregue.
-* **Lógica:**
-    1.  Recebe o `Dano Mitigado` (ex: 102) do `DamageEffectHandler`.
-    2.  Injeta o `IModifierDefinitionRepository` (para aceder à cache de "moldes" de *modifiers*).
-    3.  Verifica as `Tags` da habilidade (ex: `["Magic", "Nature"]`).
-    4.  **Bónus:** Itera pelos `ActiveModifiers` do *atacante*. Procura `DamageModifications` que dêm *match* com as `Tags` (ex: "+10% Holy") e aplica-os.
-    5.  **Resistência:** Itera pelos `ActiveModifiers` do *alvo*. Procura `DamageModifications` (com valores negativos) que dêm *match* com as `Tags` (ex: "-20% Nature") e aplica-os.
-    6.  **Devolve:** Retorna o `Dano Final` (ex: 102 \* 1.10 \* 0.80) ao `DamageEffectHandler`.
+### 4.1. O Padrão "Carregar -> Modificar -> Guardar"
+Como a API é *stateless*, todas as ações de jogo (ex: `EndTurn`) seguem este fluxo rigoroso no `Application Layer`:
+1.  **Carregar:** O Handler obtém o `GameState` do Redis (`ICombatStateRepository.GetAsync`).
+2.  **Modificar:** O Handler invoca um Serviço de Domínio (`Core`) para alterar o estado em memória.
+3.  **Guardar:** O Handler persiste o `GameState` alterado no Redis (`SaveAsync`).
 
-* **Aplicação (de volta ao `DamageEffectHandler`):**
-    * O `DamageEffectHandler` recebe o `Dano Final` do serviço (Fase 3) e aplica-o ao `CurrentHP` do alvo.
+### 4.2. O Gestor de Turnos (`ITurnManagerService`)
+Este serviço (`Core`) é responsável pela lógica de transição de turno:
+1.  **Tick de Fim de Turno:** Reduz a duração de `ActiveCooldowns` e `ActiveModifiers` dos combatentes do jogador atual.
+2.  **Rotação (Round-Robin):** Identifica o próximo `CombatPlayer` na lista (suporta 1v1, FFA, PvE).
+3.  **Novo Turno:** Atualiza o `CurrentPlayerId` e incrementa o `CurrentTurnNumber` se uma ronda completa passar.
+4.  **Recursos:** (Futuro) Regenera recursos ou aplica efeitos de início de turno.
