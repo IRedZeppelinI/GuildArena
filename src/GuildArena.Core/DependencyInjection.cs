@@ -19,8 +19,10 @@ public static class DependencyInjection
 
         // Regista os Serviços Auxiliares
         services.AddScoped<IStatCalculationService, StatCalculationService>();
+        services.AddScoped<IDamageModificationService, DamageModificationService>();
         services.AddScoped<ICooldownCalculationService, CooldownCalculationService>();
 
+        services.AddScoped<ITurnManagerService, TurnManagerService>();
 
         // Regista todos os Handlers de Efeito
         // O .NET DI vai automaticamente injetar o IEnumerable<IEffectHandler> no CombatEngine
