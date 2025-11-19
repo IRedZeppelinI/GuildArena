@@ -55,20 +55,18 @@ public class DamageEffectHandler : IEffectHandler
         if (def.Delivery != DeliveryMethod.Passive && def.DamageType != DamageType.True)
         {
             switch (def.DamageType)
-            {
-                case DamageType.Physical:
+            {                
+                case DamageType.Martial:
                     targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.Defense);
                     break;
 
-                case DamageType.Magic:
-                case DamageType.Mental:
-                case DamageType.Holy:
-                case DamageType.Dark:
-                case DamageType.Nature:
+                // Todos os mágicos usam MagicDefense
+                case DamageType.Mystic: // Antigo Mental
+                case DamageType.Divine: // Antigo Holy
+                case DamageType.Void:   // Antigo Dark
+                case DamageType.Primal: // Antigo Nature
                     targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.MagicDefense);
                     break;
-
-                    // (O DamageType.True é ignorado pelo 'if' exterior)
             }
         }
 

@@ -1,12 +1,15 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Entities;
+using GuildArena.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace GuildArena.Core.Combat.Services;
 
 public class TurnManagerService : ITurnManagerService
 {
     private readonly ILogger<TurnManagerService> _logger;
+    private readonly Random _random = new();
 
     public TurnManagerService(ILogger<TurnManagerService> logger)
     {
@@ -31,8 +34,8 @@ public class TurnManagerService : ITurnManagerService
 
         foreach (var combatant in combatantsEndingTurn)
         {
-            TickCooldowns(combatant); //
-            TickModifiers(combatant); //
+            TickCooldowns(combatant); 
+            TickModifiers(combatant); 
             // (Futuro: Triggers ON_TURN_END)
         }
 
@@ -56,25 +59,80 @@ public class TurnManagerService : ITurnManagerService
 
         var newPlayer = gameState.Players.First(p => p.PlayerId == nextPlayerId);
 
-        //TODO: Implementar a lógica de Essence no início do turno,
-        //        quando o mecanismo de Essence for definido.
+        GenerateTurnEssence(newPlayer, gameState.CurrentTurnNumber);
 
         _logger.LogInformation(
-            "Turn advanced. It is now Player {PlayerId}'s turn.",
+            "Turn advanced to Player {PlayerId}. Essence Generated.",
             newPlayer.PlayerId);
 
-        // (Futuro: Triggers ON_TURN_START para os combatentes do novo jogador)
+        // Log do estado atual da Essence (para debug)
+        foreach (var kvp in newPlayer.EssencePool)
+        {
+            if (kvp.Value > 0)
+                _logger.LogDebug("Essence {Type}: {Amount}", kvp.Key, kvp.Value);
+        }
+
+        // TODO: Triggers ON_TURN_START para os combatentes do novo jogador)
     }
 
-    // --- Métodos Helper Privados (TickCooldowns, TickModifiers) ---
-    
+    // --- Helper Essence ---
+    private void GenerateTurnEssence(CombatPlayer player, int turnNumber)
+    {
+        // Regra: 2 no primeiro turno, 4 nos seguintes.
+        // Nota: Assumimos que 'TurnNumber 1' é o primeiro turno de TODOS.
+        int amountToGenerate = (turnNumber == 1) ? 2 : 4;
+
+        for (int i = 0; i < amountToGenerate; i++)
+        {
+            // Verificar Cap Máximo (se aplicável)
+            int currentTotal = player.EssencePool.Values.Sum();
+            if (currentTotal >= player.MaxTotalEssence)
+            {
+                _logger.LogInformation("Essence cap reached for Player {Id}", player.PlayerId);
+                break;
+            }
+
+            // Gerar tipo aleatório
+            EssenceType randomType = GetRandomEssenceType();
+
+            // Adicionar ao dicionário
+            if (!player.EssencePool.ContainsKey(randomType))
+            {
+                player.EssencePool[randomType] = 0;
+            }
+            player.EssencePool[randomType]++;
+        }
+    }
+
+    // --- Helper Essence ---
+
+    private EssenceType GetRandomEssenceType()
+    {
+        // Array com todos os tipos MENOS Neutral (Neutral é custo, não recurso gerado)
+        var validTypes = new[]
+        {
+            EssenceType.Vigor,
+            EssenceType.Mind,
+            EssenceType.Light,
+            EssenceType.Shadow,
+            EssenceType.Flux
+        };
+
+        int index = _random.Next(validTypes.Length);
+        return validTypes[index];
+    }
+
+
+
+    // --- Métodos Helper Privados Cooldowns ---
+
     private void TickCooldowns(Combatant combatant)
     {
         // Itera ao contrário para poder remover itens da lista em segurança
         for (int i = combatant.ActiveCooldowns.Count - 1; i >= 0; i--)
         {
-            var cd = combatant.ActiveCooldowns[i]; //
-            cd.TurnsRemaining--; //
+            var cd = combatant.ActiveCooldowns[i]; 
+            cd.TurnsRemaining--; 
 
             if (cd.TurnsRemaining <= 0)
             {
@@ -87,12 +145,12 @@ public class TurnManagerService : ITurnManagerService
     {
         for (int i = combatant.ActiveModifiers.Count - 1; i >= 0; i--)
         {
-            var mod = combatant.ActiveModifiers[i]; //
+            var mod = combatant.ActiveModifiers[i]; 
 
             // Ignora modifiers permanentes/passivos
             if (mod.TurnsRemaining == -1) continue;
 
-            mod.TurnsRemaining--; //
+            mod.TurnsRemaining--; 
 
             if (mod.TurnsRemaining <= 0)
             {
