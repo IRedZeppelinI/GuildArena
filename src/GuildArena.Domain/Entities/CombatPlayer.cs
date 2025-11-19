@@ -1,4 +1,5 @@
 ﻿using GuildArena.Domain.Enums;
+using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Domain.Entities;
 
@@ -19,7 +20,18 @@ public class CombatPlayer
     public CombatPlayerType Type { get; set; }
 
 
-    // Essence placeholder (A lógica/tipo de Essence será definida no futuro)    
-    public int CurrentEssence { get; set; }    
-    public int MaxEssence { get; set; }
+    /// <summary>
+    /// The current pool of essence available to the player, organized by type.
+    /// </summary>   
+    public Dictionary<EssenceType, int> EssencePool { get; set; } = new();
+
+    /// <summary>
+    /// The maximum total essence the player can hold (optional cap).
+    /// </summary>
+    public int MaxTotalEssence { get; set; } = 20;
+
+    /// <summary>
+    /// Modifiers ativos globais no jogador (ex: "Mana Spring", "Cursed wallet").
+    /// </summary>
+    public List<ActiveModifier> ActiveModifiers { get; set; } = new();
 }

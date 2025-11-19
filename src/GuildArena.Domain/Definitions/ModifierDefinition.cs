@@ -3,6 +3,9 @@ using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Domain.Definitions;
 
+/// <summary>
+/// Defines the static blueprint for a modifier (buff/debuff).
+/// </summary>
 public class ModifierDefinition
 {
     public required string Id { get; set; } // "MOD_POISON_WEAK"
@@ -14,6 +17,16 @@ public class ModifierDefinition
 
     public List<DamageModification> DamageModifications { get; set; } = new();
     public List<CooldownModification> CooldownModifications { get; set; } = new();
+
+    /// <summary>
+    /// Modifications that affect ability essence costs.
+    /// </summary>
+    public List<CostModification> EssenceCostModifications { get; set; } = new();
+
+    /// <summary>
+    /// Modifications that affect turn-start essence generation.
+    /// </summary>
+    public List<EssenceGenerationModification> EssenceGenerationModifications { get; set; } = new();
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
 
