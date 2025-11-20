@@ -8,6 +8,12 @@ namespace GuildArena.Domain.ValueObjects;
 public class EssenceGenerationModification
 {
     /// <summary>
+    /// If true, a random essence type will be selected (for gain or loss).
+    /// If true, EssenceType property is ignored.
+    /// </summary>
+    public bool IsRandom { get; set; }
+
+    /// <summary>
     /// The type of essence to generate extra (or remove).
     /// </summary>
     public EssenceType EssenceType { get; set; }

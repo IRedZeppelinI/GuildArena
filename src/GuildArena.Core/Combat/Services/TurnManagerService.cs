@@ -9,11 +9,12 @@ namespace GuildArena.Core.Combat.Services;
 public class TurnManagerService : ITurnManagerService
 {
     private readonly ILogger<TurnManagerService> _logger;
-    private readonly Random _random = new();
+    private readonly IEssenceService _essenceService;
 
-    public TurnManagerService(ILogger<TurnManagerService> logger)
+    public TurnManagerService(ILogger<TurnManagerService> logger, IEssenceService essenceService)
     {
         _logger = logger;
+        _essenceService = essenceService;
     }
 
     /// <summary>
@@ -59,10 +60,10 @@ public class TurnManagerService : ITurnManagerService
 
         var newPlayer = gameState.Players.First(p => p.PlayerId == nextPlayerId);
 
-        GenerateTurnEssence(newPlayer, gameState.CurrentTurnNumber);
+        _essenceService.GenerateStartOfTurnEssence(newPlayer, gameState.CurrentTurnNumber);
 
         _logger.LogInformation(
-            "Turn advanced to Player {PlayerId}. Essence Generated.",
+            "Turn advanced to Player {PlayerId}.",
             newPlayer.PlayerId);
 
         // Log do estado atual da Essence (para debug)

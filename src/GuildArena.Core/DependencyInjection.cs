@@ -23,14 +23,12 @@ public static class DependencyInjection
         services.AddScoped<ICooldownCalculationService, CooldownCalculationService>();
 
         services.AddScoped<ITurnManagerService, TurnManagerService>();
+        services.AddScoped<IEssenceService, EssenceService>();
 
-        // Regista todos os Handlers de Efeito
-        // O .NET DI vai automaticamente injetar o IEnumerable<IEffectHandler> no CombatEngine
+        // Registar todos os Handlers de Efeito        
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
-        // services.AddScoped<IEffectHandler, HealEffectHandler>(); // 
         services.AddScoped<IEffectHandler, ApplyModifierHandler>();
-
-        // ... (Regista outros serviços do Core, como IDungeonService, etc.)
+        // services.AddScoped<IEffectHandler, HealEffectHandler>();         
 
         return services;
     }
