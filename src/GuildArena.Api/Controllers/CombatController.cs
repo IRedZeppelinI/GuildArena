@@ -22,9 +22,14 @@ public class CombatController : ControllerBase
     /// </summary>
     /// <returns>The GUID of the created combat.</returns>
     [HttpPost("start")]
-    public async Task<IActionResult> StartCombat()
+    public async Task<IActionResult> StartCombat([FromBody] StartCombatRequest request)
     {
-        var command = new StartCombatCommand();
+        var command = new StartCombatCommand
+        {
+            PlayerId = request.PlayerId,
+            OpponentId = request.OpponentId
+        };
+
         var combatId = await _mediator.Send(command);
         return Ok(new { combatId });
     }
@@ -60,4 +65,11 @@ public class CombatController : ControllerBase
             return BadRequest(new { error = ex.Message });
         }
     }
+
+    public class StartCombatRequest
+    {
+        public int PlayerId { get; set; }
+        public int OpponentId { get; set; }
+    }
 }
+
