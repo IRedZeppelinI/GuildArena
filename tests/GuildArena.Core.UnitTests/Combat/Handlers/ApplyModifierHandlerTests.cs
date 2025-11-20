@@ -83,4 +83,37 @@ public class ApplyModifierHandlerTests
         refreshedMod.TurnsRemaining.ShouldBe(5); 
         refreshedMod.CasterId.ShouldBe(99);
     }
+
+
+    [Fact]
+    public void Apply_WithMissingModifierId_ShouldLogWarningAndDoNothing()
+    {
+        // ARRANGE
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.APPLY_MODIFIER,
+            ModifierDefinitionId = null, // <--- Erro: ID em falta
+            DurationInTurns = 3,
+            TargetRuleId = "T_Self"
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", BaseStats = new BaseStats() };
+
+        // ACT
+        _handler.Apply(effectDef, source, target);
+
+        // ASSERT
+        // 1. A lista deve continuar vazia
+        target.ActiveModifiers.ShouldBeEmpty();
+
+        // 2. Deve ter logado um aviso
+        _loggerMock.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            null,
+            Arg.Any<Func<object, Exception?, string>>()
+        );
+    }
 }

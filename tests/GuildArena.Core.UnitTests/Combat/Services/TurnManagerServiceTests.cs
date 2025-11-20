@@ -12,17 +12,21 @@ namespace GuildArena.Core.UnitTests.Combat.Services;
 public class TurnManagerServiceTests
 {
     private readonly ILogger<TurnManagerService> _loggerMock;
+    private readonly IEssenceService _essenceServiceMock; 
     private readonly ITurnManagerService _service;
     private GameState _gameState;
 
     public TurnManagerServiceTests()
     {
         _loggerMock = Substitute.For<ILogger<TurnManagerService>>();
-        _service = new TurnManagerService(_loggerMock);
+        _essenceServiceMock = Substitute.For<IEssenceService>(); 
+
+        // Injetar o mock no serviço
+        _service = new TurnManagerService(_loggerMock, _essenceServiceMock);
 
         // Arrange Global: Criar um estado de combate 1v1 (Humano vs AI)
         var player1 = new CombatPlayer { PlayerId = 1, Type = CombatPlayerType.Human };
-        var player2 = new CombatPlayer { PlayerId = 0, Type = CombatPlayerType.AI }; // AI tem ID 0
+        var player2 = new CombatPlayer { PlayerId = 0, Type = CombatPlayerType.AI };
 
         var combatant1 = new Combatant { Id = 101, OwnerId = 1, Name = "Hero 1", BaseStats = new BaseStats(), CurrentHP = 30 };
         var combatant2 = new Combatant { Id = 102, OwnerId = 0, Name = "Mob 1", BaseStats = new BaseStats(), CurrentHP = 30 };
@@ -35,6 +39,23 @@ public class TurnManagerServiceTests
             CurrentPlayerId = 1 // Começa o Jogador 1
         };
     }
+
+    
+    [Fact]
+    public void AdvanceTurn_ShouldCallEssenceService_ForNewPlayer()
+    {
+        // Act
+        _service.AdvanceTurn(_gameState);
+
+        // Assert
+        // O novo jogador é o 0 (AI). O serviço deve ter sido chamado para ele.
+        _essenceServiceMock.Received(1).GenerateStartOfTurnEssence(
+            Arg.Is<CombatPlayer>(p => p.PlayerId == 0),
+            Arg.Any<int>()
+        );
+    }  
+  
+
 
     [Fact]
     public void AdvanceTurn_ShouldSwitchToNextPlayer()

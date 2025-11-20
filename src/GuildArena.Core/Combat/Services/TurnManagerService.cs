@@ -74,54 +74,7 @@ public class TurnManagerService : ITurnManagerService
         }
 
         // TODO: Triggers ON_TURN_START para os combatentes do novo jogador)
-    }
-
-    // --- Helper Essence ---
-    private void GenerateTurnEssence(CombatPlayer player, int turnNumber)
-    {
-        // Regra: 2 no primeiro turno, 4 nos seguintes.
-        // Nota: Assumimos que 'TurnNumber 1' é o primeiro turno de TODOS.
-        int amountToGenerate = (turnNumber == 1) ? 2 : 4;
-
-        for (int i = 0; i < amountToGenerate; i++)
-        {
-            // Verificar Cap Máximo (se aplicável)
-            int currentTotal = player.EssencePool.Values.Sum();
-            if (currentTotal >= player.MaxTotalEssence)
-            {
-                _logger.LogInformation("Essence cap reached for Player {Id}", player.PlayerId);
-                break;
-            }
-
-            // Gerar tipo aleatório
-            EssenceType randomType = GetRandomEssenceType();
-
-            // Adicionar ao dicionário
-            if (!player.EssencePool.ContainsKey(randomType))
-            {
-                player.EssencePool[randomType] = 0;
-            }
-            player.EssencePool[randomType]++;
-        }
-    }
-
-    // --- Helper Essence ---
-
-    private EssenceType GetRandomEssenceType()
-    {
-        // Array com todos os tipos MENOS Neutral (Neutral é custo, não recurso gerado)
-        var validTypes = new[]
-        {
-            EssenceType.Vigor,
-            EssenceType.Mind,
-            EssenceType.Light,
-            EssenceType.Shadow,
-            EssenceType.Flux
-        };
-
-        int index = _random.Next(validTypes.Length);
-        return validTypes[index];
-    }
+    }   
 
 
 

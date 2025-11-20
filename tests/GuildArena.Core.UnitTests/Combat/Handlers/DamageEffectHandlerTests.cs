@@ -7,8 +7,6 @@ using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
-using System.Collections.Generic;
 
 namespace GuildArena.Core.UnitTests.Combat.Handlers;
 
@@ -24,20 +22,20 @@ public class DamageEffectHandlerTests
         // ARRANGE Global 
         _statCalculationServiceMock = Substitute.For<IStatCalculationService>();
         _loggerMock = Substitute.For<ILogger<DamageEffectHandler>>();
-        _damageModServiceMock = Substitute.For<IDamageModificationService>(); // <-- Mockar a nova interface
+        _damageModServiceMock = Substitute.For<IDamageModificationService>();
 
-        // Injetar as dependências corretas (3)
+        // Injetar as dependências corretas
         _handler = new DamageEffectHandler(
             _statCalculationServiceMock,
             _loggerMock,
-            _damageModServiceMock); // <-- Passar o mock
+            _damageModServiceMock);
     }
 
     [Theory]
-    [InlineData(DeliveryMethod.Melee, DamageType.Physical, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
-    [InlineData(DeliveryMethod.Ranged, DamageType.Physical, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
-    [InlineData(DeliveryMethod.Spell, DamageType.Magic, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
-    [InlineData(DeliveryMethod.Passive, DamageType.Nature, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
+    [InlineData(DeliveryMethod.Melee, DamageType.Martial, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
+    [InlineData(DeliveryMethod.Ranged, DamageType.Martial, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
+    [InlineData(DeliveryMethod.Spell, DamageType.Mystic, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
+    [InlineData(DeliveryMethod.Passive, DamageType.Primal, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
     public void Apply_DamageEffect_ShouldReduceTargetHP_BasedOnDeliveryMethod(
         DeliveryMethod delivery, DamageType damageType, StatType sourceStat, float sourceStatValue,
         StatType targetStat, float targetStatValue, int expectedDamage)
@@ -62,14 +60,12 @@ public class DamageEffectHandlerTests
         _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
 
         // Configurar o mock do DamageModService (Fase 2 do dano)
-        // Dizemos-lhe: "Quando fores chamado, apenas devolve o dano mitigado que recebeste."
-        // (Isto isola o teste - não estamos a testar modifiers aqui)
         _damageModServiceMock.CalculateModifiedValue(
-            (float)expectedDamage, // O dano mitigado (ex: 8)
+            (float)expectedDamage,
             effectDef,
             source,
             target)
-            .Returns((float)expectedDamage); // Devolve o mesmo valor (8)
+            .Returns((float)expectedDamage);
 
         // 2. ACT
         _handler.Apply(effectDef, source, target);
@@ -86,7 +82,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.Physical,
+            DamageType = DamageType.Martial,
             ScalingFactor = 1.0f,
             TargetRuleId = "T_TestTarget"
         };
@@ -98,15 +94,13 @@ public class DamageEffectHandlerTests
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(10f);
 
         // Dano mitigado = 5 - 10 = -5
-        // O handler vai calcular 1 (mínimo)
         _damageModServiceMock.CalculateModifiedValue(-5f, effectDef, source, target)
-            .Returns(-5f); // O ModService devolve -5 (não sabe do mínimo)
+            .Returns(-5f);
 
         // 2. ACT
         _handler.Apply(effectDef, source, target);
 
         // 3. ASSERT
-        // O handler aplica o mínimo de 1, independentemente do que o ModService diz
         target.CurrentHP.ShouldBe(49);
     }
 
@@ -114,15 +108,13 @@ public class DamageEffectHandlerTests
     public void Apply_WithDamageTagModifier_ShouldCallDamageModServiceCorrectly()
     {
         // 1. ARRANGE
-        // Este teste agora SÓ verifica se o DamageModService é chamado
-        // com o dano mitigado correto.
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Spell,
-            DamageType = DamageType.Nature,
+            DamageType = DamageType.Primal,
             ScalingFactor = 1.0f,
-            Tags = new() { "Magic", "Nature" },
+            Tags = new() { "Magic", "Primal" },
             TargetRuleId = "T_TestTarget"
         };
 
@@ -133,7 +125,6 @@ public class DamageEffectHandlerTests
         // Dano mitigado (Fase 1) = 100 - 20 = 80
 
         // Mock do DamageModService (Fase 2)
-        // Dizemos-lhe: "Quando fores chamado com 80 de dano, devolve 96 (80 * 1.20)"
         _damageModServiceMock.CalculateModifiedValue(80f, effectDef, Arg.Any<Combatant>(), Arg.Any<Combatant>())
             .Returns(96f);
 
@@ -145,16 +136,50 @@ public class DamageEffectHandlerTests
         _handler.Apply(effectDef, source, target);
 
         // 3. ASSERT
-        // O handler aplicou o valor final que o ModService lhe deu?
-        // HP Final = 200 - 96 = 104
         target.CurrentHP.ShouldBe(104);
 
-        // Verificação extra: O ModService foi chamado com o dano mitigado CORRETO (80)?
         _damageModServiceMock.Received(1).CalculateModifiedValue(
             80f,
             effectDef,
             source,
             target
         );
+    }
+
+    [Fact]
+    public void Apply_TrueDamage_ShouldIgnoreDefense()
+    {
+        // 1. ARRANGE
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageType = DamageType.True, // <--- O caso especial
+            ScalingFactor = 1.0f,
+            BaseAmount = 0,
+            TargetRuleId = "T_TestTarget"
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+
+        // Configurar Stats: O atacante tem 10 de Ataque
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
+
+        // O alvo tem 999 de Defesa (se não fosse True damage, o dano seria 1)
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(999f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.MagicDefense).Returns(999f);
+
+        // Mock do DamageModService (pass-through)
+        _damageModServiceMock.CalculateModifiedValue(Arg.Any<float>(), effectDef, source, target)
+            .Returns(x => x.Arg<float>()); // Retorna o que recebe
+
+        // 2. ACT
+        _handler.Apply(effectDef, source, target);
+
+        // 3. ASSERT
+        // Se a defesa fosse usada, o dano seria 1 (minimo).
+        // Como é True Damage, deve entrar os 10 completos.
+        target.CurrentHP.ShouldBe(90); // 100 - 10
     }
 }

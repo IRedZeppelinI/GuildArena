@@ -20,12 +20,12 @@ public static class DependencyInjection
         // 1. Obtém a connection string
         var redisConnection = configuration.GetConnectionString("Redis");
 
-        //if (string.IsNullOrEmpty(redisConnection))
-        //{
-        //    // Para desenvolvimento local, podemos apontar para o Docker
-        //    redisConnection = "localhost:6379";
-        //    // NOTA: Em produção, isto deve vir da configuração!
-        //}
+        if (string.IsNullOrEmpty(redisConnection))
+        {
+            // Para desenvolvimento local, podemos apontar para o Docker
+            redisConnection = "localhost:6379";
+            // NOTA: Em produção, isto deve vir da configuração!
+        }
 
         // 2. Regista o IConnectionMultiplexer como Singleton.
         // Isto é crucial. A ligação ao Redis deve ser partilhada por toda a app.
