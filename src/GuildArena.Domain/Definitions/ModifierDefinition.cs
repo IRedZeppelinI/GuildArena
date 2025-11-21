@@ -18,19 +18,41 @@ public class ModifierDefinition
     public List<DamageModification> DamageModifications { get; set; } = new();
     public List<CooldownModification> CooldownModifications { get; set; } = new();
 
+
     /// <summary>
     /// Modifications that affect ability essence costs.
     /// </summary>
     public List<CostModification> EssenceCostModifications { get; set; } = new();
+
+
+    /// <summary>
+    /// Modifications that affect ability HP costs.
+    /// </summary>
+    public List<HPCostModification> HPCostModifications { get; set; } = new();
+
 
     /// <summary>
     /// Modifications that affect turn-start essence generation.
     /// </summary>
     public List<EssenceGenerationModification> EssenceGenerationModifications { get; set; } = new();
 
-    public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...
 
-    // Se despoleta, qual a "mini-habilidade" que ele executa?
+    /// <summary>
+    /// Additional costs that an opponent must pay to target the unit 
+    /// possessing this modifier (Ward mechanic).
+    /// </summary>
+    public List<EssenceCost> TargetingEssenceCosts { get; set; } = new();
+
+
+    /// <summary>
+    /// Additional HP cost that an opponent must pay (damage taken) to target the unit 
+    /// possessing this modifier (Blood Ward mechanic).
+    /// </summary>
+    public int TargetingHPCost { get; set; }
+
+
+
+    public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
     public string? TriggeredAbilityId { get; set; } // Ex: "INTERNAL_POISON_TICK"
 }
 

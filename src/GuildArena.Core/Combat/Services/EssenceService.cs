@@ -2,6 +2,7 @@
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
+using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Services;
@@ -78,7 +79,59 @@ public class EssenceService : IEssenceService
         }
     }
 
-    // --- Helpers Privados (Copiados do TurnManager) ---
+    public bool HasEnoughEssence(CombatPlayer player, List<EssenceCost> costs)
+    {
+        // Clona o pool do jogador para simular o gasto sem alterar o original
+        var tempPool = new Dictionary<EssenceType, int>(player.EssencePool);
+
+        // 1. Pagar custos Específicos (Coloridos)
+        foreach (var cost in costs.Where(c => c.Type != EssenceType.Neutral))
+        {
+            if (!tempPool.TryGetValue(cost.Type, out int available) || available < cost.Amount)
+            {
+                return false; // Não tem cor suficiente
+            }
+            tempPool[cost.Type] -= cost.Amount;
+        }
+
+        // 2. Pagar custos Neutros (com o que sobrou)
+        int neutralNeeded = costs
+            .Where(c => c.Type == EssenceType.Neutral)
+            .Sum(c => c.Amount);
+
+        if (neutralNeeded > 0)
+        {
+            // Soma tudo o que sobrou no pool
+            int totalAvailable = tempPool.Values.Sum();
+            if (totalAvailable < neutralNeeded)
+            {
+                return false; // Não tem quantidade total suficiente
+            }
+        }
+
+        return true;
+    }
+
+    public void PayEssence(CombatPlayer player, Dictionary<EssenceType, int> payment)
+    {
+        foreach (var kvp in payment)
+        {
+            if (player.EssencePool.TryGetValue(kvp.Key, out int currentAmount))
+            {
+                player.EssencePool[kvp.Key] = Math.Max(0, currentAmount - kvp.Value);
+
+                _logger.LogInformation("Player {Id} paid {Amount} {Type} essence.",
+                    player.PlayerId, kvp.Value, kvp.Key);
+            }
+            else
+            {
+                _logger.LogWarning("Player {Id} tried to pay {Amount} {Type} but has none.",
+                    player.PlayerId, kvp.Value, kvp.Key);
+            }
+        }
+    }
+
+    // --- Helpers Privados  ---
 
     private void ApplyEssenceChange(CombatPlayer player, EssenceType type, int amount)
     {
