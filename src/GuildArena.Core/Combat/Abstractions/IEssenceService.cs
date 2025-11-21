@@ -19,15 +19,18 @@ public interface IEssenceService
 
     /// <summary>
     /// Checks if the player has enough essence in their pool to cover the specified costs.
-    /// This validates both specific colors and total amounts (for neutral costs).
+    /// This validates specific colors first, then checks if the remaining total covers neutral costs.
     /// </summary>
+    /// <param name="player">The player attempting to pay.</param>
+    /// <param name="costs">The calculated invoice (from CostCalculationService).</param>
+    /// <returns>True if the player can afford the cost.</returns>
     bool HasEnoughEssence(CombatPlayer player, List<EssenceCost> costs);
 
 
     /// <summary>
-    /// Deducts the essence from the player's pool.
-    /// IMPORTANT: The 'payment' list must specify exactly which essence types to consume.
-    /// Neutral costs in the definition should be resolved to concrete types in the 'payment' list before calling this.
+    /// Deducts the essence from the player's pool based on a specific payment instruction.
     /// </summary>
+    /// <param name="player">The player paying.</param>
+    /// <param name="payment">A dictionary mapping EssenceType to the Amount to consume.</param>
     void PayEssence(CombatPlayer player, Dictionary<EssenceType, int> payment);
 }
