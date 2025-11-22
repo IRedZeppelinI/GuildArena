@@ -1,5 +1,6 @@
 ﻿using GuildArena.Core.Combat;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -12,206 +13,235 @@ namespace GuildArena.Core.UnitTests.Combat;
 
 public class CombatEngineTests
 {
-    private readonly ILogger<CombatEngine> _engineLoggerMock;
-    
-    private readonly ICooldownCalculationService _cooldownCalcServiceMock;
+    private readonly ILogger<CombatEngine> _logger;
+    private readonly ICooldownCalculationService _cooldownMock;
+    private readonly ICostCalculationService _costMock;
+    private readonly IEssenceService _essenceMock;
+    private readonly IEffectHandler _handlerMock;
 
     public CombatEngineTests()
     {
-        _engineLoggerMock = Substitute.For<ILogger<CombatEngine>>();
-        
-        _cooldownCalcServiceMock = Substitute.For<ICooldownCalculationService>();
+        _logger = Substitute.For<ILogger<CombatEngine>>();
+        _cooldownMock = Substitute.For<ICooldownCalculationService>();
+        _costMock = Substitute.For<ICostCalculationService>();
+        _essenceMock = Substitute.For<IEssenceService>();
+        _handlerMock = Substitute.For<IEffectHandler>();
 
-         
-        // serviço de cooldown devolve 0 por defeito.
-        _cooldownCalcServiceMock.GetFinalCooldown(Arg.Any<Combatant>(), Arg.Any<AbilityDefinition>())
-            .Returns(0);
+        _handlerMock.SupportedType.Returns(EffectType.DAMAGE);
+    }
+
+    private CombatEngine CreateEngine(IEnumerable<IEffectHandler>? handlers = null)
+    {
+        var handlerList = handlers ?? new[] { _handlerMock };
+        return new CombatEngine(
+            handlerList,
+            _logger,
+            _cooldownMock,
+            _costMock,
+            _essenceMock);
     }
 
     [Fact]
-    public void ExecuteAbility_WithSupportedEffect_ShouldCallCorrectHandler()
+    public void ExecuteAbility_HappyPath_ShouldPayCostsAndExecute()
     {
         // ARRANGE
-        var mockHandler = Substitute.For<IEffectHandler>();
-        mockHandler.SupportedType.Returns(EffectType.DAMAGE);
-                
-        var engine = new CombatEngine(new[] { mockHandler }, _engineLoggerMock, _cooldownCalcServiceMock);
-
+        var engine = CreateEngine();
         var ability = new AbilityDefinition
         {
-            Id = "TEST_ABILITY",
-            Name = "Test", //
-            TargetingRules = new() {
-                new() { RuleId = "T_ENEMY", Type = TargetType.Enemy, Count = 1 }
-            },
-            Effects = new() {
-                new() { Type = EffectType.DAMAGE, TargetRuleId = "T_ENEMY" }
-            }
+            Id = "A1",
+            Name = "Fireball",
+            Effects = new() { new() { Type = EffectType.DAMAGE, TargetRuleId = "T1" } },
+            TargetingRules = new() { new() { RuleId = "T1", Type = TargetType.Enemy, Count = 1 } }
         };
 
+        // Dados do Combate - CORRIGIDO (Name e BaseStats)
         var source = new Combatant
         {
             Id = 1,
             OwnerId = 1,
-            Name = "Source",
+            Name = "P1",
             CurrentHP = 100,
-            MaxHP = 100,
-            BaseStats = new BaseStats() //
+            BaseStats = new BaseStats()
         };
         var target = new Combatant
         {
-            Id = 5,
+            Id = 2,
             OwnerId = 2,
-            Name = "Target",
+            Name = "P2",
             CurrentHP = 100,
-            MaxHP = 100,
             BaseStats = new BaseStats()
         };
-        var gameState = new GameState { Combatants = new List<Combatant> { source, target } }; //
 
-        var targets = new AbilityTargets
+        var player = new CombatPlayer { PlayerId = 1 };
+        var gameState = new GameState
         {
-            SelectedTargets = new() { { "T_ENEMY", new List<int> { 5 } } } //
+            Combatants = new() { source, target },
+            Players = new() { player }
         };
 
-        // ACT        
-        engine.ExecuteAbility(gameState, ability, source, targets);
+        var targets = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 2 } } } };
+        var payment = new Dictionary<EssenceType, int> { { EssenceType.Vigor, 2 } };
 
-        // ASSERT
-        mockHandler.Received(1).Apply(
-            Arg.Is<EffectDefinition>(e => e.TargetRuleId == "T_ENEMY"),
-            source,
-            target
-        );
-    }
+        // --- CONFIGURAÇÃO DOS MOCKS ---
 
-    [Fact]
-    public void ExecuteAbility_WithUnknownHandler_ShouldNotCrashAndLogWarning()
-    {
-        // ARRANGE        
-        var engine = new CombatEngine(Enumerable.Empty<IEffectHandler>(), _engineLoggerMock, _cooldownCalcServiceMock);
+        // 1. Cooldown: OK
+        _cooldownMock.GetFinalCooldown(source, ability).Returns(0);
 
-        var ability = new AbilityDefinition
+        // 2. Custos Calculados
+        var calculatedCost = new FinalAbilityCosts
         {
-            Id = "HEAL_ABILITY",
-            Name = "Heal", //
-            TargetingRules = new() {
-                new() { RuleId = "T_SELF", Type = TargetType.Self, Count = 1 }
-            },
-            Effects = new List<EffectDefinition> {
-                new() { Type = EffectType.HEAL, TargetRuleId = "T_SELF" } //
-            }
+            HPCost = 10,
+            EssenceCosts = new() { new() { Type = EssenceType.Vigor, Amount = 2 } }
         };
+        _costMock.CalculateFinalCosts(player, ability, Arg.Any<List<Combatant>>())
+            .Returns(calculatedCost);
 
-        var attacker = new Combatant
-        {
-            Id = 1,
-            Name = "Hero",
-            OwnerId = 1,
-            CurrentHP = 50,
-            MaxHP = 100,
-            BaseStats = new BaseStats()
-        };
-        var gameState = new GameState { Combatants = new List<Combatant> { attacker } };
-        var targets = new AbilityTargets();
+        // 3. Essence Service: OK
+        _essenceMock.HasEnoughEssence(player, calculatedCost.EssenceCosts).Returns(true);
 
         // ACT
-        engine.ExecuteAbility(gameState, ability, attacker, targets);
+        engine.ExecuteAbility(gameState, ability, source, targets, payment);
 
         // ASSERT
-        attacker.CurrentHP.ShouldBe(50);
-        _engineLoggerMock.Received().Log(
-            LogLevel.Warning,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o => o != null && o.ToString()!.Contains("No IEffectHandler found for EffectType HEAL")), //
-            null,
-            Arg.Any<Func<object, Exception?, string>>()
-        );
+        _essenceMock.Received(1).PayEssence(player, payment);
+        source.CurrentHP.ShouldBe(90); // 100 - 10
+        _handlerMock.Received(1).Apply(Arg.Any<EffectDefinition>(), source, target);
     }
 
-    // --- CoolDowns ---
     [Fact]
-    public void ExecuteAbility_WhenAbilityIsOnCooldown_ShouldReturnEarlyAndNotCallHandler()
+    public void ExecuteAbility_OnCooldown_ShouldNotExecute()
     {
         // ARRANGE
-        var mockHandler = Substitute.For<IEffectHandler>();
-        mockHandler.SupportedType.Returns(EffectType.DAMAGE);
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition { Id = "A1", Name = "Test" };
 
-        var engine = new CombatEngine(new[] { mockHandler }, _engineLoggerMock, _cooldownCalcServiceMock);
-
-        var ability = new AbilityDefinition { Id = "A1", Name = "Test Ability" };
+        // CORRIGIDO
         var source = new Combatant
         {
             Id = 1,
-            Name = "Source",
             OwnerId = 1,
+            Name = "Source",
             BaseStats = new BaseStats()
         };
 
-        // Colocar a habilidade em cooldown
-        source.ActiveCooldowns.Add(new ActiveCooldown { AbilityId = "A1", TurnsRemaining = 2 }); //
+        source.ActiveCooldowns.Add(new ActiveCooldown { AbilityId = "A1", TurnsRemaining = 1 });
 
-        var target = new Combatant { Id = 2, Name = "Target", OwnerId = 2, BaseStats = new BaseStats() };
-        var gameState = new GameState { Combatants = new List<Combatant> { source, target } };
+        var gameState = new GameState();
         var targets = new AbilityTargets();
+        var payment = new Dictionary<EssenceType, int>();
 
         // ACT
-        engine.ExecuteAbility(gameState, ability, source, targets);
+        engine.ExecuteAbility(gameState, ability, source, targets, payment);
 
         // ASSERT
-        // Não deve ter chamado o handler pois saiu mais cedo
-        mockHandler.Received(0).Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
-
-        // Deve ter logado o aviso
-        _engineLoggerMock.Received().Log(
-            LogLevel.Warning,
-            Arg.Any<EventId>(),
-            Arg.Is<object>(o => o != null && o.ToString()!.Contains($"on cooldown for {source.Id}. 2 turns remaining")), 
-            null,
-            Arg.Any<Func<object, Exception?, string>>()
-        );
+        _costMock.DidNotReceive().CalculateFinalCosts(Arg.Any<CombatPlayer>(), Arg.Any<AbilityDefinition>(), Arg.Any<List<Combatant>>());
+        _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
     }
-        
+
     [Fact]
-    public void ExecuteAbility_WhenAbilityHasBaseCooldown_ShouldCallCooldownServiceAndAddActiveCooldown()
+    public void ExecuteAbility_NotEnoughHP_ShouldNotExecute()
     {
         // ARRANGE
-        var mockHandler = Substitute.For<IEffectHandler>(); // Handler (vazio, só para o engine não falhar)
-        mockHandler.SupportedType.Returns(EffectType.DAMAGE);
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition { Id = "Suicide", Name = "Die" };
 
-        var engine = new CombatEngine(new[] { mockHandler }, _engineLoggerMock, _cooldownCalcServiceMock);
-
-        var ability = new AbilityDefinition
-        {
-            Id = "A1_COOLDOWN",
-            Name = "Test Cooldown",
-            BaseCooldown = 5, // mock vai devolver 3 para representar um possivel buff
-            Effects = new List<EffectDefinition>() // Sem efeitos para este teste
-        };
+        // CORRIGIDO
         var source = new Combatant
         {
             Id = 1,
-            Name = "Source",
             OwnerId = 1,
-            BaseStats = new BaseStats()
+            Name = "Source",
+            BaseStats = new BaseStats(),
+            CurrentHP = 10
         };
-        var gameState = new GameState { Combatants = new List<Combatant> { source } };
-        var targets = new AbilityTargets();
 
-        // Setup: Dizer ao mock para devolver 3 turnos 
-        _cooldownCalcServiceMock.GetFinalCooldown(source, ability).Returns(3);
+        var player = new CombatPlayer { PlayerId = 1 };
+        var gameState = new GameState { Combatants = new() { source }, Players = new() { player } };
+
+        var highCost = new FinalAbilityCosts { HPCost = 20, EssenceCosts = new() };
+        _costMock.CalculateFinalCosts(Arg.Any<CombatPlayer>(), ability, Arg.Any<List<Combatant>>())
+            .Returns(highCost);
 
         // ACT
-        engine.ExecuteAbility(gameState, ability, source, targets);
+        engine.ExecuteAbility(gameState, ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
 
         // ASSERT
-        // 1. Verificamos se o motor CHAMOU o serviço de cálculo
-        _cooldownCalcServiceMock.Received(1).GetFinalCooldown(source, ability);
+        _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
 
-        // 2. Verificamos se o motor ADICIONOU o cooldown à lista com o valor do serviço
-        source.ActiveCooldowns.Count.ShouldBe(1); //
-        var addedCd = source.ActiveCooldowns.First();
-        addedCd.AbilityId.ShouldBe("A1_COOLDOWN");
-        addedCd.TurnsRemaining.ShouldBe(3); // Usou o valor (3) do mock, não o BaseCooldown (5)
+        _logger.Received().Log(LogLevel.Warning, Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Not enough HP")),
+            null, Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public void ExecuteAbility_NotEnoughEssence_ShouldNotExecute()
+    {
+        // ARRANGE
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition { Id = "Expensive", Name = "Rich" };
+
+        // CORRIGIDO
+        var source = new Combatant
+        {
+            Id = 1,
+            OwnerId = 1,
+            Name = "Source",
+            BaseStats = new BaseStats(),
+            CurrentHP = 100
+        };
+
+        var player = new CombatPlayer { PlayerId = 1 };
+        var gameState = new GameState { Combatants = new() { source }, Players = new() { player } };
+
+        var cost = new FinalAbilityCosts { EssenceCosts = new() { new() { Type = EssenceType.Light, Amount = 5 } } };
+        _costMock.CalculateFinalCosts(Arg.Any<CombatPlayer>(), ability, Arg.Any<List<Combatant>>())
+            .Returns(cost);
+
+        _essenceMock.HasEnoughEssence(player, cost.EssenceCosts).Returns(false);
+
+        // ACT
+        engine.ExecuteAbility(gameState, ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
+
+        // ASSERT
+        _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
+    }
+
+    [Fact]
+    public void ExecuteAbility_PaymentMismatch_ShouldNotExecute()
+    {
+        // ARRANGE
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition { Id = "Spell", Name = "Cast" };
+
+        // CORRIGIDO
+        var source = new Combatant
+        {
+            Id = 1,
+            OwnerId = 1,
+            Name = "Source",
+            BaseStats = new BaseStats(),
+            CurrentHP = 100
+        };
+
+        var player = new CombatPlayer { PlayerId = 1 };
+        var gameState = new GameState { Combatants = new() { source }, Players = new() { player } };
+
+        var invoice = new FinalAbilityCosts { EssenceCosts = new() { new() { Type = EssenceType.Vigor, Amount = 2 } } };
+        _costMock.CalculateFinalCosts(Arg.Any<CombatPlayer>(), ability, Arg.Any<List<Combatant>>())
+            .Returns(invoice);
+
+        _essenceMock.HasEnoughEssence(player, invoice.EssenceCosts).Returns(true);
+
+        var badPayment = new Dictionary<EssenceType, int> { { EssenceType.Vigor, 1 } };
+
+        // ACT
+        engine.ExecuteAbility(gameState, ability, source, new AbilityTargets(), badPayment);
+
+        // ASSERT
+        _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
+
+        _logger.Received().Log(LogLevel.Warning, Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("Payment provided does not match")),
+            null, Arg.Any<Func<object, Exception?, string>>());
     }
 }

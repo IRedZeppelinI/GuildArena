@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -9,107 +10,164 @@ using Microsoft.Extensions.Logging;
 namespace GuildArena.Core.Combat;
 
 /// <summary>
-/// Implements the core combat orchestration.
+/// The main orchestrator for combat actions. Responsible for validating rules, 
+/// processing costs, managing cooldowns, and executing ability effects.
 /// </summary>
 public class CombatEngine : ICombatEngine
 {
-    // Usa um Dicionário para lookup O(1) 
+    
     private readonly IReadOnlyDictionary<EffectType, IEffectHandler> _handlers;
     private readonly ILogger<CombatEngine> _logger;
     private readonly ICooldownCalculationService _cooldownCalcService;
+    private readonly ICostCalculationService _costCalcService;
+    private readonly IEssenceService _essenceService;
 
-    public CombatEngine(IEnumerable<IEffectHandler> handlers, ILogger<CombatEngine> logger, ICooldownCalculationService cooldownCalcService)
+    public CombatEngine(
+        IEnumerable<IEffectHandler> handlers,
+        ILogger<CombatEngine> logger,
+        ICooldownCalculationService cooldownCalcService,
+        ICostCalculationService costCalcService, 
+        IEssenceService essenceService)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
         _handlers = handlers.ToDictionary(h => h.SupportedType, h => h);
         _logger = logger;
         _cooldownCalcService = cooldownCalcService;
+        _costCalcService = costCalcService;
+        _essenceService = essenceService;
     }
 
-    /// <summary>
-    /// Executes a given ability by orchestrating the required effect handlers.
-    /// </summary>
+    /// <inheritdoc />
     public void ExecuteAbility(
         GameState currentState,
         AbilityDefinition ability,
         Combatant source,
-        AbilityTargets targets 
-    )
-    {        
+        AbilityTargets targets,
+        Dictionary<EssenceType, int> payment)
+    {
 
-        // 1. VERIFICAR PRÉ-CONDIÇÕES
-        if (!CanExecuteAbility(source, ability))
+        // 1. RESOLVER ALVOS (Necessário para calcular custos de Ward)
+        // (Nota: Movemos isto para cima porque o CostCalculator precisa dos alvos)
+        var resolvedTargets = new List<Combatant>();
+        foreach (var rule in ability.TargetingRules)
         {
-            return; //TODO: Adicionar validação de essence
+            resolvedTargets.AddRange(GetTargetsForRule(rule, source, currentState, targets));
         }
 
-        _logger.LogInformation("Executing ability {AbilityId} from {SourceId}",
-            ability.Id, source.Id);        
+        // 2. VERIFICAR PRÉ-CONDIÇÕES (Cooldowns, Custos, Pagamentos)
+        // Agora passamos o 'payment' e 'resolvedTargets' para validação
+        if (!CanExecuteAbility(source, currentState, ability, resolvedTargets, payment, out var finalCosts))
+        {
+            return; // O helper já logou o motivo
+        }
 
-        // 2. APLICAR CUSTOS DE EXECUÇÃO
-        // (Lógica de Custo de Essence/HP viria aqui)
+        _logger.LogInformation("Executing ability {AbilityId} from {SourceId}", ability.Id, source.Id);
+
+        // 3. PAGAR CUSTOS (Essence e HP)
+        PayAbilityCosts(source, currentState, payment, finalCosts);
+
+        // 4. APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
 
-
+        // 5. RESOLVER EFEITOS
+        // Como já resolvemos os alvos no passo 1, podemos otimizar isto,
+        // mas mantemos o loop original por agora para respeitar a estrutura dos effects.
         foreach (var effect in ability.Effects)
         {
             if (!_handlers.TryGetValue(effect.Type, out var handler))
             {
-                _logger.LogWarning
-                    ("No IEffectHandler found for EffectType {EffectType} in Ability {AbilityId}.",
-                    effect.Type,
-                    ability.Id);
+                _logger.LogWarning("No IEffectHandler found for {Type}", effect.Type);
                 continue;
             }
 
-            
-            var rule = ability.TargetingRules
-                .FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
+            // Re-obter alvos para este efeito específico
+            // (Poderíamos otimizar usando o 'resolvedTargets' se mapeado por RuleId)
+            var rule = ability.TargetingRules.FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
+            if (rule == null) continue;
 
-            if (rule == null)
-            {
-                _logger.LogWarning("No TargetRuleId '{RuleId}' found in Ability {AbilityId}",
-                    effect.TargetRuleId, ability.Id);
-                continue;
-            }
+            var effectTargets = GetTargetsForRule(rule, source, currentState, targets);
 
-            
-            var finalTargets = GetTargetsForRule(
-                rule,
-                source,
-                currentState,
-                targets 
-            );
-
-            
-            foreach (var target in finalTargets)
+            foreach (var target in effectTargets)
             {
                 handler.Apply(effect, source, target);
             }
         }
     }
 
+    
     /// <summary>
-    /// Verifiys all pre-conditions to execute hability (Cooldowns and EssenceCost)
+    /// Validates if the ability can be executed by checking cooldowns, calculating costs, 
+    /// and verifying if the player possesses enough resources (HP and Essence).
     /// </summary>
-    private bool CanExecuteAbility(Combatant source, AbilityDefinition ability)
+    private bool CanExecuteAbility(
+        Combatant source,
+        GameState state,
+        AbilityDefinition ability,
+        List<Combatant> targets,
+        Dictionary<EssenceType, int> payment,
+        out FinalAbilityCosts finalCosts)
     {
-        // Verificação de Cooldown
-        var existingCooldown = source.ActiveCooldowns
-            .FirstOrDefault(c => c.AbilityId == ability.Id); 
+        finalCosts = null!;
 
+        // A. Cooldowns
+        var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);
         if (existingCooldown != null)
         {
-            _logger.LogWarning(
-                "Ability {AbilityId} on cooldown for {SourceId}. {Turns} turns remaining.",
-                ability.Id, source.Id, existingCooldown.TurnsRemaining);
+            _logger.LogWarning("Ability {Id} on cooldown ({Turns} turns).", ability.Id, existingCooldown.TurnsRemaining);
             return false;
         }
 
-        // (Verificação de Custo de Essence/HP viria aqui)        
+        // B. Calcular Custos (Calculate Invoice)
+        var casterPlayer = state.Players.First(p => p.PlayerId == source.OwnerId);
+        finalCosts = _costCalcService.CalculateFinalCosts(casterPlayer, ability, targets);
+
+        // C. Validar Saldo de HP (Validate HP Balance)
+        if (source.CurrentHP <= finalCosts.HPCost)
+        {
+            _logger.LogWarning("Not enough HP to pay cost. HP: {HP}, Cost: {Cost}", source.CurrentHP, finalCosts.HPCost);
+            return false;
+        }
+
+        // D. Validar Essence (Validate Essence Balance & Payment)
+        // 1. O jogador tem dinheiro suficiente no banco?
+        if (!_essenceService.HasEnoughEssence(casterPlayer, finalCosts.EssenceCosts))
+        {
+            _logger.LogWarning("Player {Id} does not have enough essence.", casterPlayer.PlayerId);
+            return false;
+        }
+
+        // 2. O pagamento enviado pela UI cobre a fatura calculada?
+        if (!ValidatePaymentAgainstInvoice(payment, finalCosts.EssenceCosts))
+        {
+            _logger.LogWarning("Payment provided does not match the calculated cost.");
+            return false;
+        }
 
         return true;
+    }
+
+
+    /// <summary>
+    /// Deducts the essence from the player and HP from the combatant.
+    /// </summary>
+    private void PayAbilityCosts(
+        Combatant source,
+        GameState state,
+        Dictionary<EssenceType, int> payment,
+        FinalAbilityCosts costs)
+    {
+        var player = state.Players.First(p => p.PlayerId == source.OwnerId);
+
+        // Pagar Essence (via Serviço)
+        _essenceService.PayEssence(player, payment);
+
+        // Pagar HP (Diretamente no Combatant)
+        if (costs.HPCost > 0)
+        {
+            source.CurrentHP -= costs.HPCost;
+            _logger.LogInformation("{Source} paid {HP} HP cost.", source.Name, costs.HPCost);
+        }
     }
 
     /// <summary>
@@ -117,21 +175,46 @@ public class CombatEngine : ICombatEngine
     /// </summary>
     private void ApplyAbilityCooldown(Combatant source, AbilityDefinition ability)
     {
-        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability); //
+        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability); 
 
         if (finalCooldownTurns > 0)
         {
-            var newCooldown = new ActiveCooldown
+            if (finalCooldownTurns > 0)
             {
-                AbilityId = ability.Id,
-                TurnsRemaining = finalCooldownTurns
-            };
-            source.ActiveCooldowns.Add(newCooldown); //
+                source.ActiveCooldowns.Add(
+                    new ActiveCooldown { AbilityId = ability.Id, TurnsRemaining = finalCooldownTurns });
+            }
 
             _logger.LogInformation(
                 "Applied {Turns} turn(s) cooldown for Ability {AbilityId} to {SourceId}",
                 finalCooldownTurns, ability.Id, source.Id);
         }
+    }
+
+
+    /// <summary>
+    /// Verifies if the provided payment dictionary covers all costs in the invoice, 
+    /// including neutral costs.
+    /// </summary>
+    private bool ValidatePaymentAgainstInvoice(Dictionary<EssenceType, int> payment, List<EssenceCost> invoice)
+    {
+        // Clonar pagamento para simular consumo
+        var paymentPool = new Dictionary<EssenceType, int>(payment);
+
+        // 1. Pagar coloridos específicos
+        foreach (var cost in invoice.Where(c => c.Type != EssenceType.Neutral))
+        {
+            if (!paymentPool.TryGetValue(cost.Type, out int amount) || amount < cost.Amount)
+                return false; // Falta cor específica no pagamento
+
+            paymentPool[cost.Type] -= cost.Amount;
+        }
+
+        // 2. Pagar neutros com o que sobra
+        int neutralNeeded = invoice.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
+        int paymentLeft = paymentPool.Values.Sum();
+
+        return paymentLeft >= neutralNeeded;
     }
 
 
