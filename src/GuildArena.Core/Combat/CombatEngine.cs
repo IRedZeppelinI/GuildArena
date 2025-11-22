@@ -51,7 +51,7 @@ public class CombatEngine : ICombatEngine
         AbilityDefinition ability,
         Combatant source,
         AbilityTargets targets,
-        Dictionary<EssenceType, int> payment)
+        Dictionary<EssenceType, int> resourceAllocation)
     {
         // RESOLVER ALVOS
         var resolvedTargets = new List<Combatant>();
@@ -62,7 +62,7 @@ public class CombatEngine : ICombatEngine
         }
 
         // VERIFICAR PRÉ-CONDIÇÕES
-        if (!CanExecuteAbility(source, currentState, ability, resolvedTargets, payment, out var finalCosts))
+        if (!CanExecuteAbility(source, currentState, ability, resolvedTargets, resourceAllocation, out var calculatedCost))
         {
             return;
         }
@@ -70,7 +70,7 @@ public class CombatEngine : ICombatEngine
         _logger.LogInformation("Executing ability {AbilityId} from {SourceId}", ability.Id, source.Id);
 
         //  PAGAR CUSTOS
-        PayAbilityCosts(source, currentState, payment, finalCosts);
+        ConsumeAbilityResources(source, currentState, resourceAllocation, calculatedCost);
 
         //  APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
@@ -92,7 +92,7 @@ public class CombatEngine : ICombatEngine
                 if (IsCombatantInvulnerable(target))
                 {
                     _logger.LogInformation("{Target} is invulnerable. Effect {Effect} ignored.", target.Name, effect.Type);
-                    continue; // O efeito "faz ricochete" e não acontece nada
+                    continue; // O efeito naõ resolve e não acontece nada
                 }
 
                 handler.Apply(effect, source, target);
@@ -125,9 +125,9 @@ public class CombatEngine : ICombatEngine
         AbilityDefinition ability,
         List<Combatant> targets,
         Dictionary<EssenceType, int> payment,
-        out FinalAbilityCosts finalCosts)
+        out FinalAbilityCosts calculatedCost)
     {
-        finalCosts = null!;
+        calculatedCost = null!;
 
         // Cooldowns
         var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);
@@ -139,26 +139,26 @@ public class CombatEngine : ICombatEngine
 
         // Calcular Custos 
         var casterPlayer = state.Players.First(p => p.PlayerId == source.OwnerId);
-        finalCosts = _costCalcService.CalculateFinalCosts(casterPlayer, ability, targets);
+        calculatedCost = _costCalcService.CalculateFinalCosts(casterPlayer, ability, targets);
 
         // Validar HP 
-        if (finalCosts.HPCost > 0 && source.CurrentHP <= finalCosts.HPCost)
+        if (calculatedCost.HPCost > 0 && source.CurrentHP <= calculatedCost.HPCost)
         {
-            _logger.LogWarning("Not enough HP to pay cost. HP: {HP}, Cost: {Cost}", source.CurrentHP, finalCosts.HPCost);
+            _logger.LogWarning("Not enough HP to pay cost. HP: {HP}, Cost: {Cost}", source.CurrentHP, calculatedCost.HPCost);
             return false;
         }
 
         //  Validar Essence         
-        if (!_essenceService.HasEnoughEssence(casterPlayer, finalCosts.EssenceCosts))
+        if (!_essenceService.HasEnoughEssence(casterPlayer, calculatedCost.EssenceCosts))
         {
             _logger.LogWarning("Player {Id} does not have enough essence.", casterPlayer.PlayerId);
             return false;
         }
 
         // 2. O pagamento enviado pela UI cobre a fatura calculada?
-        if (!ValidatePaymentAgainstInvoice(payment, finalCosts.EssenceCosts))
+        if (!ValidateAllocationAgainstCost(payment, calculatedCost.EssenceCosts))
         {
-            _logger.LogWarning("Payment provided does not match the calculated cost.");
+            _logger.LogWarning("Resource allocation provided does not match the calculated cost.");
             return false;
         }
 
@@ -169,16 +169,16 @@ public class CombatEngine : ICombatEngine
     /// <summary>
     /// Deducts the essence from the player and HP from the combatant.
     /// </summary>
-    private void PayAbilityCosts(
+    private void ConsumeAbilityResources(
         Combatant source,
         GameState state,
-        Dictionary<EssenceType, int> payment,
+        Dictionary<EssenceType, int> allocation,
         FinalAbilityCosts costs)
     {
         var player = state.Players.First(p => p.PlayerId == source.OwnerId);
 
         // Pagar Essence 
-        _essenceService.PayEssence(player, payment);
+        _essenceService.ConsumeEssence(player, allocation);
 
         // Pagar HP 
         if (costs.HPCost > 0)
@@ -214,25 +214,25 @@ public class CombatEngine : ICombatEngine
     /// Verifies if the provided payment dictionary covers all costs in the invoice, 
     /// including neutral costs.
     /// </summary>
-    private bool ValidatePaymentAgainstInvoice(Dictionary<EssenceType, int> payment, List<EssenceCost> invoice)
+    private bool ValidateAllocationAgainstCost(Dictionary<EssenceType, int> payment, List<EssenceCost> requiredCost)
     {
-        // Clonar pagamento para simular consumo
-        var paymentPool = new Dictionary<EssenceType, int>(payment);
+        // Clonar pool para simular consumo
+        var allocationPool = new Dictionary<EssenceType, int>(payment);
 
         // 1. Pagar coloridos específicos
-        foreach (var cost in invoice.Where(c => c.Type != EssenceType.Neutral))
+        foreach (var cost in requiredCost.Where(c => c.Type != EssenceType.Neutral))
         {
-            if (!paymentPool.TryGetValue(cost.Type, out int amount) || amount < cost.Amount)
+            if (!allocationPool.TryGetValue(cost.Type, out int amount) || amount < cost.Amount)
                 return false; // Falta cor específica no pagamento
 
-            paymentPool[cost.Type] -= cost.Amount;
+            allocationPool[cost.Type] -= cost.Amount;
         }
 
         // 2. Pagar neutros com o que sobra
-        int neutralNeeded = invoice.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
-        int paymentLeft = paymentPool.Values.Sum();
+        int neutralNeeded = requiredCost.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
+        int remainingAllocation = allocationPool.Values.Sum();
 
-        return paymentLeft >= neutralNeeded;
+        return remainingAllocation >= neutralNeeded;
     }
     
 }

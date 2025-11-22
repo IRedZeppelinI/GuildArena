@@ -114,7 +114,7 @@ public class CombatEngineTests
         engine.ExecuteAbility(gameState, ability, source, targetsInput, payment);
 
         // ASSERT
-        _essenceMock.Received(1).PayEssence(player, payment);
+        _essenceMock.Received(1).ConsumeEssence(player, payment);
         source.CurrentHP.ShouldBe(90);
         _handlerMock.Received(1).Apply(Arg.Any<EffectDefinition>(), source, target);
     }
@@ -315,7 +315,7 @@ public class CombatEngineTests
         _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>());
 
         _logger.Received().Log(LogLevel.Warning, Arg.Any<EventId>(),
-            Arg.Is<object>(o => o.ToString()!.Contains("Payment provided does not match")),
+            Arg.Is<object>(o => o.ToString()!.Contains("Resource allocation provided does not match")),
             null, Arg.Any<Func<object, Exception?, string>>());
     }
 }

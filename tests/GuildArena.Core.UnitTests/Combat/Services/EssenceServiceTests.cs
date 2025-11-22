@@ -249,7 +249,7 @@ public class EssenceServiceTests
         };
 
         // Act
-        _service.PayEssence(player, payment);
+        _service.ConsumeEssence(player, payment);
 
         // Assert
         player.EssencePool[EssenceType.Vigor].ShouldBe(3); // 5 - 2
@@ -269,7 +269,7 @@ public class EssenceServiceTests
         };
 
         // Act
-        _service.PayEssence(player, payment);
+        _service.ConsumeEssence(player, payment);
 
         // Assert
         player.EssencePool[EssenceType.Vigor].ShouldBe(0); // Clamp a 0        

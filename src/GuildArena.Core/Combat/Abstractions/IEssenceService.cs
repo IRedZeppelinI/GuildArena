@@ -32,5 +32,5 @@ public interface IEssenceService
     /// </summary>
     /// <param name="player">The player paying.</param>
     /// <param name="payment">A dictionary mapping EssenceType to the Amount to consume.</param>
-    void PayEssence(CombatPlayer player, Dictionary<EssenceType, int> payment);
+    void ConsumeEssence(CombatPlayer player, Dictionary<EssenceType, int> payment);
 }

@@ -115,26 +115,26 @@ public class EssenceService : IEssenceService
     /// <summary>
     /// Deducts the essence from the player's pool based on a specific payment instruction.
     /// </summary>
-    public void PayEssence(CombatPlayer player, Dictionary<EssenceType, int> payment)
+    public void ConsumeEssence(CombatPlayer player, Dictionary<EssenceType, int> payment)
     {
         foreach (var kvp in payment)
         {
-            var typeToPay = kvp.Key;
-            var amountToPay = kvp.Value;
+            var typeToConsume = kvp.Key;
+            var amountToConsume = kvp.Value;
 
-            if (player.EssencePool.TryGetValue(typeToPay, out int currentAmount))
+            if (player.EssencePool.TryGetValue(typeToConsume, out int currentAmount))
             {
                 // Deduz e garante que não vai abaixo de zero 
-                player.EssencePool[typeToPay] = Math.Max(0, currentAmount - amountToPay);
+                player.EssencePool[typeToConsume] = Math.Max(0, currentAmount - amountToConsume);
 
-                _logger.LogInformation("Player {Id} paid {Amount} {Type} essence.",
-                    player.PlayerId, amountToPay, typeToPay);
+                _logger.LogInformation("Player {Id} consume {Amount} {Type} essence.",
+                    player.PlayerId, amountToConsume, typeToConsume);
             }
             else
             {
                 // HasEnoughEssence e validação  UI não podem permiytir
-                _logger.LogWarning("Player {Id} tried to pay {Amount} {Type} but has none in pool.",
-                    player.PlayerId, amountToPay, typeToPay);
+                _logger.LogWarning("Player {Id} tried to consume {Amount} {Type} but has none in pool.",
+                    player.PlayerId, amountToConsume, typeToConsume);
             }
         }
     }
