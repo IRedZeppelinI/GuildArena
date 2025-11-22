@@ -51,6 +51,19 @@ public class ModifierDefinition
     public int TargetingHPCost { get; set; }
 
 
+    /// <summary>
+    /// If true, the unit cannot be manually targeted by opponents while this modifier is active 
+    /// (e.g., Stealth, Camouflage). Area effects (AoE) may still hit depending on rule logic.
+    /// </summary>
+    public bool IsUntargetable { get; set; }
+
+    /// <summary>
+    /// If true, the unit is immune to ALL negative effects and damage while this modifier is active.
+    /// (e.g., Ice Block, Divine Shield).
+    /// </summary>
+    public bool IsInvulnerable { get; set; }
+
+
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
     public string? TriggeredAbilityId { get; set; } // Ex: "INTERNAL_POISON_TICK"

@@ -1,5 +1,6 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Abstractions.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -21,13 +22,17 @@ public class CombatEngine : ICombatEngine
     private readonly ICooldownCalculationService _cooldownCalcService;
     private readonly ICostCalculationService _costCalcService;
     private readonly IEssenceService _essenceService;
+    private readonly ITargetResolutionService _targetService;
+    private readonly IModifierDefinitionRepository _modifierRepo;
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
         ILogger<CombatEngine> logger,
         ICooldownCalculationService cooldownCalcService,
         ICostCalculationService costCalcService, 
-        IEssenceService essenceService)
+        IEssenceService essenceService,
+        ITargetResolutionService targetService, 
+        IModifierDefinitionRepository modifierRepo)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
@@ -36,6 +41,8 @@ public class CombatEngine : ICombatEngine
         _cooldownCalcService = cooldownCalcService;
         _costCalcService = costCalcService;
         _essenceService = essenceService;
+        _targetService = targetService;
+        _modifierRepo = modifierRepo;
     }
 
     /// <inheritdoc />
@@ -46,56 +53,68 @@ public class CombatEngine : ICombatEngine
         AbilityTargets targets,
         Dictionary<EssenceType, int> payment)
     {
-
-        // 1. RESOLVER ALVOS (Necessário para calcular custos de Ward)
-        // (Nota: Movemos isto para cima porque o CostCalculator precisa dos alvos)
+        // RESOLVER ALVOS
         var resolvedTargets = new List<Combatant>();
         foreach (var rule in ability.TargetingRules)
         {
-            resolvedTargets.AddRange(GetTargetsForRule(rule, source, currentState, targets));
+            var ruleTargets = _targetService.ResolveTargets(rule, source, currentState, targets);
+            resolvedTargets.AddRange(ruleTargets);
         }
 
-        // 2. VERIFICAR PRÉ-CONDIÇÕES (Cooldowns, Custos, Pagamentos)
-        // Agora passamos o 'payment' e 'resolvedTargets' para validação
+        // VERIFICAR PRÉ-CONDIÇÕES
         if (!CanExecuteAbility(source, currentState, ability, resolvedTargets, payment, out var finalCosts))
         {
-            return; // O helper já logou o motivo
+            return;
         }
 
         _logger.LogInformation("Executing ability {AbilityId} from {SourceId}", ability.Id, source.Id);
 
-        // 3. PAGAR CUSTOS (Essence e HP)
+        //  PAGAR CUSTOS
         PayAbilityCosts(source, currentState, payment, finalCosts);
 
-        // 4. APLICAR COOLDOWN
+        //  APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
 
-        // 5. RESOLVER EFEITOS
-        // Como já resolvemos os alvos no passo 1, podemos otimizar isto,
-        // mas mantemos o loop original por agora para respeitar a estrutura dos effects.
+        // RESOLVER EFEITOS
         foreach (var effect in ability.Effects)
         {
-            if (!_handlers.TryGetValue(effect.Type, out var handler))
-            {
-                _logger.LogWarning("No IEffectHandler found for {Type}", effect.Type);
-                continue;
-            }
+            if (!_handlers.TryGetValue(effect.Type, out var handler)) continue;
 
-            // Re-obter alvos para este efeito específico
-            // (Poderíamos otimizar usando o 'resolvedTargets' se mapeado por RuleId)
             var rule = ability.TargetingRules.FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
             if (rule == null) continue;
 
-            var effectTargets = GetTargetsForRule(rule, source, currentState, targets);
+            // Re-resolver targets para o efeito específico para garantir consistência
+            var effectTargets = _targetService.ResolveTargets(rule, source, currentState, targets);
 
             foreach (var target in effectTargets)
             {
+                //  VERIFICAÇÃO IMUNIDADE
+                if (IsCombatantInvulnerable(target))
+                {
+                    _logger.LogInformation("{Target} is invulnerable. Effect {Effect} ignored.", target.Name, effect.Type);
+                    continue; // O efeito "faz ricochete" e não acontece nada
+                }
+
                 handler.Apply(effect, source, target);
             }
         }
     }
 
-    
+    // Helper verificar Invulnerable
+    private bool IsCombatantInvulnerable(Combatant target)
+    {
+        var defs = _modifierRepo.GetAllDefinitions();
+        foreach (var mod in target.ActiveModifiers)
+        {
+            if (defs.TryGetValue(mod.DefinitionId, out var def))
+            {
+                if (def.IsInvulnerable) return true;
+            }
+        }
+        return false;
+    }
+
+    //Helpers
     /// <summary>
     /// Validates if the ability can be executed by checking cooldowns, calculating costs, 
     /// and verifying if the player possesses enough resources (HP and Essence).
@@ -110,7 +129,7 @@ public class CombatEngine : ICombatEngine
     {
         finalCosts = null!;
 
-        // A. Cooldowns
+        // Cooldowns
         var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);
         if (existingCooldown != null)
         {
@@ -118,19 +137,18 @@ public class CombatEngine : ICombatEngine
             return false;
         }
 
-        // B. Calcular Custos (Calculate Invoice)
+        // Calcular Custos 
         var casterPlayer = state.Players.First(p => p.PlayerId == source.OwnerId);
         finalCosts = _costCalcService.CalculateFinalCosts(casterPlayer, ability, targets);
 
-        // C. Validar Saldo de HP (Validate HP Balance)
-        if (source.CurrentHP <= finalCosts.HPCost)
+        // Validar HP 
+        if (finalCosts.HPCost > 0 && source.CurrentHP <= finalCosts.HPCost)
         {
             _logger.LogWarning("Not enough HP to pay cost. HP: {HP}, Cost: {Cost}", source.CurrentHP, finalCosts.HPCost);
             return false;
         }
 
-        // D. Validar Essence (Validate Essence Balance & Payment)
-        // 1. O jogador tem dinheiro suficiente no banco?
+        //  Validar Essence         
         if (!_essenceService.HasEnoughEssence(casterPlayer, finalCosts.EssenceCosts))
         {
             _logger.LogWarning("Player {Id} does not have enough essence.", casterPlayer.PlayerId);
@@ -159,10 +177,10 @@ public class CombatEngine : ICombatEngine
     {
         var player = state.Players.First(p => p.PlayerId == source.OwnerId);
 
-        // Pagar Essence (via Serviço)
+        // Pagar Essence 
         _essenceService.PayEssence(player, payment);
 
-        // Pagar HP (Diretamente no Combatant)
+        // Pagar HP 
         if (costs.HPCost > 0)
         {
             source.CurrentHP -= costs.HPCost;
@@ -216,103 +234,5 @@ public class CombatEngine : ICombatEngine
 
         return paymentLeft >= neutralNeeded;
     }
-
-
-    private List<Combatant> GetTargetsForRule(
-        TargetingRule rule,
-        Combatant source,
-        GameState currentState,
-        AbilityTargets abilityTargets)
-    {
-        // Obter a lista base de alvos 
-        List<Combatant> baseTargetList;
-
-        switch (rule.Type)
-        {
-            // Casos de "Clique" (usam o 'mapa' da UI)
-            case TargetType.Enemy:
-            case TargetType.Ally:
-            case TargetType.Friendly:
-                {
-                    if (!abilityTargets.SelectedTargets.TryGetValue(rule.RuleId, out var selectedTargetIds))
-                    {
-                        _logger.LogWarning("No targets provided by UI for TargetRuleId '{RuleId}'", rule.RuleId);
-                        return new List<Combatant>();
-                    }
-                    baseTargetList = currentState.Combatants
-                        .Where(c => selectedTargetIds.Contains(c.Id))
-                        .ToList();
-                    break;
-                }
-
-            // Casos de "Não Clique" (AoE / Self)
-            case TargetType.Self:
-                baseTargetList = new List<Combatant> { source };
-                break;
-            case TargetType.AllEnemies:
-                baseTargetList = currentState.Combatants
-                    .Where(c => c.OwnerId != source.OwnerId)
-                    .ToList();
-                break;
-            case TargetType.AllAllies:
-                baseTargetList = currentState.Combatants
-                    .Where(c => c.OwnerId == source.OwnerId && c.Id != source.Id)
-                    .ToList();
-                break;
-
-            case TargetType.AllFriendlies:
-                baseTargetList = currentState.Combatants
-                    .Where(c => c.OwnerId == source.OwnerId)
-                    .ToList();
-                break;
-            default:
-                baseTargetList = new List<Combatant>();
-                break;
-        }
-
-        // Aplicar Filtros de Validação 
-        List<Combatant> validatedTargets = new();
-
-        // Filtro de "Vivo/Morto"
-        if (!rule.CanTargetDead)
-        {            
-            validatedTargets = baseTargetList.Where(c => c.IsAlive).ToList();
-        }
-        else
-        {
-            // Regra de "Reviver": Só pode atingir alvos mortos.            
-            validatedTargets = baseTargetList.Where(c => !c.IsAlive).ToList();
-        }
-
-        // Filtro de Tipo (Inimigo/Aliado) 
-        switch (rule.Type)
-        {
-            case TargetType.Enemy:
-            case TargetType.AllEnemies:
-                return validatedTargets
-                    .Where(t => t.OwnerId != source.OwnerId)
-                    .Take(rule.Count)
-                    .ToList();
-
-            case TargetType.Ally:
-            case TargetType.AllAllies:
-                return validatedTargets
-                    .Where(t => t.OwnerId == source.OwnerId && t.Id != source.Id)
-                    .Take(rule.Count)
-                    .ToList();
-
-            case TargetType.Friendly:
-            case TargetType.AllFriendlies:
-                return validatedTargets
-                    .Where(t => t.OwnerId == source.OwnerId)
-                    .Take(rule.Count)
-                    .ToList();
-
-            case TargetType.Self:
-                return validatedTargets; // Já é 'source', não precisa de mais filtros
-
-            default:
-                return new List<Combatant>();
-        }
-    }
+    
 }

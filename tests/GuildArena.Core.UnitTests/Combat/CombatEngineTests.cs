@@ -1,6 +1,7 @@
 ﻿using GuildArena.Core.Combat;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -17,7 +18,9 @@ public class CombatEngineTests
     private readonly ICooldownCalculationService _cooldownMock;
     private readonly ICostCalculationService _costMock;
     private readonly IEssenceService _essenceMock;
-    private readonly IEffectHandler _handlerMock;
+    private readonly IEffectHandler _handlerMock;    
+    private readonly ITargetResolutionService _targetServiceMock;
+    private readonly IModifierDefinitionRepository _modifierRepoMock;
 
     public CombatEngineTests()
     {
@@ -25,7 +28,9 @@ public class CombatEngineTests
         _cooldownMock = Substitute.For<ICooldownCalculationService>();
         _costMock = Substitute.For<ICostCalculationService>();
         _essenceMock = Substitute.For<IEssenceService>();
-        _handlerMock = Substitute.For<IEffectHandler>();
+        _handlerMock = Substitute.For<IEffectHandler>();        
+        _targetServiceMock = Substitute.For<ITargetResolutionService>();
+        _modifierRepoMock = Substitute.For<IModifierDefinitionRepository>();
 
         _handlerMock.SupportedType.Returns(EffectType.DAMAGE);
     }
@@ -38,7 +43,10 @@ public class CombatEngineTests
             _logger,
             _cooldownMock,
             _costMock,
-            _essenceMock);
+            _essenceMock,
+            _targetServiceMock,   
+            _modifierRepoMock    
+        );
     }
 
     [Fact]
@@ -54,7 +62,6 @@ public class CombatEngineTests
             TargetingRules = new() { new() { RuleId = "T1", Type = TargetType.Enemy, Count = 1 } }
         };
 
-        // Dados do Combate - CORRIGIDO (Name e BaseStats)
         var source = new Combatant
         {
             Id = 1,
@@ -79,7 +86,7 @@ public class CombatEngineTests
             Players = new() { player }
         };
 
-        var targets = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 2 } } } };
+        var targetsInput = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 2 } } } };
         var payment = new Dictionary<EssenceType, int> { { EssenceType.Vigor, 2 } };
 
         // --- CONFIGURAÇÃO DOS MOCKS ---
@@ -99,13 +106,80 @@ public class CombatEngineTests
         // 3. Essence Service: OK
         _essenceMock.HasEnoughEssence(player, calculatedCost.EssenceCosts).Returns(true);
 
+        // 4. Target Resolution (NOVO): O serviço devolve o alvo correto
+        _targetServiceMock.ResolveTargets(Arg.Any<TargetingRule>(), source, gameState, targetsInput)
+            .Returns(new List<Combatant> { target });
+
         // ACT
-        engine.ExecuteAbility(gameState, ability, source, targets, payment);
+        engine.ExecuteAbility(gameState, ability, source, targetsInput, payment);
 
         // ASSERT
         _essenceMock.Received(1).PayEssence(player, payment);
-        source.CurrentHP.ShouldBe(90); // 100 - 10
+        source.CurrentHP.ShouldBe(90);
         _handlerMock.Received(1).Apply(Arg.Any<EffectDefinition>(), source, target);
+    }
+
+    [Fact]
+    public void ExecuteAbility_InvulnerableTarget_ShouldIgnoreEffect()
+    {
+        // ARRANGE 
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition
+        {
+            Id = "A1",
+            Name = "Attack",
+            Effects = new() { new() { Type = EffectType.DAMAGE, TargetRuleId = "T1" } },
+            TargetingRules = new() { new() { RuleId = "T1", Type = TargetType.Enemy } }
+        };
+
+        var source = new Combatant { 
+            Id = 1,
+            OwnerId = 1,
+            Name = "P1",
+            BaseStats = new BaseStats(),
+            CurrentHP = 100 };
+
+        // O alvo tem um modifier ativo
+        var target = new Combatant { Id = 2, OwnerId = 2, Name = "Invulnerable Guy", BaseStats = new BaseStats() };
+        target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_ICEBLOCK" });
+
+        var gameState = new GameState { 
+            Combatants = new() { source, target },
+            Players = new() { new CombatPlayer { PlayerId = 1 } } 
+        };
+
+        // Mocks
+        _costMock.CalculateFinalCosts(Arg.Any<CombatPlayer>(), Arg.Any<AbilityDefinition>(), Arg.Any<List<Combatant>>())
+            .Returns(new FinalAbilityCosts()); // Custo zero
+        _essenceMock.HasEnoughEssence(Arg.Any<CombatPlayer>(), Arg.Any<List<EssenceCost>>()).Returns(true);
+
+        // O TargetService DIZ que o alvo é válido (ex: foi atingido por uma AoE)
+        _targetServiceMock.ResolveTargets(Arg.Any<TargetingRule>(), source, gameState, Arg.Any<AbilityTargets>())
+            .Returns(new List<Combatant> { target });
+
+        // O Repositório diz que "MOD_ICEBLOCK" dá IsInvulnerable = true
+        _modifierRepoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
+        {
+            { "MOD_ICEBLOCK", new ModifierDefinition
+                {
+                    Id = "MOD_ICEBLOCK",
+                    Name = "Ice Block",
+                    IsInvulnerable = true 
+                }
+            }
+        });
+
+        // ACT
+        engine.ExecuteAbility(gameState, ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
+
+        // ASSERT
+        // O handler NÃO deve ser chamado porque o engine intercetou a invulnerabilidade
+        _handlerMock.Received(0).Apply(Arg.Any<EffectDefinition>(), source, target);
+
+        // Deve ter logado informação
+        _logger.Received().Log(LogLevel.Information, Arg.Any<EventId>(),
+            Arg.Any<object>(),
+            null, Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]

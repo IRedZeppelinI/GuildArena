@@ -39,5 +39,10 @@ public enum TargetType
     /// <summary>
     /// All enemy combatants.
     /// </summary>
-    AllEnemies
+    AllEnemies,
+
+    /// <summary>
+    /// Absolutely everyone in the combat (Self + Allies + Enemies).
+    /// </summary>
+    All
 }
