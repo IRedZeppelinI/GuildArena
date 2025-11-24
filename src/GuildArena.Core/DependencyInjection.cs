@@ -19,7 +19,8 @@ public static class DependencyInjection
 
         // Regista os Serviços Auxiliares
         services.AddScoped<IStatCalculationService, StatCalculationService>();
-        services.AddScoped<IDamageModificationService, DamageModificationService>();
+        //services.AddScoped<IDamageModificationService, DamageModificationService>();
+        services.AddScoped<IDamageResolutionService, DamageResolutionService>();
         services.AddScoped<ICooldownCalculationService, CooldownCalculationService>();
 
         services.AddScoped<ITurnManagerService, TurnManagerService>();

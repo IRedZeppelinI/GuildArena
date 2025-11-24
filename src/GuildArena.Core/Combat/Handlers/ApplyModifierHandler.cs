@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -7,63 +8,105 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Handlers;
 
-/// <summary>
-/// Handles the application of modifiers to a combatant.
-/// </summary>
 public class ApplyModifierHandler : IEffectHandler
 {
     private readonly ILogger<ApplyModifierHandler> _logger;
+    private readonly IModifierDefinitionRepository _modifierRepo;
+    private readonly IStatCalculationService _statService;
 
-    public ApplyModifierHandler(ILogger<ApplyModifierHandler> logger)
+    public ApplyModifierHandler(
+        ILogger<ApplyModifierHandler> logger,
+        IModifierDefinitionRepository modifierRepo,
+        IStatCalculationService statService)
     {
         _logger = logger;
+        _modifierRepo = modifierRepo;
+        _statService = statService;
     }
 
     public EffectType SupportedType => EffectType.APPLY_MODIFIER;
 
-    /// <summary>
-    /// Applies a modifier to the target combatant's list of active modifiers.
-    /// </summary>
     public void Apply(EffectDefinition def, Combatant source, Combatant target)
     {
         if (string.IsNullOrEmpty(def.ModifierDefinitionId))
         {
-            _logger.LogWarning(
-                "ApplyModifierHandler: EffectDefinition {EffectType} missing ModifierDefinitionId.",
-                def.Type);
+            _logger.LogWarning("ApplyModifierHandler: Missing ModifierDefinitionId.");
             return;
         }
 
-        
-        // Filtro para implementar Stacking se necessario
+        var definitions = _modifierRepo.GetAllDefinitions();
+        if (!definitions.TryGetValue(def.ModifierDefinitionId, out var modDef))
+        {
+            _logger.LogWarning("Modifier Definition {Id} not found.", def.ModifierDefinitionId);
+            return;
+        }
+
+        // Calcular valor da Barreira (se houver)
+        float initialBarrierValue = 0;
+        if (modDef.Barrier != null)
+        {
+            initialBarrierValue = CalculateBarrierValue(source, modDef.Barrier);
+
+            // Aplica Bónus de Barreiras (Modificadores do Caster)
+            initialBarrierValue = ApplyBarrierBonuses(source, initialBarrierValue, definitions);
+        }
+
         var existingModifier = target.ActiveModifiers
             .FirstOrDefault(m => m.DefinitionId == def.ModifierDefinitionId);
 
-        //se combatant já tem o modifier, não está a fazer stack
         if (existingModifier != null)
-        {            
-            existingModifier.TurnsRemaining = def.DurationInTurns; //faz refresh do que falta
+        {
+            existingModifier.TurnsRemaining = def.DurationInTurns;
 
-            _logger.LogInformation(
-                "Refreshed modifier {ModifierId} on {TargetName} for {Duration} turns.",
-                def.ModifierDefinitionId, target.Name, def.DurationInTurns
-            );
+            // Refresh: Restaura barreira se aplicável
+            if (initialBarrierValue > 0)
+            {
+                existingModifier.CurrentBarrierValue = initialBarrierValue;
+            }
+            _logger.LogInformation("Refreshed modifier {ModifierId}.", def.ModifierDefinitionId);
         }
-        else // O modifier não existe
-        {            
+        else
+        {
             var newActiveModifier = new ActiveModifier
             {
                 DefinitionId = def.ModifierDefinitionId,
                 TurnsRemaining = def.DurationInTurns,
-                CasterId = source.Id
+                CasterId = source.Id,
+                CurrentBarrierValue = initialBarrierValue // Define o valor calculado
             };
-            
+
             target.ActiveModifiers.Add(newActiveModifier);
-            
-            _logger.LogInformation(
-                "Applied modifier {ModifierId} to {TargetName} for {Duration} turns.",
-                newActiveModifier.DefinitionId, target.Name, newActiveModifier.TurnsRemaining
-            );
+            _logger.LogInformation("Applied modifier {ModifierId}. Barrier: {Val}", newActiveModifier.DefinitionId, initialBarrierValue);
         }
+    }
+
+    private float CalculateBarrierValue(Combatant source, BarrierProperties barrierDef)
+    {
+        float statVal = 0;
+        // Se houver scaling, vai buscar o stat
+        if (barrierDef.ScalingFactor > 0)
+        {
+            statVal = _statService.GetStatValue(source, barrierDef.ScalingStat);
+        }
+        return (statVal * barrierDef.ScalingFactor) + barrierDef.BaseAmount;
+    }
+
+    private float ApplyBarrierBonuses(Combatant source, float baseValue, IReadOnlyDictionary<string, ModifierDefinition> definitions)
+    {
+        float flatBonus = 0;
+        float percentBonus = 0;
+
+        foreach (var mod in source.ActiveModifiers)
+        {
+            if (definitions.TryGetValue(mod.DefinitionId, out var def))
+            {
+                foreach (var barMod in def.BarrierModifications)
+                {
+                    if (barMod.Type == ModificationType.FLAT) flatBonus += barMod.Value;
+                    else percentBonus += barMod.Value;
+                }
+            }
+        }
+        return (baseValue + flatBonus) * (1 + percentBonus);
     }
 }

@@ -64,6 +64,17 @@ public class ModifierDefinition
     public bool IsInvulnerable { get; set; }
 
 
+    /// <summary>
+    /// Defines the barrier properties granted by this modifier, if any.
+    /// </summary>
+    public BarrierProperties? Barrier { get; set; }
+
+    /// <summary>
+    /// Modifications that affect the strength of barriers created by this character.
+    /// </summary>
+    public List<BarrierModification> BarrierModifications { get; set; } = new();
+
+
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
     public string? TriggeredAbilityId { get; set; } // Ex: "INTERNAL_POISON_TICK"

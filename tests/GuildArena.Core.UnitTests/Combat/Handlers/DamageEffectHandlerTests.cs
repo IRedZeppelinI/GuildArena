@@ -1,5 +1,6 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Handlers;
+using GuildArena.Core.Combat.ValueObjects; // DamageResolutionResult
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -7,6 +8,7 @@ using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Handlers;
 
@@ -14,21 +16,19 @@ public class DamageEffectHandlerTests
 {
     private readonly IStatCalculationService _statCalculationServiceMock;
     private readonly ILogger<DamageEffectHandler> _loggerMock;
-    private readonly IDamageModificationService _damageModServiceMock;
+    private readonly IDamageResolutionService _resolutionServiceMock;
     private readonly DamageEffectHandler _handler;
 
     public DamageEffectHandlerTests()
     {
-        // ARRANGE Global 
         _statCalculationServiceMock = Substitute.For<IStatCalculationService>();
         _loggerMock = Substitute.For<ILogger<DamageEffectHandler>>();
-        _damageModServiceMock = Substitute.For<IDamageModificationService>();
+        _resolutionServiceMock = Substitute.For<IDamageResolutionService>();
 
-        // Injetar as dependências corretas
         _handler = new DamageEffectHandler(
             _statCalculationServiceMock,
             _loggerMock,
-            _damageModServiceMock);
+            _resolutionServiceMock);
     }
 
     [Theory]
@@ -46,104 +46,31 @@ public class DamageEffectHandlerTests
             Type = EffectType.DAMAGE,
             Delivery = delivery,
             DamageType = damageType,
-            ScalingStat = sourceStat,
             ScalingFactor = 1.0f,
-            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f,
+            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f, // Base 5 para passive
             TargetRuleId = "T_TestTarget"
         };
 
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
 
-        // Configurar o mock do StatService (Fase 1 do dano)
+        // Mock dos Stats (Para testar se o Handler escolhe o stat certo)
         _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
         _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
 
-        // Configurar o mock do DamageModService (Fase 2 do dano)
-        _damageModServiceMock.CalculateModifiedValue(
-            (float)expectedDamage,
-            effectDef,
-            source,
-            target)
-            .Returns((float)expectedDamage);
+        // Mock da Resolução (Pass-through)
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(call => new DamageResolutionResult
+            {
+                FinalDamageToApply = call.Arg<float>(), // Devolve o 1º argumento (dano mitigado)
+                AbsorbedDamage = 0
+            });
 
         // 2. ACT
         _handler.Apply(effectDef, source, target);
 
         // 3. ASSERT
         target.CurrentHP.ShouldBe(50 - expectedDamage);
-    }
-
-    [Fact]
-    public void Apply_DamageEffect_ShouldDealMinimumOneDamage()
-    {
-        // 1. ARRANGE
-        var effectDef = new EffectDefinition
-        {
-            Type = EffectType.DAMAGE,
-            Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.Martial,
-            ScalingFactor = 1.0f,
-            TargetRuleId = "T_TestTarget"
-        };
-
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
-
-        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(5f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(10f);
-
-        // Dano mitigado = 5 - 10 = -5
-        _damageModServiceMock.CalculateModifiedValue(-5f, effectDef, source, target)
-            .Returns(-5f);
-
-        // 2. ACT
-        _handler.Apply(effectDef, source, target);
-
-        // 3. ASSERT
-        target.CurrentHP.ShouldBe(49);
-    }
-
-    [Fact]
-    public void Apply_WithDamageTagModifier_ShouldCallDamageModServiceCorrectly()
-    {
-        // 1. ARRANGE
-        var effectDef = new EffectDefinition
-        {
-            Type = EffectType.DAMAGE,
-            Delivery = DeliveryMethod.Spell,
-            DamageType = DamageType.Primal,
-            ScalingFactor = 1.0f,
-            Tags = new() { "Magic", "Primal" },
-            TargetRuleId = "T_TestTarget"
-        };
-
-        // Mocks de Stats
-        _statCalculationServiceMock.GetStatValue(Arg.Any<Combatant>(), StatType.Magic).Returns(100f);
-        _statCalculationServiceMock.GetStatValue(Arg.Any<Combatant>(), StatType.MagicDefense).Returns(20f);
-
-        // Dano mitigado (Fase 1) = 100 - 20 = 80
-
-        // Mock do DamageModService (Fase 2)
-        _damageModServiceMock.CalculateModifiedValue(80f, effectDef, Arg.Any<Combatant>(), Arg.Any<Combatant>())
-            .Returns(96f);
-
-        // Combatentes
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 200, BaseStats = new BaseStats() };
-
-        // 2. ACT
-        _handler.Apply(effectDef, source, target);
-
-        // 3. ASSERT
-        target.CurrentHP.ShouldBe(104);
-
-        _damageModServiceMock.Received(1).CalculateModifiedValue(
-            80f,
-            effectDef,
-            source,
-            target
-        );
     }
 
     [Fact]
@@ -154,7 +81,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.True, // <--- O caso especial
+            DamageType = DamageType.True, // True Damage
             ScalingFactor = 1.0f,
             BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
@@ -163,23 +90,63 @@ public class DamageEffectHandlerTests
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
 
-        // Configurar Stats: O atacante tem 10 de Ataque
+        // Ataque: 10
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-
-        // O alvo tem 999 de Defesa (se não fosse True damage, o dano seria 1)
+        // Defesa: 999 (Seria imune se não fosse True Damage)
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(999f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.MagicDefense).Returns(999f);
 
-        // Mock do DamageModService (pass-through)
-        _damageModServiceMock.CalculateModifiedValue(Arg.Any<float>(), effectDef, source, target)
-            .Returns(x => x.Arg<float>()); // Retorna o que recebe
+        // Mock Resolução (Pass-through)
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(call => new DamageResolutionResult
+            {
+                FinalDamageToApply = call.Arg<float>()
+            });
 
         // 2. ACT
         _handler.Apply(effectDef, source, target);
 
         // 3. ASSERT
-        // Se a defesa fosse usada, o dano seria 1 (minimo).
-        // Como é True Damage, deve entrar os 10 completos.
-        target.CurrentHP.ShouldBe(90); // 100 - 10
+        // Deve entrar 10 de dano (ignora defesa)
+        target.CurrentHP.ShouldBe(90);
+    }
+
+    [Fact]
+    public void Apply_WhenServiceReportsAbsorption_ShouldLogAndReduceOnlyRemainingDamage()
+    {
+        // 1. ARRANGE
+        // Cenário: Dano bruto 10, mas Barreira absorve 5.
+        var effectDef = new EffectDefinition
+        {
+            TargetRuleId = "T_TestTarget",
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageType = DamageType.Martial,
+            ScalingFactor = 1.0f
+        };
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
+
+        // Mock do Serviço: Simula que 5 foram absorvidos
+        var simulatedResult = new DamageResolutionResult
+        {
+            FinalDamageToApply = 5, // Só passam 5
+            AbsorbedDamage = 5
+        };
+
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(simulatedResult);
+
+        // 2. ACT
+        _handler.Apply(effectDef, source, target);
+
+        // 3. ASSERT
+        // HP desce apenas 5
+        target.CurrentHP.ShouldBe(95);
+
+        // O serviço foi chamado com o dano total (10)
+        _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
     }
 }

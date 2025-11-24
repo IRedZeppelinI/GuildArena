@@ -8,88 +8,70 @@ namespace GuildArena.Core.Combat.Handlers;
 
 public class DamageEffectHandler : IEffectHandler
 {
-    private readonly IStatCalculationService _statCalculationService;
+    private readonly IStatCalculationService _statService;
     private readonly ILogger<DamageEffectHandler> _logger;
-    private readonly IDamageModificationService _damageModService;
+    private readonly IDamageResolutionService _resolutionService;
 
     public DamageEffectHandler(
-        IStatCalculationService statCalculationService, 
+        IStatCalculationService statService,
         ILogger<DamageEffectHandler> logger,
-        IDamageModificationService damageModificationService)
+        IDamageResolutionService resolutionService)
     {
-        _statCalculationService = statCalculationService; 
+        _statService = statService;
         _logger = logger;
-        _damageModService = damageModificationService;
+        _resolutionService = resolutionService;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
 
-    /// <summary>
-    /// Applies a DAMAGE effect by calculating scaled damage, applying modifiers/resistances, and applying it to the target.
-    /// </summary>
     public void Apply(EffectDefinition def, Combatant source, Combatant target)
     {
-        // --- 1. CÁLCULO DE DANO BASE (Mitigado) ---
+        // 1. Calcular Dano Bruto Mitigado (Stats vs Defesa)
+        float mitigatedDamage = CalculateMitigatedDamage(def, source, target);
+
+        // 2. Resolver Dano Final (Modifiers + Barreiras)
+        var resolution = _resolutionService.ResolveDamage(mitigatedDamage, def, source, target);
+
+        // 3. Aplicar ao HP
+        if (resolution.FinalDamageToApply > 0)
+        {
+            int damageInt = (int)resolution.FinalDamageToApply;
+            target.CurrentHP -= damageInt;
+
+            _logger.LogInformation(
+                "Hit {Target} for {Damage} (Absorbed: {Absorbed}). HP Left: {HP}",
+                target.Name, damageInt, resolution.AbsorbedDamage, target.CurrentHP);
+        }
+        else
+        {
+            _logger.LogInformation("{Target} took no damage (Absorbed: {Absorbed}).",
+                target.Name, resolution.AbsorbedDamage);
+        }
+    }
+
+    private float CalculateMitigatedDamage(EffectDefinition def, Combatant source, Combatant target)
+    {
         float sourceStatValue = 0;
-        
         switch (def.Delivery)
         {
-            case DeliveryMethod.Melee:
-                sourceStatValue = _statCalculationService.GetStatValue(source, StatType.Attack);
-                break;
-            case DeliveryMethod.Ranged:
-                sourceStatValue = _statCalculationService.GetStatValue(source, StatType.Agility);
-                break;
-            case DeliveryMethod.Spell:
-                sourceStatValue = _statCalculationService.GetStatValue(source, StatType.Magic);
-                break;
-            case DeliveryMethod.Passive:
-                sourceStatValue = 0; // Dano passivo não escala
-                break;
+            case DeliveryMethod.Melee: sourceStatValue = _statService.GetStatValue(source, StatType.Attack); break;
+            case DeliveryMethod.Ranged: sourceStatValue = _statService.GetStatValue(source, StatType.Agility); break;
+            case DeliveryMethod.Spell: sourceStatValue = _statService.GetStatValue(source, StatType.Magic); break;
+            case DeliveryMethod.Passive: sourceStatValue = 0; break;
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;
         float targetDefenseValue = 0;
 
-        // CORREÇÃO: Preencher a lógica de defesa que faltava
         if (def.Delivery != DeliveryMethod.Passive && def.DamageType != DamageType.True)
         {
-            switch (def.DamageType)
-            {                
-                case DamageType.Martial:
-                    targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.Defense);
-                    break;
-
-                // Todos os mágicos usam MagicDefense
-                case DamageType.Mystic: // Antigo Mental
-                case DamageType.Divine: // Antigo Holy
-                case DamageType.Void:   // Antigo Dark
-                case DamageType.Primal: // Antigo Nature
-                    targetDefenseValue = _statCalculationService.GetStatValue(target, StatType.MagicDefense);
-                    break;
-            }
+            // Nota: Usamos os novos Enums (Martial vs Outros)
+            if (def.DamageType == DamageType.Martial)
+                targetDefenseValue = _statService.GetStatValue(target, StatType.Defense);
+            else
+                targetDefenseValue = _statService.GetStatValue(target, StatType.MagicDefense);
         }
 
-        float mitigatedDamage = rawDamage - targetDefenseValue;
-
-        // --- 2. CHAMAR O ESPECIALISTA DE MODIFIERS ---
-        // Delegamos a lógica de Tags (Bónus/Resistências)
-        float finalDamage = _damageModService.CalculateModifiedValue(
-            mitigatedDamage,
-            def,
-            source,
-            target
-        );
-
-        // --- 3. APLICAÇÃO ---
-        if (finalDamage < 1) finalDamage = 1;
-        int damageToApply = (int)finalDamage;
-
-        _logger.LogInformation(
-            "Applying {Damage} {DamageType} damage to {TargetName} (Base: {MitigatedDamage}, Final: {FinalDamage})",
-            damageToApply, def.DamageType, target.Name, mitigatedDamage, finalDamage
-        );
-
-        target.CurrentHP -= damageToApply;
+        return rawDamage - targetDefenseValue;
     }
 }
