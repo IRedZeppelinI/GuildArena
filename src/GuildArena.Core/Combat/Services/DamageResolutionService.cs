@@ -24,6 +24,7 @@ public class DamageResolutionService : IDamageResolutionService
         _logger = logger;
     }
 
+    /// <inheritdoc />
     public DamageResolutionResult ResolveDamage(
         float baseDamage,
         EffectDefinition effect,
@@ -32,25 +33,33 @@ public class DamageResolutionService : IDamageResolutionService
     {
         var result = new DamageResolutionResult();
 
-        // 1. Calcular Modificadores (Buffs/Resistências)       
-        float modifiedDamage = ApplyModifiers(baseDamage, effect, source, target);
+        var allAttackTags = BuildAggregatedTags(effect);
+        bool isTrueDamage = effect.DamageType == DamageType.True;
 
-        // 2. Absorção por Barreiras
-        if (modifiedDamage > 0)
+        float modifiedDamage = ApplyModifiers(baseDamage, allAttackTags, source, target, isTrueDamage);
+
+        if (modifiedDamage > 0 && !isTrueDamage)
         {
-            // Construir tags do ataque (Tags da skill + Tipo de Dano)
-            var attackTags = new HashSet<string>(effect.Tags);
-            attackTags.Add(effect.DamageType.ToString()); //TODO rever implementação de tags/damageType
-
-            ApplyBarriers(target, ref modifiedDamage, attackTags, result);
+            ApplyBarriers(target, ref modifiedDamage, allAttackTags, result);
         }
 
         result.FinalDamageToApply = modifiedDamage;
         return result;
     }
 
-    // --- Lógica de Modifiers ---
-    private float ApplyModifiers(float damage, EffectDefinition effect, Combatant source, Combatant target)
+    private HashSet<string> BuildAggregatedTags(EffectDefinition effect)
+    {
+        var tags = new HashSet<string>(effect.Tags, StringComparer.OrdinalIgnoreCase);
+        tags.Add(effect.DamageType.ToString());
+        return tags;
+    }
+
+    private float ApplyModifiers(
+        float damage,
+        HashSet<string> tags,
+        Combatant source,
+        Combatant target,
+        bool isTrueDamage)
     {
         float flatBonus = 0;
         float percentBonus = 0;
@@ -59,34 +68,40 @@ public class DamageResolutionService : IDamageResolutionService
 
         var definitions = _modifierRepo.GetAllDefinitions();
 
-        // Bónus do Atacante
+        // Processar Bónus do Atacante
         foreach (var mod in source.ActiveModifiers)
         {
             if (definitions.TryGetValue(mod.DefinitionId, out var def))
             {
                 foreach (var dmgMod in def.DamageModifications)
                 {
-                    if (dmgMod.Value > 0 && effect.Tags.Contains(dmgMod.RequiredTag))
+                    if (dmgMod.Value > 0 && tags.Contains(dmgMod.RequiredTag))
                     {
-                        if (dmgMod.Type == ModificationType.FLAT) flatBonus += dmgMod.Value;
-                        else percentBonus += dmgMod.Value;
+                        if (dmgMod.Type == ModificationType.FLAT)
+                            flatBonus += dmgMod.Value;
+                        else
+                            percentBonus += dmgMod.Value;
                     }
                 }
             }
         }
 
-        // Resistências do Alvo
-        foreach (var mod in target.ActiveModifiers)
+        // Processar Resistências do Alvo
+        if (!isTrueDamage)
         {
-            if (definitions.TryGetValue(mod.DefinitionId, out var def))
+            foreach (var mod in target.ActiveModifiers)
             {
-                foreach (var dmgMod in def.DamageModifications)
+                if (definitions.TryGetValue(mod.DefinitionId, out var def))
                 {
-                    // Resistências são valores negativos 
-                    if (dmgMod.Value < 0 && effect.Tags.Contains(dmgMod.RequiredTag))
+                    foreach (var dmgMod in def.DamageModifications)
                     {
-                        if (dmgMod.Type == ModificationType.FLAT) flatReduction += dmgMod.Value;
-                        else percentReduction += dmgMod.Value;
+                        if (dmgMod.Value < 0 && tags.Contains(dmgMod.RequiredTag))
+                        {
+                            if (dmgMod.Type == ModificationType.FLAT)
+                                flatReduction += dmgMod.Value;
+                            else
+                                percentReduction += dmgMod.Value;
+                        }
                     }
                 }
             }
@@ -96,7 +111,6 @@ public class DamageResolutionService : IDamageResolutionService
         return Math.Max(0, finalValue);
     }
 
-    // ---  Barreiras ---
     private void ApplyBarriers(
         Combatant target,
         ref float currentDamage,
@@ -113,13 +127,11 @@ public class DamageResolutionService : IDamageResolutionService
             if (!definitions.TryGetValue(mod.DefinitionId, out var modDef)) continue;
             if (modDef.Barrier == null) continue;
 
-            // Verificar Tags: Se BlockedTags estiver vazio, bloqueia tudo.
             bool blocks = modDef.Barrier.BlockedTags.Count == 0 ||
                           modDef.Barrier.BlockedTags.Any(t => attackTags.Contains(t));
 
             if (!blocks) continue;
 
-            // Absorver
             float absorbed = Math.Min(currentDamage, mod.CurrentBarrierValue);
 
             mod.CurrentBarrierValue -= absorbed;
