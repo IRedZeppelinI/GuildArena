@@ -38,7 +38,7 @@ public class TargetResolutionService : ITargetResolutionService
 
         // Filtrar Untargetable
         //  AoE ignora
-        if (rule.Type == TargetType.Enemy || rule.Type == TargetType.AllEnemies)
+        if (rule.Type == TargetType.Enemy)
         {
             // Remove quem tem IsUntargetable
             potentialTargets = potentialTargets.Where(c => !IsCombatantUntargetable(c)).ToList();
@@ -86,13 +86,13 @@ public class TargetResolutionService : ITargetResolutionService
 
     private List<Combatant> ApplySelectionStrategy(
         TargetingRule rule,
-        List<Combatant> candidates,
+        List<Combatant> potencialTargets,
         AbilityTargets playerInput)
     {
         // Se for AoE, devolve todos os candidatos válidos
-        if (IsAreaEffect(rule.Type))
+        if (IsAreaEffect(rule.Type) || rule.Type == TargetType.Self)
         {
-            return candidates;
+            return potencialTargets;
         }
 
         switch (rule.Strategy)
@@ -101,45 +101,45 @@ public class TargetResolutionService : ITargetResolutionService
                 if (playerInput.SelectedTargets.TryGetValue(rule.RuleId, out var selectedIds))
                 {
                     // Interseção: Só aceita IDs que estejam na lista de candidatos válidos
-                    return candidates.Where(c => selectedIds.Contains(c.Id)).Take(rule.Count).ToList();
+                    return potencialTargets.Where(c => selectedIds.Contains(c.Id)).Take(rule.Count).ToList();
                 }
                 _logger.LogWarning("No manual selection provided for rule {RuleId}", rule.RuleId);
                 return new List<Combatant>();
 
             case TargetSelectionStrategy.Random:
-                return candidates.OrderBy(x => _random.Next()).Take(rule.Count).ToList();
+                return potencialTargets.OrderBy(x => _random.Next()).Take(rule.Count).ToList();
 
             //TODO: Rever tie-break
             case TargetSelectionStrategy.LowestHP:
-                return candidates
+                return potencialTargets
                     .OrderBy(c => c.CurrentHP)
                     .ThenBy(c => c.Id) // TIE-BREAK (Determinismo)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.HighestHP:
-                return candidates
+                return potencialTargets
                     .OrderByDescending(c => c.CurrentHP)
                     .ThenBy(c => c.Id) // TIE-BREAK
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.LowestHPPercent:
-                return candidates
+                return potencialTargets
                     .OrderBy(c => (float)c.CurrentHP / c.MaxHP)
                     .ThenBy(c => c.Id) // TIE-BREAK
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.HighestHPPercent:
-                return candidates
+                return potencialTargets
                     .OrderByDescending(c => (float)c.CurrentHP / c.MaxHP)
                     .ThenBy(c => c.Id) // TIE-BREAK
                     .Take(rule.Count)
                     .ToList();
 
             default:                
-                return candidates.Take(rule.Count).ToList();
+                return potencialTargets.Take(rule.Count).ToList();
         }
     }
 
