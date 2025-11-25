@@ -26,7 +26,7 @@ public class ApplyModifierHandler : IEffectHandler
 
     public EffectType SupportedType => EffectType.APPLY_MODIFIER;
 
-    public void Apply(EffectDefinition def, Combatant source, Combatant target)
+    public void Apply(EffectDefinition def, Combatant source, Combatant target, GameState gameState)
     {
         if (string.IsNullOrEmpty(def.ModifierDefinitionId))
         {

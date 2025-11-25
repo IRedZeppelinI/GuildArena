@@ -95,7 +95,7 @@ public class CombatEngine : ICombatEngine
                     continue; // O efeito naõ resolve e não acontece nada
                 }
 
-                handler.Apply(effect, source, target);
+                handler.Apply(effect, source, target, currentState);
             }
         }
     }
