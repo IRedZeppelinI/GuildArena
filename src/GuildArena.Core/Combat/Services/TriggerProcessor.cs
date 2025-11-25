@@ -13,6 +13,7 @@ namespace GuildArena.Core.Combat.Services;
 public class TriggerProcessor : ITriggerProcessor
 {
     private readonly IModifierDefinitionRepository _modifierRepo;
+    private readonly IAbilityDefinitionRepository _abilityRepo;
     // Usamos Lazy para evitar Dependência Circular, pois o CombatEngine depende do TriggerProcessor
     private readonly Lazy<ICombatEngine> _combatEngine;
     private readonly ILogger<TriggerProcessor> _logger;
@@ -20,11 +21,13 @@ public class TriggerProcessor : ITriggerProcessor
     public TriggerProcessor(
         IModifierDefinitionRepository modifierRepo,
         Lazy<ICombatEngine> combatEngine,
-        ILogger<TriggerProcessor> logger)
+        ILogger<TriggerProcessor> logger,
+        IAbilityDefinitionRepository abilityRepo)
     {
         _modifierRepo = modifierRepo;
         _combatEngine = combatEngine;
         _logger = logger;
+        _abilityRepo = abilityRepo;
     }
 
     /// <inheritdoc />
@@ -32,26 +35,17 @@ public class TriggerProcessor : ITriggerProcessor
     {
         var allDefinitions = _modifierRepo.GetAllDefinitions();
 
-        // Iteramos sobre TODOS os combatentes para suportar triggers globais 
-        // (ex: "Sempre que alguém morre", ou auras globais).
         foreach (var combatant in context.GameState.Combatants)
         {
-            // Se o combatente estiver morto, só processamos triggers de morte (ex: Ressurreição)
             if (!combatant.IsAlive && trigger != ModifierTrigger.ON_DEATH) continue;
 
-            // Iteramos ao contrário por segurança caso a lista seja modificada durante a execução
-            // (embora neste contexto de leitura seja raro haver remoção direta aqui).
             foreach (var activeMod in combatant.ActiveModifiers)
             {
                 if (!allDefinitions.TryGetValue(activeMod.DefinitionId, out var def)) continue;
 
-                // 1. Verificação Primária: O modifier subscreve este trigger?
                 if (!def.Triggers.Contains(trigger)) continue;
-
-                // 2. Verificação Contextual: O portador do modifier é relevante para o evento?
                 if (!ValidateCondition(trigger, combatant, context)) continue;
 
-                // 3. Execução: Dispara a Habilidade Interna associada
                 if (!string.IsNullOrEmpty(def.TriggeredAbilityId))
                 {
                     ExecuteTriggeredAbility(def.TriggeredAbilityId, combatant, context);
@@ -92,26 +86,52 @@ public class TriggerProcessor : ITriggerProcessor
 
     private void ExecuteTriggeredAbility(string abilityId, Combatant source, TriggerContext context)
     {
+        // 1. Obter a definição da Habilidade
+        if (!_abilityRepo.TryGetDefinition(abilityId, out var ability))
+        {
+            _logger.LogWarning("Triggered Ability {AbilityId} not found in repository.", abilityId);
+            return;
+        }
+
         _logger.LogInformation("Trigger executing ability {AbilityId} from source {Source}", abilityId, source.Name);
 
-        // TODO: Aqui necessitaremos de injetar o IAbilityDefinitionRepository para obter a definição real.
-        // Como ainda não temos esse repositório no contexto, simulo a obtenção da AbilityDefinition.
+        // 2. Definir Alvos Automáticos
+        // Por defeito, habilidades de reação (Counters) visam a FONTE do evento (o atacante).
+        // Habilidades passivas (Heal Self) visam o SELF.
+        // A lógica de targeting da AbilityDefinition decide qual regra usar.
+        // Aqui construímos um input "falso" para o Auto-Targeting do CombatEngine resolver.
+        var autoTargets = ResolveAutoTargets(context, ability, source);
 
-        // AbilityDefinition ability = _abilityRepo.GetById(abilityId);
+        // 3. Executar (Sem custos, ou custos especiais se definidos)
+        var payment = new Dictionary<EssenceType, int>();
 
-        // Exemplo de execução:
-        // As habilidades de trigger são geralmente gratuitas (Custo zero) e automáticas.
-        // O alvo depende da lógica da habilidade (ex: Thorns ataca o context.Source).
+        _combatEngine.Value.ExecuteAbility(
+            context.GameState,
+            ability,
+            source,
+            autoTargets,
+            payment
+        );
+    }
 
-        // var payment = new Dictionary<EssenceType, int>(); 
-        // var autoTargets = ResolveAutoTargets(context, ability);
+    private AbilityTargets ResolveAutoTargets(TriggerContext context, AbilityDefinition ability, Combatant source)
+    {
+        var targets = new AbilityTargets();
 
-        // _combatEngine.Value.ExecuteAbility(
-        //     context.GameState, 
-        //     ability, 
-        //     source, 
-        //     autoTargets, 
-        //     payment
-        // );
+        foreach (var rule in ability.TargetingRules)
+        {
+            // Lógica simplificada de Auto-Targeting para Triggers
+            // Se a regra pede Inimigo, e o contexto tem um atacante (Source), usamos esse.
+            if (rule.Type == TargetType.Enemy && context.Source.Id != source.Id)
+            {
+                targets.SelectedTargets[rule.RuleId] = new List<int> { context.Source.Id };
+            }
+            // Se a regra pede Self/Friendly, e o contexto tem Target, usamos esse
+            else if ((rule.Type == TargetType.Self || rule.Type == TargetType.Friendly) && context.Target != null)
+            {
+                targets.SelectedTargets[rule.RuleId] = new List<int> { source.Id };
+            }
+        }
+        return targets;
     }
 }
