@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
 using Microsoft.Extensions.Logging;
@@ -10,11 +11,16 @@ public class TurnManagerService : ITurnManagerService
 {
     private readonly ILogger<TurnManagerService> _logger;
     private readonly IEssenceService _essenceService;
+    private readonly ITriggerProcessor _triggerProcessor;
 
-    public TurnManagerService(ILogger<TurnManagerService> logger, IEssenceService essenceService)
+    public TurnManagerService(
+        ILogger<TurnManagerService> logger,
+        IEssenceService essenceService,
+        ITriggerProcessor triggerProcessor)
     {
         _logger = logger;
         _essenceService = essenceService;
+        _triggerProcessor = triggerProcessor;
     }
 
     /// <summary>
@@ -35,9 +41,20 @@ public class TurnManagerService : ITurnManagerService
 
         foreach (var combatant in combatantsEndingTurn)
         {
+            // Disparar Trigger ON_TURN_END
+            // O Source e Target são o próprio combatente neste contexto
+            var context = new TriggerContext
+            {
+                Source = combatant,
+                Target = combatant,
+                GameState = gameState,
+                Value = null,
+                Tags = new HashSet<string> { "TurnEnd" }
+            };
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_TURN_END, context);
+
             TickCooldowns(combatant); 
-            TickModifiers(combatant); 
-            // (Futuro: Triggers ON_TURN_END)
+            TickModifiers(combatant);             
         }
 
         // 2. Encontrar o PRÓXIMO jogador (Lógica Round-Robin)
@@ -62,6 +79,25 @@ public class TurnManagerService : ITurnManagerService
 
         _essenceService.GenerateStartOfTurnEssence(newPlayer, gameState.CurrentTurnNumber);
 
+        // Processar Start Turn Triggers        
+        var combatantsStartingTurn = gameState.Combatants
+            .Where(c => c.OwnerId == nextPlayerId && c.IsAlive)
+            .ToList();
+
+        foreach (var combatant in combatantsStartingTurn)
+        {
+            var context = new TriggerContext
+            {
+                Source = combatant,
+                Target = combatant,
+                GameState = gameState,
+                Value = null,
+                Tags = new HashSet<string> { "TurnStart" }
+            };
+
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_TURN_START, context);
+        }
+
         _logger.LogInformation(
             "Turn advanced to Player {PlayerId}.",
             newPlayer.PlayerId);
@@ -71,9 +107,7 @@ public class TurnManagerService : ITurnManagerService
         {
             if (kvp.Value > 0)
                 _logger.LogDebug("Essence {Type}: {Amount}", kvp.Key, kvp.Value);
-        }
-
-        // TODO: Triggers ON_TURN_START para os combatentes do novo jogador)
+        }        
     }   
 
 

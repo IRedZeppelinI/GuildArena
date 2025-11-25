@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -11,15 +12,18 @@ public class DamageEffectHandler : IEffectHandler
     private readonly IStatCalculationService _statService;
     private readonly ILogger<DamageEffectHandler> _logger;
     private readonly IDamageResolutionService _resolutionService;
+    private readonly ITriggerProcessor _triggerProcessor;
 
     public DamageEffectHandler(
         IStatCalculationService statService,
         ILogger<DamageEffectHandler> logger,
-        IDamageResolutionService resolutionService)
+        IDamageResolutionService resolutionService,
+        ITriggerProcessor triggerProcessor)
     {
         _statService = statService;
         _logger = logger;
         _resolutionService = resolutionService;
+        _triggerProcessor = triggerProcessor;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
@@ -41,6 +45,10 @@ public class DamageEffectHandler : IEffectHandler
             _logger.LogInformation(
                 "Hit {Target} for {Damage} (Absorbed: {Absorbed}). HP Left: {HP}",
                 target.Name, damageInt, resolution.AbsorbedDamage, target.CurrentHP);
+
+            // 4. Disparar Triggers (Ganchos)
+            // Só disparamos se houve dano real (ou se quisermos incluir '0 damage hits', removemos o if)
+            TriggerEvents(def, source, target, damageInt);
         }
         else
         {
@@ -48,6 +56,51 @@ public class DamageEffectHandler : IEffectHandler
                 target.Name, resolution.AbsorbedDamage);
         }
     }
+
+
+    private void TriggerEvents(EffectDefinition def, Combatant source, Combatant target, float damageAmount)
+    {
+        // Criar o contexto imutável do evento
+        var context = new TriggerContext
+        {
+            Source = source,
+            Target = target,
+            // Nota: Precisamos de aceder ao GameState.
+            // Como o handler Apply(source, target) não recebe GameState, 
+            // assumimos que podemos obter via referência ou refatorizar a interface IEffectHandler.
+            // (Para não partir código agora, assumirei que passamos GameState no método Apply no futuro refactor.
+            // POR AGORA: Vamos instanciar um contexto parcial ou adicionar GameState ao IEffectHandler.Apply).
+            GameState = null!, // TODO: Refatorizar IEffectHandler.Apply para receber GameState
+            Value = damageAmount,
+            Tags = new HashSet<string>(def.Tags) { def.DamageType.ToString() }
+        };
+
+        // NOTA DE IMPLEMENTAÇÃO:
+        // O IEffectHandler.Apply precisa urgentemente de receber 'GameState'.
+        // Vou assumir que fazemos esse micro-refactor na interface IEffectHandler no próximo passo
+        // para o código compilar corretamente.
+
+        // --- Triggers Genéricos (ON_DEAL_DAMAGE / ON_RECEIVE_DAMAGE) ---
+        _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_DAMAGE, context);
+        _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_DAMAGE, context);
+
+        // --- Triggers Específicos por Delivery (Melee/Ranged/Magic) ---
+        switch (def.Delivery)
+        {
+            case DeliveryMethod.Melee:
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_MELEE_ATTACK, context); // Atacante (Vampirism?)
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_MELEE_ATTACK, context); // Alvo (Thorns)
+                break;
+            case DeliveryMethod.Ranged:
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_RANGED_ATTACK, context);
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_RANGED_ATTACK, context);
+                break;
+            case DeliveryMethod.Spell:
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_MAGIC_DAMAGE, context);
+                break;
+        }
+    }
+
 
     private float CalculateMitigatedDamage(EffectDefinition def, Combatant source, Combatant target)
     {

@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IEssenceService, EssenceService>();
         services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<ITargetResolutionService, TargetResolutionService>();
+        services.AddScoped<ITriggerProcessor, TriggerProcessor>();
 
         // Registar todos os Handlers de Efeito        
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
