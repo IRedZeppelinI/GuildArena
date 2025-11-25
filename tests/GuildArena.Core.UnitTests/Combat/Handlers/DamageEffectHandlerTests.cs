@@ -1,6 +1,6 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Handlers;
-using GuildArena.Core.Combat.ValueObjects; // DamageResolutionResult
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -17,6 +17,7 @@ public class DamageEffectHandlerTests
     private readonly IStatCalculationService _statCalculationServiceMock;
     private readonly ILogger<DamageEffectHandler> _loggerMock;
     private readonly IDamageResolutionService _resolutionServiceMock;
+    private readonly ITriggerProcessor _triggerProcessorMock; // New Dependency
     private readonly DamageEffectHandler _handler;
 
     public DamageEffectHandlerTests()
@@ -24,11 +25,13 @@ public class DamageEffectHandlerTests
         _statCalculationServiceMock = Substitute.For<IStatCalculationService>();
         _loggerMock = Substitute.For<ILogger<DamageEffectHandler>>();
         _resolutionServiceMock = Substitute.For<IDamageResolutionService>();
+        _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
 
         _handler = new DamageEffectHandler(
             _statCalculationServiceMock,
             _loggerMock,
-            _resolutionServiceMock);
+            _resolutionServiceMock,
+            _triggerProcessorMock);
     }
 
     [Theory]
@@ -47,27 +50,26 @@ public class DamageEffectHandlerTests
             Delivery = delivery,
             DamageType = damageType,
             ScalingFactor = 1.0f,
-            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f, // Base 5 para passive
+            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f,
             TargetRuleId = "T_TestTarget"
         };
 
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
+        var gameState = new GameState(); // Dummy state required for signature
 
-        // Mock dos Stats (Para testar se o Handler escolhe o stat certo)
         _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
         _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
 
-        // Mock da Resolução (Pass-through)
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(call => new DamageResolutionResult
             {
-                FinalDamageToApply = call.Arg<float>(), // Devolve o 1º argumento (dano mitigado)
+                FinalDamageToApply = call.Arg<float>(),
                 AbsorbedDamage = 0
             });
 
         // 2. ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, gameState);
 
         // 3. ASSERT
         target.CurrentHP.ShouldBe(50 - expectedDamage);
@@ -81,7 +83,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.True, // True Damage
+            DamageType = DamageType.True,
             ScalingFactor = 1.0f,
             BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
@@ -89,13 +91,13 @@ public class DamageEffectHandlerTests
 
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var gameState = new GameState();
 
-        // Ataque: 10
+        // Attack: 10
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        // Defesa: 999 (Seria imune se não fosse True Damage)
+        // Defense: 999 (Would block everything if not True Damage)
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(999f);
 
-        // Mock Resolução (Pass-through)
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(call => new DamageResolutionResult
             {
@@ -103,10 +105,10 @@ public class DamageEffectHandlerTests
             });
 
         // 2. ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, gameState);
 
         // 3. ASSERT
-        // Deve entrar 10 de dano (ignora defesa)
+        // Should deal full 10 damage
         target.CurrentHP.ShouldBe(90);
     }
 
@@ -114,7 +116,6 @@ public class DamageEffectHandlerTests
     public void Apply_WhenServiceReportsAbsorption_ShouldLogAndReduceOnlyRemainingDamage()
     {
         // 1. ARRANGE
-        // Cenário: Dano bruto 10, mas Barreira absorve 5.
         var effectDef = new EffectDefinition
         {
             TargetRuleId = "T_TestTarget",
@@ -125,14 +126,14 @@ public class DamageEffectHandlerTests
         };
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
 
-        // Mock do Serviço: Simula que 5 foram absorvidos
         var simulatedResult = new DamageResolutionResult
         {
-            FinalDamageToApply = 5, // Só passam 5
+            FinalDamageToApply = 5, // Only 5 gets through
             AbsorbedDamage = 5
         };
 
@@ -140,13 +141,57 @@ public class DamageEffectHandlerTests
             .Returns(simulatedResult);
 
         // 2. ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, gameState);
 
         // 3. ASSERT
-        // HP desce apenas 5
         target.CurrentHP.ShouldBe(95);
-
-        // O serviço foi chamado com o dano total (10)
         _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
+    }
+
+    [Fact]
+    public void Apply_WhenDamageIsDealt_ShouldNotifyTriggerProcessor()
+    {
+        // 1. ARRANGE
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageType = DamageType.Martial,
+            ScalingFactor = 1.0f,
+            TargetRuleId = "T_TestTarget"
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
+        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var gameState = new GameState();
+
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
+
+        // Simulate full damage application
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(new DamageResolutionResult { FinalDamageToApply = 10f });
+
+        // 2. ACT
+        _handler.Apply(effectDef, source, target, gameState);
+
+        // 3. ASSERT
+        // Verify that generic damage triggers were fired
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_DEAL_DAMAGE,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
+
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_RECEIVE_DAMAGE,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
+
+        // Verify that specific delivery trigger (Melee) was fired
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_DEAL_MELEE_ATTACK,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
+
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_RECEIVE_MELEE_ATTACK,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
     }
 }
