@@ -1,4 +1,4 @@
-﻿using GuildArena.Core.Combat.Abstractions; // Para IStatCalculationService
+﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
@@ -15,9 +15,12 @@ namespace GuildArena.Core.UnitTests.Combat.Handlers;
 public class ApplyModifierHandlerTests
 {
     private readonly ILogger<ApplyModifierHandler> _loggerMock;
-    private readonly IModifierDefinitionRepository _repoMock;     
-    private readonly IStatCalculationService _statServiceMock;    
+    private readonly IModifierDefinitionRepository _repoMock;
+    private readonly IStatCalculationService _statServiceMock;
     private readonly ApplyModifierHandler _handler;
+
+    // Objeto dummy necessário para satisfazer a assinatura da interface IEffectHandler
+    private readonly GameState _dummyGameState;
 
     public ApplyModifierHandlerTests()
     {
@@ -29,6 +32,8 @@ public class ApplyModifierHandlerTests
             _loggerMock,
             _repoMock,
             _statServiceMock);
+
+        _dummyGameState = new GameState();
     }
 
     [Fact]
@@ -43,7 +48,6 @@ public class ApplyModifierHandlerTests
             Type = ModifierType.BUFF
         };
 
-        // Configurar o Repo para devolver a definição
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
             { modId, modDef }
@@ -63,7 +67,8 @@ public class ApplyModifierHandlerTests
         target.ActiveModifiers.ShouldBeEmpty();
 
         // ACT
-        _handler.Apply(effectDef, source, target);
+        // Passamos o _dummyGameState para cumprir a assinatura
+        _handler.Apply(effectDef, source, target, _dummyGameState);
 
         // ASSERT
         target.ActiveModifiers.Count.ShouldBe(1);
@@ -77,7 +82,7 @@ public class ApplyModifierHandlerTests
     [Fact]
     public void Apply_WithBarrierDefinition_ShouldInitializeBarrierValueWithScaling()
     {
-        // ARRANGE - Testar se a barreira é calculada (Base + Scaling)
+        // ARRANGE
         var modId = "MOD_SHIELD";
         var modDef = new ModifierDefinition
         {
@@ -88,7 +93,7 @@ public class ApplyModifierHandlerTests
             {
                 BaseAmount = 10,
                 ScalingStat = StatType.Magic,
-                ScalingFactor = 0.5f // 50% do Magic
+                ScalingFactor = 0.5f
             }
         };
 
@@ -106,17 +111,16 @@ public class ApplyModifierHandlerTests
         var target = new Combatant { Id = 2, Name = "Target", BaseStats = new() };
 
         // Configurar Stats do Caster (Magic = 20)
-        // Valor esperado: 10 (Base) + (20 * 0.5) = 20
         _statServiceMock.GetStatValue(source, StatType.Magic).Returns(20f);
 
         // ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, _dummyGameState);
 
         // ASSERT
         target.ActiveModifiers.Count.ShouldBe(1);
         var appliedMod = target.ActiveModifiers.First();
 
-        // Verifica se o valor inicial foi calculado corretamente
+        // Verifica se o valor inicial foi calculado corretamente (10 + 20*0.5 = 20)
         appliedMod.CurrentBarrierValue.ShouldBe(20f);
     }
 
@@ -133,7 +137,8 @@ public class ApplyModifierHandlerTests
         };
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
 
-        var effectDef = new EffectDefinition { 
+        var effectDef = new EffectDefinition
+        {
             ModifierDefinitionId = modId,
             DurationInTurns = 5,
             TargetRuleId = "T_TestTarget"
@@ -141,7 +146,7 @@ public class ApplyModifierHandlerTests
         var source = new Combatant { Id = 1, BaseStats = new(), Name = "Test_Combatant" };
         var target = new Combatant { Id = 2, Name = "Target", BaseStats = new() };
 
-        // Simular modifier existente com barreira gasta (10 HP restantes)
+        // Simular modifier existente com barreira gasta
         target.ActiveModifiers.Add(new ActiveModifier
         {
             DefinitionId = modId,
@@ -151,14 +156,14 @@ public class ApplyModifierHandlerTests
         });
 
         // ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, _dummyGameState);
 
         // ASSERT
         target.ActiveModifiers.Count.ShouldBe(1);
         var refreshedMod = target.ActiveModifiers.First();
 
-        refreshedMod.TurnsRemaining.ShouldBe(5); // Refreshed Duration
-        refreshedMod.CurrentBarrierValue.ShouldBe(50f); // Reset Barrier to Max
+        refreshedMod.TurnsRemaining.ShouldBe(5);
+        refreshedMod.CurrentBarrierValue.ShouldBe(50f);
     }
 
     [Fact]
@@ -168,7 +173,7 @@ public class ApplyModifierHandlerTests
         var effectDef = new EffectDefinition
         {
             Type = EffectType.APPLY_MODIFIER,
-            ModifierDefinitionId = null, // ID em falta
+            ModifierDefinitionId = null,
             TargetRuleId = "T_Self"
         };
 
@@ -176,7 +181,7 @@ public class ApplyModifierHandlerTests
         var target = new Combatant { Id = 2, Name = "Target", BaseStats = new BaseStats() };
 
         // ACT
-        _handler.Apply(effectDef, source, target);
+        _handler.Apply(effectDef, source, target, _dummyGameState);
 
         // ASSERT
         target.ActiveModifiers.ShouldBeEmpty();
@@ -184,7 +189,7 @@ public class ApplyModifierHandlerTests
         _loggerMock.Received(1).Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
-            Arg.Any<object>(), // Aceita qualquer mensagem de warning
+            Arg.Any<object>(),
             null,
             Arg.Any<Func<object, Exception?, string>>()
         );
