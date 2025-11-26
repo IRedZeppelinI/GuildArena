@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Enums;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Abstractions.Services;
@@ -22,7 +23,8 @@ public class CombatEngine : ICombatEngine
     private readonly ICooldownCalculationService _cooldownCalcService;
     private readonly ICostCalculationService _costCalcService;
     private readonly IEssenceService _essenceService;
-    private readonly ITargetResolutionService _targetService;    
+    private readonly ITargetResolutionService _targetService;
+    private readonly IStatusConditionService _statusService;
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -30,7 +32,8 @@ public class CombatEngine : ICombatEngine
         ICooldownCalculationService cooldownCalcService,
         ICostCalculationService costCalcService, 
         IEssenceService essenceService,
-        ITargetResolutionService targetService)
+        ITargetResolutionService targetService,
+        IStatusConditionService statusService)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
@@ -39,7 +42,8 @@ public class CombatEngine : ICombatEngine
         _cooldownCalcService = cooldownCalcService;
         _costCalcService = costCalcService;
         _essenceService = essenceService;
-        _targetService = targetService;        
+        _targetService = targetService;
+        _statusService = statusService;
     }
 
     /// <inheritdoc />
@@ -125,6 +129,13 @@ public class CombatEngine : ICombatEngine
     {
         calculatedCost = null!;
 
+        var statusResult = _statusService.CheckStatusConditions(source, ability);
+        if (statusResult != ActionStatusResult.Allowed)
+        {
+            _logger.LogWarning("Combatant {Name} cannot act. Reason: {Reason}", source.Name, statusResult);
+            return false;
+        }
+
         // Cooldowns
         var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);
         if (existingCooldown != null)
@@ -151,7 +162,7 @@ public class CombatEngine : ICombatEngine
             return false;
         }
 
-        // 2. O pagamento enviado pela UI cobre a fatura calculada?
+        // 2. O "pagamento" enviado pela UI cobre a essence calculada?
         if (!ValidateAllocationAgainstCost(payment, calculatedCost.EssenceCosts))
         {
             _logger.LogWarning("Resource allocation provided does not match the calculated cost.");

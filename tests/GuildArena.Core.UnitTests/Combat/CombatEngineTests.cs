@@ -1,5 +1,6 @@
 ﻿using GuildArena.Core.Combat;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Enums;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -21,6 +22,7 @@ public class CombatEngineTests
     private readonly IEffectHandler _handlerMock;
     private readonly ITargetResolutionService _targetServiceMock;
     private readonly ITriggerProcessor _triggerProcessorMock; // Apenas dependencia, funcionalidade não testada aqui
+    private readonly IStatusConditionService _statusServiceMock;
     public CombatEngineTests()
     {
         _logger = Substitute.For<ILogger<CombatEngine>>();
@@ -30,7 +32,12 @@ public class CombatEngineTests
         _handlerMock = Substitute.For<IEffectHandler>();
         _targetServiceMock = Substitute.For<ITargetResolutionService>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
+        _statusServiceMock = Substitute.For<IStatusConditionService>();
+
         _handlerMock.SupportedType.Returns(EffectType.DAMAGE);
+
+        _statusServiceMock.CheckStatusConditions(Arg.Any<Combatant>(), Arg.Any<AbilityDefinition>())
+            .Returns(ActionStatusResult.Allowed);
     }
 
     private CombatEngine CreateEngine(IEnumerable<IEffectHandler>? handlers = null)
@@ -42,7 +49,8 @@ public class CombatEngineTests
             _cooldownMock,
             _costMock,
             _essenceMock,
-            _targetServiceMock
+            _targetServiceMock,
+            _statusServiceMock
         );
     }
 
@@ -141,7 +149,7 @@ public class CombatEngineTests
 
         var target = new Combatant { Id = 2, OwnerId = 2, Name = "Invulnerable Guy", BaseStats = new BaseStats() };
 
-        // CORREÇÃO: Configuramos o estado diretamente no ActiveModifier
+        
         target.ActiveModifiers.Add(new ActiveModifier
         {
             DefinitionId = "MOD_ICEBLOCK",
@@ -170,8 +178,7 @@ public class CombatEngineTests
             source, gameState,
             Arg.Any<AbilityTargets>())
             .Returns(new List<Combatant> { target });
-
-        // REMOVIDO: Setup do mock do repositório, pois o Engine já não o consulta.
+        
 
         // ACT
         engine.ExecuteAbility(
@@ -365,5 +372,30 @@ public class CombatEngineTests
         _logger.Received().Log(LogLevel.Warning, Arg.Any<EventId>(),
             Arg.Is<object>(o => o.ToString()!.Contains("Resource allocation provided does not match")),
             null, Arg.Any<Func<object, Exception?, string>>());
+    }
+
+
+    [Fact]
+    public void ExecuteAbility_WhenStatusServiceReturnsStunned_ShouldNotExecute()
+    {
+        // ARRANGE
+        var engine = CreateEngine();
+        var ability = new AbilityDefinition { Id = "A1", Name = "Any" };
+        var source = new Combatant { Id = 1, Name = "Stunned Guy", BaseStats = new() };
+
+        // Configurar o Mock para dizer que está Stunned
+        _statusServiceMock.CheckStatusConditions(source, ability)
+            .Returns(ActionStatusResult.Stunned);
+
+        // ACT
+        engine.ExecuteAbility(new GameState(), ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
+
+        // ASSERT
+        // Não deve calcular custos nem chamar handlers
+        _costMock.DidNotReceive().CalculateFinalCosts(Arg.Any<CombatPlayer>(), Arg.Any<AbilityDefinition>(), Arg.Any<List<Combatant>>());
+        _handlerMock.DidNotReceive().Apply(Arg.Any<EffectDefinition>(), Arg.Any<Combatant>(), Arg.Any<Combatant>(), Arg.Any<GameState>());
+
+        // Verificar log
+        _logger.Received().Log(LogLevel.Warning, Arg.Any<EventId>(), Arg.Is<object>(o => o.ToString()!.Contains("Stunned")), null, Arg.Any<Func<object, Exception?, string>>());
     }
 }
