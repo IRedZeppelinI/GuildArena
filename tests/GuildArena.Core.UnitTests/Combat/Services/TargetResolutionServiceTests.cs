@@ -14,7 +14,6 @@ namespace GuildArena.Core.UnitTests.Combat.Services;
 public class TargetResolutionServiceTests
 {
     private readonly ILogger<TargetResolutionService> _loggerMock;
-    private readonly IModifierDefinitionRepository _repoMock;
     private readonly TargetResolutionService _service;
 
     private readonly GameState _gameState;
@@ -23,13 +22,9 @@ public class TargetResolutionServiceTests
     public TargetResolutionServiceTests()
     {
         _loggerMock = Substitute.For<ILogger<TargetResolutionService>>();
-        _repoMock = Substitute.For<IModifierDefinitionRepository>();
-        _service = new TargetResolutionService(_loggerMock, _repoMock);
+        _service = new TargetResolutionService(_loggerMock);
 
         // Arrange Global: Cenário de Combate 2v2
-        // Player 1: Source (ID 1) + Ally (ID 2)
-        // Player 2: Enemy 1 (ID 3) + Enemy 2 (ID 4)
-
         _source = new Combatant
         {
             Id = 1,
@@ -102,7 +97,6 @@ public class TargetResolutionServiceTests
         };
 
         // O jogador tenta selecionar um aliado (ID 2) e um inimigo (ID 3)
-        // O sistema deve ignorar o ID 2 porque a regra é "Enemy"
         var input = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 2, 3 } } } };
 
         // Act
@@ -116,49 +110,48 @@ public class TargetResolutionServiceTests
     // --- TESTES DE UNTARGETABLE ---
 
     [Fact]
-    public void ResolveTargets_SingleTargetEnemy_WithStealth_ShouldBeIgnored()
+    public void ResolveTargets_SingleTargetEnemy_WithUntargetable_ShouldBeIgnored()
     {
         // Arrange
-        var stealthMod = new ModifierDefinition { 
-            Id = "MOD_STEALTH",
-            Name = "Hidden",
-            IsUntargetable = true };
-
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { "MOD_STEALTH", stealthMod } });
-
         var enemy = _gameState.Combatants.First(c => c.Id == 3);
-        enemy.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_STEALTH" });
+
+        enemy.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_GHOST",
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Untargetable }
+        });
 
         var rule = new TargetingRule { RuleId = "T1", Type = TargetType.Enemy, Count = 1 };
-        // Tenta clicar no Stealth (UI deve impedir)
-        var input = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 3 } } } }; 
+
+        // Tenta selecionar manualmente o alvo intocável
+        var input = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 3 } } } };
 
         // Act
         var result = _service.ResolveTargets(rule, _source, _gameState, input);
 
         // Assert
-        result.ShouldBeEmpty(); 
+        result.ShouldBeEmpty();
     }
 
     [Fact]
-    public void ResolveTargets_AoE_WithStealth_ShouldHitAnyway()
+    public void ResolveTargets_AoE_WithUntargetable_ShouldHitAnyway()
     {
         // Arrange
-        var stealthMod = new ModifierDefinition { Id = "MOD_STEALTH", Name = "Hidden", IsUntargetable = true };
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { "MOD_STEALTH", stealthMod } });
-
         var enemy = _gameState.Combatants.First(c => c.Id == 3);
-        enemy.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_STEALTH" });
 
-        // Regra AoE (AllEnemies)
+        enemy.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_GHOST",
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Untargetable }
+        });
+
+        // Regra AoE (AllEnemies) - Geralmente AoE ignora Untargetable (ex: Explosões)
         var rule = new TargetingRule { RuleId = "T1", Type = TargetType.AllEnemies };
 
         // Act
         var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
 
         // Assert
-        // Deve apanhar os 2 inimigos, mesmo o que está em Stealth, 
-        // porque AoE global não requer "Targeting" manual.
         result.Count.ShouldBe(2);
         result.ShouldContain(c => c.Id == 3);
     }
@@ -169,7 +162,6 @@ public class TargetResolutionServiceTests
     public void ResolveTargets_LowestHP_ShouldReturnWeakestEnemy()
     {
         // Arrange
-        // Inimigo 3 tem 20 HP, Inimigo 4 tem 80 HP
         var rule = new TargetingRule
         {
             RuleId = "T1",
@@ -189,7 +181,6 @@ public class TargetResolutionServiceTests
     public void ResolveTargets_LowestHP_WithTie_ShouldUseIdAsTieBreaker()
     {
         // Arrange
-        // alterar o HP para provocar um empate
         var enemy1 = _gameState.Combatants.First(c => c.Id == 3);
         var enemy2 = _gameState.Combatants.First(c => c.Id == 4);
         enemy1.CurrentHP = 50;
@@ -207,8 +198,7 @@ public class TargetResolutionServiceTests
         var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
 
         // Assert
-        // Deve ganhar o ID mais baixo (3 < 4) para garantir determinismo
-        result.Single().Id.ShouldBe(3);
+        result.Single().Id.ShouldBe(3); // 3 < 4
     }
 
     [Fact]
@@ -217,14 +207,11 @@ public class TargetResolutionServiceTests
         // Arrange
         var tank = _gameState.Combatants.First(c => c.Id == 4); // Goblin B
         tank.MaxHP = 1000;
-        tank.CurrentHP = 100; // 10% HP
+        tank.CurrentHP = 100; // 10%
 
         var squishy = _gameState.Combatants.First(c => c.Id == 3); // Goblin A
         squishy.MaxHP = 50;
-        squishy.CurrentHP = 20; // 40% HP
-
-        // Em valor absoluto, 20 < 100.
-        // Mas em percentagem, 10% < 40%. O Tank está "mais ferido".
+        squishy.CurrentHP = 20; // 40%
 
         var rule = new TargetingRule
         {
@@ -238,7 +225,7 @@ public class TargetResolutionServiceTests
         var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
 
         // Assert
-        result.Single().Id.ShouldBe(4); // Goblin B (10%)
+        result.Single().Id.ShouldBe(4); // 10% < 40%
     }
 
     // --- TESTES DE VIVO/MORTO ---
@@ -254,7 +241,7 @@ public class TargetResolutionServiceTests
         {
             RuleId = "T1",
             Type = TargetType.Enemy,
-            Count = 2, // Pede 2
+            Count = 2,
             Strategy = TargetSelectionStrategy.LowestHP
         };
 
@@ -262,7 +249,7 @@ public class TargetResolutionServiceTests
         var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
 
         // Assert
-        result.Count.ShouldBe(1); // Só devolve o vivo (ID 4)
+        result.Count.ShouldBe(1); // Só o vivo
         result.First().Id.ShouldBe(4);
     }
 
@@ -277,7 +264,7 @@ public class TargetResolutionServiceTests
         {
             RuleId = "Revive",
             Type = TargetType.Ally,
-            CanTargetDead = true, // <--- Regra de Reviver
+            CanTargetDead = true, // Flag importante
             Count = 1
         };
 

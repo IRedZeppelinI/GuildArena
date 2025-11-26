@@ -30,8 +30,7 @@ public class CombatEngine : ICombatEngine
         ICooldownCalculationService cooldownCalcService,
         ICostCalculationService costCalcService, 
         IEssenceService essenceService,
-        ITargetResolutionService targetService, 
-        IModifierDefinitionRepository modifierRepo)
+        ITargetResolutionService targetService)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.

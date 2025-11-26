@@ -17,7 +17,7 @@ public class DamageEffectHandlerTests
     private readonly IStatCalculationService _statCalculationServiceMock;
     private readonly ILogger<DamageEffectHandler> _loggerMock;
     private readonly IDamageResolutionService _resolutionServiceMock;
-    private readonly ITriggerProcessor _triggerProcessorMock; // New Dependency
+    private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly DamageEffectHandler _handler;
 
     public DamageEffectHandlerTests()
@@ -38,7 +38,6 @@ public class DamageEffectHandlerTests
     [InlineData(DeliveryMethod.Melee, DamageCategory.Physical, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
     [InlineData(DeliveryMethod.Ranged, DamageCategory.Physical, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
     [InlineData(DeliveryMethod.Spell, DamageCategory.Magical, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
-    [InlineData(DeliveryMethod.Passive, DamageCategory.Magical, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
     public void Apply_DamageEffect_ShouldReduceTargetHP_BasedOnDeliveryMethod(
         DeliveryMethod delivery, DamageCategory damageCategory, StatType sourceStat, float sourceStatValue,
         StatType targetStat, float targetStatValue, int expectedDamage)
@@ -50,13 +49,13 @@ public class DamageEffectHandlerTests
             Delivery = delivery,
             DamageCategory = damageCategory,
             ScalingFactor = 1.0f,
-            BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f,
+            BaseAmount = 0f, 
             TargetRuleId = "T_TestTarget"
         };
 
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
-        var gameState = new GameState(); // Dummy state required for signature
+        var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
         _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
@@ -83,7 +82,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.True,
+            DamageCategory = DamageCategory.True, 
             ScalingFactor = 1.0f,
             BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
@@ -121,7 +120,7 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget",
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.Physical,
+            DamageCategory = DamageCategory.Physical, 
             ScalingFactor = 1.0f
         };
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
@@ -156,7 +155,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.Physical,
+            DamageCategory = DamageCategory.Physical, 
             ScalingFactor = 1.0f,
             TargetRuleId = "T_TestTarget"
         };

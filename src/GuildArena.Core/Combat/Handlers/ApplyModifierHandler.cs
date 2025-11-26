@@ -63,6 +63,8 @@ public class ApplyModifierHandler : IEffectHandler
             {
                 existingModifier.CurrentBarrierValue = initialBarrierValue;
             }
+
+            existingModifier.ActiveStatusEffects = modDef.GrantedStatusEffects.ToList();
             _logger.LogInformation("Refreshed modifier {ModifierId}.", def.ModifierDefinitionId);
         }
         else

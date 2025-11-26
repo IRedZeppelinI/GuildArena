@@ -1,7 +1,6 @@
 ﻿using GuildArena.Core.Combat;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
-using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -21,9 +20,7 @@ public class CombatEngineTests
     private readonly IEssenceService _essenceMock;
     private readonly IEffectHandler _handlerMock;
     private readonly ITargetResolutionService _targetServiceMock;
-    private readonly IModifierDefinitionRepository _modifierRepoMock;
-    private readonly ITriggerProcessor _triggerProcessorMock; // não está a ser usadra
-
+    private readonly ITriggerProcessor _triggerProcessorMock; // Apenas dependencia, funcionalidade não testada aqui
     public CombatEngineTests()
     {
         _logger = Substitute.For<ILogger<CombatEngine>>();
@@ -32,9 +29,7 @@ public class CombatEngineTests
         _essenceMock = Substitute.For<IEssenceService>();
         _handlerMock = Substitute.For<IEffectHandler>();
         _targetServiceMock = Substitute.For<ITargetResolutionService>();
-        _modifierRepoMock = Substitute.For<IModifierDefinitionRepository>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
-
         _handlerMock.SupportedType.Returns(EffectType.DAMAGE);
     }
 
@@ -47,9 +42,7 @@ public class CombatEngineTests
             _cooldownMock,
             _costMock,
             _essenceMock,
-            _targetServiceMock,
-            _modifierRepoMock        
-        
+            _targetServiceMock
         );
     }
 
@@ -120,7 +113,7 @@ public class CombatEngineTests
         // ASSERT
         _essenceMock.Received(1).ConsumeEssence(player, payment);
         source.CurrentHP.ShouldBe(90); // HP Cost paid
-        
+
         _handlerMock.Received(1).Apply(Arg.Any<EffectDefinition>(), source, target, gameState);
     }
 
@@ -147,7 +140,13 @@ public class CombatEngineTests
         };
 
         var target = new Combatant { Id = 2, OwnerId = 2, Name = "Invulnerable Guy", BaseStats = new BaseStats() };
-        target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_ICEBLOCK" });
+
+        // CORREÇÃO: Configuramos o estado diretamente no ActiveModifier
+        target.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_ICEBLOCK",
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Invulnerable }
+        });
 
         var gameState = new GameState
         {
@@ -172,13 +171,7 @@ public class CombatEngineTests
             Arg.Any<AbilityTargets>())
             .Returns(new List<Combatant> { target });
 
-        _modifierRepoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
-        {
-            { 
-                "MOD_ICEBLOCK",
-                new ModifierDefinition { Id = "MOD_ICEBLOCK", Name = "Ice Block", IsInvulnerable = true }
-            }
-        });
+        // REMOVIDO: Setup do mock do repositório, pois o Engine já não o consulta.
 
         // ACT
         engine.ExecuteAbility(
@@ -295,9 +288,9 @@ public class CombatEngineTests
         var player = new CombatPlayer { PlayerId = 1 };
         var gameState = new GameState { Combatants = new() { source }, Players = new() { player } };
 
-        var cost = new FinalAbilityCosts 
-        { 
-            EssenceCosts = new() { new() { Type = EssenceType.Light, Amount = 5 } } 
+        var cost = new FinalAbilityCosts
+        {
+            EssenceCosts = new() { new() { Type = EssenceType.Light, Amount = 5 } }
         };
 
 
@@ -344,9 +337,9 @@ public class CombatEngineTests
         var player = new CombatPlayer { PlayerId = 1 };
         var gameState = new GameState { Combatants = new() { source }, Players = new() { player } };
 
-        var invoice = new FinalAbilityCosts 
-        { 
-            EssenceCosts = new() { new() { Type = EssenceType.Vigor, Amount = 2 } } 
+        var invoice = new FinalAbilityCosts
+        {
+            EssenceCosts = new() { new() { Type = EssenceType.Vigor, Amount = 2 } }
         };
 
         _costMock.CalculateFinalCosts(
