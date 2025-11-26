@@ -111,22 +111,15 @@ public class DamageEffectHandler : IEffectHandler
                 break;
             case DeliveryMethod.Spell:
                 sourceStatValue = _statService.GetStatValue(source, StatType.Magic);
-                break;
-            case DeliveryMethod.Passive:
-                sourceStatValue = 0;
-                break;
+                break;            
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;
 
-        // 2. Cálculo da Defesa (Baseado na NOVA Category) - ALTERADO
-        float targetDefenseValue = 0;
+        //  Cálculo da Defesa 
+        float targetDefenseValue = 0;        
 
-        // Se for True Damage ou Passivo (ex: Curses fixas), ignoramos defesa
-        // (Nota: Podes querer que 'Passive' use MagicDefense, depende da tua regra. 
-        //  Aqui assumo que Passive ignora, ou então controlas isso via DamageCategory no JSON)
-
-        if (def.Delivery != DeliveryMethod.Passive && def.DamageCategory != DamageCategory.True)
+        if (def.DamageCategory != DamageCategory.True)
         {
             // A lógica ficou muito mais limpa:
             if (def.DamageCategory == DamageCategory.Physical)

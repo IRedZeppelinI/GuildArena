@@ -5,8 +5,8 @@ public enum DeliveryMethod
 {
     Melee,   // Escala com Attack
     Ranged,  // Escala com Agility
-    Spell,   // Escala com Magic
-    Passive  // Não escala, usa o BaseAmount (para Curses, Auras, etc.)
+    Spell    // Escala com Magic
+   
 }
 
 
