@@ -33,7 +33,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BUFF_FIRE",
             Name = "Fire Up",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             DamageModifications = new() {
                 new() { RequiredTag = "Fire", Type = ModificationType.FLAT, Value = 2 }
             }
@@ -43,7 +43,7 @@ public class DamageResolutionServiceTests
         {
             Id = "RESIST_PHYS",
             Name = "Iron Skin",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             DamageModifications = new() {
                 new() { RequiredTag = "Martial", Type = ModificationType.PERCENTAGE, Value = -0.5f }
             }
@@ -53,7 +53,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_GENERIC",
             Name = "Shield",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             Barrier = new BarrierProperties { BaseAmount = 100, BlockedTags = new() }
         };
 
@@ -61,7 +61,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_FIRE",
             Name = "Fire Ward",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Fire" } }
         };
 
@@ -227,7 +227,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_MYSTIC",
             Name = "Anti-Magic Shell",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Mystic" } }
         };
 

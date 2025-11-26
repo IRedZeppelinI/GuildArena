@@ -2,6 +2,6 @@
 
 public enum ModifierType
 {
-    BUFF,
-    DEBUFF
+    BLESS,
+    CURSE
 }

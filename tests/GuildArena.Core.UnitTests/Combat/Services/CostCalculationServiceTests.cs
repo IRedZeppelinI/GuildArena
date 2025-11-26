@@ -32,7 +32,7 @@ public class CostCalculationServiceTests
         {
             Id = "MOD_VIGOR_DISCOUNT",
             Name = "Fire Mastery",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             EssenceCostModifications = new() {
                 new() { TargetEssenceType = EssenceType.Vigor, Value = -1 }
             }
@@ -43,7 +43,7 @@ public class CostCalculationServiceTests
         {
             Id = "MOD_WARD_1",
             Name = "Magic Shell",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             TargetingEssenceCosts = new() {
                 new() { Type = EssenceType.Neutral, Amount = 1 }
             }
@@ -54,7 +54,7 @@ public class CostCalculationServiceTests
         {
             Id = "MOD_BLOOD_MAGIC",
             Name = "Blood Sacrifice",
-            Type = ModifierType.DEBUFF,
+            Type = ModifierType.CURSE,
             HPCostModifications = new() {
                 new() { Value = 5 } // Increases HP cost by 5
             }
@@ -65,7 +65,7 @@ public class CostCalculationServiceTests
         {
             Id = "MOD_BLOOD_WARD",
             Name = "Thorns",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             TargetingHPCost = 10
         };
 
@@ -267,7 +267,7 @@ public class CostCalculationServiceTests
         {
             Id = "SUPER_DISCOUNT",
             Name = "Free",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             EssenceCostModifications = new() { new() { TargetEssenceType = EssenceType.Vigor, Value = -5 } },
             HPCostModifications = new() { new() { Value = -10 } }
         };

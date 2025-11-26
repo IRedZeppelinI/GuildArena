@@ -45,7 +45,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Buff",
-            Type = ModifierType.BUFF
+            Type = ModifierType.BLESS
         };
 
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
@@ -88,7 +88,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Mana Shield",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             Barrier = new BarrierProperties
             {
                 BaseAmount = 10,

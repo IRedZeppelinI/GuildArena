@@ -27,7 +27,7 @@ public class StatCalculationServiceTests
         {
             Id = "MOD_ATTACK_UP",
             Name = "+10 Ataque",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             StatModifications = new() {
                 new() { Stat = StatType.Attack, Type = ModificationType.FLAT, Value = 10 }
             }
@@ -36,7 +36,7 @@ public class StatCalculationServiceTests
         {
             Id = "MOD_DEFENSE_PERCENT",
             Name = "+20% Defesa",
-            Type = ModifierType.BUFF,
+            Type = ModifierType.BLESS,
             StatModifications = new() {
                 new() { Stat = StatType.Defense, Type = ModificationType.PERCENTAGE, Value = 0.20f }
             }
