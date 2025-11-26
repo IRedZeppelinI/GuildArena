@@ -22,8 +22,7 @@ public class CombatEngine : ICombatEngine
     private readonly ICooldownCalculationService _cooldownCalcService;
     private readonly ICostCalculationService _costCalcService;
     private readonly IEssenceService _essenceService;
-    private readonly ITargetResolutionService _targetService;
-    private readonly IModifierDefinitionRepository _modifierRepo;
+    private readonly ITargetResolutionService _targetService;    
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -41,8 +40,7 @@ public class CombatEngine : ICombatEngine
         _cooldownCalcService = cooldownCalcService;
         _costCalcService = costCalcService;
         _essenceService = essenceService;
-        _targetService = targetService;
-        _modifierRepo = modifierRepo;
+        _targetService = targetService;        
     }
 
     /// <inheritdoc />
@@ -103,12 +101,11 @@ public class CombatEngine : ICombatEngine
     // Helper verificar Invulnerable
     private bool IsCombatantInvulnerable(Combatant target)
     {
-        var defs = _modifierRepo.GetAllDefinitions();
         foreach (var mod in target.ActiveModifiers)
         {
-            if (defs.TryGetValue(mod.DefinitionId, out var def))
+            if (mod.ActiveStatusEffects.Contains(StatusEffectType.Invulnerable))
             {
-                if (def.IsInvulnerable) return true;
+                return true;
             }
         }
         return false;

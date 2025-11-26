@@ -1,4 +1,6 @@
-﻿namespace GuildArena.Domain.ValueObjects;
+﻿using GuildArena.Domain.Enums;
+
+namespace GuildArena.Domain.ValueObjects;
 
 public class ActiveModifier
 {
@@ -13,4 +15,10 @@ public class ActiveModifier
     /// The remaining health of the barrier provided by this modifier.
     /// </summary>
     public float CurrentBarrierValue { get; set; }
+
+
+    /// <summary>
+    /// Snapshot of status effects granted by this modifier.    
+    /// </summary>
+    public List<StatusEffectType> ActiveStatusEffects { get; set; } = new();
 }

@@ -52,16 +52,10 @@ public class ModifierDefinition
 
 
     /// <summary>
-    /// If true, the unit cannot be manually targeted by opponents while this modifier is active 
-    /// (e.g., Stealth, Camouflage). Area effects (AoE) may still hit depending on rule logic.
+    /// The list of status effects granted by this modifier while active.
+    /// Replaces individual booleans like IsStunned, IsInvulnerable.
     /// </summary>
-    public bool IsUntargetable { get; set; }
-
-    /// <summary>
-    /// If true, the unit is immune to ALL negative effects and damage while this modifier is active.
-    /// (e.g., Ice Block, Divine Shield).
-    /// </summary>
-    public bool IsInvulnerable { get; set; }
+    public List<StatusEffectType> GrantedStatusEffects { get; set; } = new();
 
 
     /// <summary>

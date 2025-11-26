@@ -9,16 +9,12 @@ namespace GuildArena.Core.Combat.Services;
 
 public class TargetResolutionService : ITargetResolutionService
 {
-    private readonly ILogger<TargetResolutionService> _logger;
-    private readonly IModifierDefinitionRepository _modifierRepo; // ver se tem IsUntargetable
+    private readonly ILogger<TargetResolutionService> _logger;    
     private readonly Random _random = new();
 
-    public TargetResolutionService(
-        ILogger<TargetResolutionService> logger,
-        IModifierDefinitionRepository modifierRepo)
+    public TargetResolutionService(ILogger<TargetResolutionService> logger)
     {
-        _logger = logger;
-        _modifierRepo = modifierRepo;
+        _logger = logger;        
     }
 
     public List<Combatant> ResolveTargets(
@@ -52,12 +48,12 @@ public class TargetResolutionService : ITargetResolutionService
 
     private bool IsCombatantUntargetable(Combatant target)
     {
-        var defs = _modifierRepo.GetAllDefinitions();
         foreach (var mod in target.ActiveModifiers)
         {
-            if (defs.TryGetValue(mod.DefinitionId, out var def))
+            if (mod.ActiveStatusEffects.Contains(StatusEffectType.Untargetable) ||
+                mod.ActiveStatusEffects.Contains(StatusEffectType.Stealth))
             {
-                if (def.IsUntargetable) return true;
+                return true;
             }
         }
         return false;
