@@ -71,7 +71,7 @@ public class DamageEffectHandler : IEffectHandler
             Target = target,
             GameState = gameState, 
             Value = damageAmount,
-            Tags = new HashSet<string>(def.Tags) { def.DamageType.ToString() }
+            Tags = new HashSet<string>(def.Tags) { def.DamageCategory.ToString() }
         };
 
         // Triggers Genéricos
@@ -96,28 +96,50 @@ public class DamageEffectHandler : IEffectHandler
     }
 
 
+    
     private float CalculateMitigatedDamage(EffectDefinition def, Combatant source, Combatant target)
     {
+        // 1. Cálculo do Ataque (Baseado no Delivery) - Mantém-se IGUAL
         float sourceStatValue = 0;
         switch (def.Delivery)
         {
-            case DeliveryMethod.Melee: sourceStatValue = _statService.GetStatValue(source, StatType.Attack); break;
-            case DeliveryMethod.Ranged: sourceStatValue = _statService.GetStatValue(source, StatType.Agility); break;
-            case DeliveryMethod.Spell: sourceStatValue = _statService.GetStatValue(source, StatType.Magic); break;
-            case DeliveryMethod.Passive: sourceStatValue = 0; break;
+            case DeliveryMethod.Melee: 
+                sourceStatValue = _statService.GetStatValue(source, StatType.Attack); 
+                break;
+            case DeliveryMethod.Ranged: 
+                sourceStatValue = _statService.GetStatValue(source, StatType.Agility);
+                break;
+            case DeliveryMethod.Spell:
+                sourceStatValue = _statService.GetStatValue(source, StatType.Magic);
+                break;
+            case DeliveryMethod.Passive:
+                sourceStatValue = 0;
+                break;
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;
+
+        // 2. Cálculo da Defesa (Baseado na NOVA Category) - ALTERADO
         float targetDefenseValue = 0;
 
-        if (def.Delivery != DeliveryMethod.Passive && def.DamageType != DamageType.True)
-        {            
-            if (def.DamageType == DamageType.Martial)
+        // Se for True Damage ou Passivo (ex: Curses fixas), ignoramos defesa
+        // (Nota: Podes querer que 'Passive' use MagicDefense, depende da tua regra. 
+        //  Aqui assumo que Passive ignora, ou então controlas isso via DamageCategory no JSON)
+
+        if (def.Delivery != DeliveryMethod.Passive && def.DamageCategory != DamageCategory.True)
+        {
+            // A lógica ficou muito mais limpa:
+            if (def.DamageCategory == DamageCategory.Physical)
+            {
                 targetDefenseValue = _statService.GetStatValue(target, StatType.Defense);
-            else
+            }
+            else if (def.DamageCategory == DamageCategory.Magical)
+            {
                 targetDefenseValue = _statService.GetStatValue(target, StatType.MagicDefense);
+            }
         }
 
         return rawDamage - targetDefenseValue;
     }
+    
 }

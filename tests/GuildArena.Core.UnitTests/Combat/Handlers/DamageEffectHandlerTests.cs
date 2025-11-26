@@ -35,12 +35,12 @@ public class DamageEffectHandlerTests
     }
 
     [Theory]
-    [InlineData(DeliveryMethod.Melee, DamageType.Martial, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
-    [InlineData(DeliveryMethod.Ranged, DamageType.Martial, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
-    [InlineData(DeliveryMethod.Spell, DamageType.Mystic, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
-    [InlineData(DeliveryMethod.Passive, DamageType.Primal, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
+    [InlineData(DeliveryMethod.Melee, DamageCategory.Physical, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
+    [InlineData(DeliveryMethod.Ranged, DamageCategory.Physical, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
+    [InlineData(DeliveryMethod.Spell, DamageCategory.Magical, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
+    [InlineData(DeliveryMethod.Passive, DamageCategory.Magical, StatType.Attack, 0f, StatType.MagicDefense, 5f, 5)]
     public void Apply_DamageEffect_ShouldReduceTargetHP_BasedOnDeliveryMethod(
-        DeliveryMethod delivery, DamageType damageType, StatType sourceStat, float sourceStatValue,
+        DeliveryMethod delivery, DamageCategory damageCategory, StatType sourceStat, float sourceStatValue,
         StatType targetStat, float targetStatValue, int expectedDamage)
     {
         // 1. ARRANGE
@@ -48,7 +48,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = delivery,
-            DamageType = damageType,
+            DamageCategory = damageCategory,
             ScalingFactor = 1.0f,
             BaseAmount = (delivery == DeliveryMethod.Passive) ? 5f : 0f,
             TargetRuleId = "T_TestTarget"
@@ -83,7 +83,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.True,
+            DamageCategory = DamageCategory.True,
             ScalingFactor = 1.0f,
             BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
@@ -121,7 +121,7 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget",
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.Martial,
+            DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f
         };
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
@@ -156,7 +156,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageType = DamageType.Martial,
+            DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f,
             TargetRuleId = "T_TestTarget"
         };

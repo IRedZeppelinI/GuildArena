@@ -34,7 +34,7 @@ public class DamageResolutionService : IDamageResolutionService
         var result = new DamageResolutionResult();
 
         var allAttackTags = BuildAggregatedTags(effect);
-        bool isTrueDamage = effect.DamageType == DamageType.True;
+        bool isTrueDamage = effect.DamageCategory == DamageCategory.True;
 
         float modifiedDamage = ApplyModifiers(baseDamage, allAttackTags, source, target, isTrueDamage);
 
@@ -50,7 +50,7 @@ public class DamageResolutionService : IDamageResolutionService
     private HashSet<string> BuildAggregatedTags(EffectDefinition effect)
     {
         var tags = new HashSet<string>(effect.Tags, StringComparer.OrdinalIgnoreCase);
-        tags.Add(effect.DamageType.ToString());
+        tags.Add(effect.DamageCategory.ToString()); //adicionar physical, ou magic, i.e. barrier todas as magic
         return tags;
     }
 

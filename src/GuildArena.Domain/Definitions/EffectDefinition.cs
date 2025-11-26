@@ -5,7 +5,7 @@ namespace GuildArena.Domain.Definitions;
 public class EffectDefinition
 {
     public EffectType Type { get; set; } // Enum: DAMAGE
-    public DamageType DamageType { get; set; }
+    public DamageCategory DamageCategory { get; set; }
     public DeliveryMethod Delivery { get; set; }
     public float BaseAmount { get; set; }
     public StatType ScalingStat { get; set; }
