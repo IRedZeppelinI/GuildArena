@@ -1,0 +1,37 @@
+[
+  {
+    "Id": "MOD_THORNS",
+    "Name": "Spiked Carapace",
+    "Type": "Bless",
+    "Description": "Deals damage based on Defense when hit.",
+    "Tags": [ "Physical", "Defensive" ],
+    "Triggers": [ "ON_RECEIVE_MELEE_ATTACK" ],
+    "TriggeredAbilityId": "INT_THORNS_REFLECT"
+  },
+  {
+    "Id": "MOD_ADRENALINE",
+    "Name": "Adrenaline Rush",
+    "Type": "Bless",
+    "Description": "Reduces cooldowns of Physical skills and Essence Cost.",
+    "CooldownModifications": [
+      {
+        "RequiredTag": "Physical",
+        "Type": "FLAT",
+        "Value": -1
+      }
+    ],
+    "EssenceCostModifications": [
+      {
+        "TargetEssenceType": "Neutral",
+        "Value": -1
+      }
+    ]
+  },
+  {
+    "Id": "MOD_STUN",
+    "Name": "Stunned",
+    "Type": "Curse",
+    "Description": "Cannot act.",
+    "GrantedStatusEffects": [ "Stun" ]
+  }
+]

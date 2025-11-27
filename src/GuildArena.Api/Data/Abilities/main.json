@@ -1,0 +1,75 @@
+[
+  {
+    "Id": "ABIL_SLASH",
+    "Name": "Sword Slash",
+    "Description": "A basic melee attack.",
+    "Tags": [ "Physical", "Melee", "Blade" ],
+    "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "MAIN_TARGET",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Manual"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 10,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "MAIN_TARGET",
+        "Tags": [ "Physical", "Blade" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_FIREBALL",
+    "Name": "Fireball",
+    "Description": "Hurls a ball of fire at an enemy.",
+    "Tags": [ "Fire", "Spell", "Ranged" ],
+    "BaseCooldown": 2,
+    "HPCost": 0,
+    "Costs": [
+      {
+        "Type": "Mind",
+        "Amount": 1
+      },
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "MAIN_TARGET",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Manual"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 20,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.5,
+        "TargetRuleId": "MAIN_TARGET",
+        "Tags": [ "Fire" ]
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_STUN",
+        "DurationInTurns": 1,
+        "TargetRuleId": "MAIN_TARGET"
+      }
+    ]
+  }
+]

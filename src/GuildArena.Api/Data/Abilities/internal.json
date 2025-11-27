@@ -1,0 +1,29 @@
+[
+  {
+    "Id": "INT_THORNS_REFLECT",
+    "Name": "[Internal] Thorns",
+    "Description": "Reactive damage dealt by Thorns armor.",
+    "Tags": [ "Physical", "Reactive" ],
+    "BaseCooldown": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "SRC",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 10,
+        "ScalingStat": "Defense",
+        "ScalingFactor": 0.5,
+        "TargetRuleId": "SRC",
+        "Tags": [ "Thorns" ]
+      }
+    ]
+  }
+]
