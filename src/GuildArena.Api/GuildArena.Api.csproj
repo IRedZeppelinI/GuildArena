@@ -16,8 +16,4 @@
     <ProjectReference Include="..\GuildArena.Infrastructure\GuildArena.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Data\Abilities\" />
-  </ItemGroup>
-
 </Project>
