@@ -44,7 +44,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Bless",
-            Type = ModifierType.BLESS 
+            Type = ModifierType.Bless 
         };
 
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
@@ -87,7 +87,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Ice Block",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             // A definição diz que confere Invulnerabilidade e Untargetable
             GrantedStatusEffects = new List<StatusEffectType>
             {
@@ -130,7 +130,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Mana Shield",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             Barrier = new BarrierProperties
             {
                 BaseAmount = 10,

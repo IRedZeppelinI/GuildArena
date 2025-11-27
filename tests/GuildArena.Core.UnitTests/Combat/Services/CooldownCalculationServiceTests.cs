@@ -33,7 +33,7 @@ public class CooldownCalculationServiceTests
         {
             Id = "MOD_HASTE",
             Name = "-1 CD",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             CooldownModifications = new() {
                 new() { Type = ModificationType.FLAT, Value = -1 } // -1 a todas as habilidades
             }
@@ -43,7 +43,7 @@ public class CooldownCalculationServiceTests
         {
             Id = "MOD_FRENZY",
             Name = "-50% CD",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             CooldownModifications = new() {
                 new() { Type = ModificationType.PERCENTAGE, Value = -0.5f } // -50% a todas as habilidades
             }
@@ -53,7 +53,7 @@ public class CooldownCalculationServiceTests
         {
             Id = "MOD_NATURE_CD",
             Name = "-2 CD Nature",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             CooldownModifications = new() {
                 new() { RequiredTag = "Nature", Type = ModificationType.FLAT, Value = -2 } // -2 só a "Nature"
             }

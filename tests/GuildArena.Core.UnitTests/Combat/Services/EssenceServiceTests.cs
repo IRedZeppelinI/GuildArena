@@ -32,7 +32,7 @@ public class EssenceServiceTests
         {
             Id = "MOD_MANA_SPRING",
             Name = "Mana Spring",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             EssenceGenerationModifications = new() {
                 new() { IsRandom = false, EssenceType = EssenceType.Mind, Amount = 1 }
             }
@@ -43,7 +43,7 @@ public class EssenceServiceTests
         {
             Id = "MOD_DRAIN",
             Name = "Leak",
-            Type = ModifierType.CURSE,
+            Type = ModifierType.Curse,
             EssenceGenerationModifications = new() {
                 new() { IsRandom = true, Amount = -1 }
             }
@@ -54,7 +54,7 @@ public class EssenceServiceTests
         {
             Id = "MOD_CHAOS",
             Name = "Chaos",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             EssenceGenerationModifications = new() {
                 new() { IsRandom = true, Amount = 2 }
             }

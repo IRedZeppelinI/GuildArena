@@ -33,7 +33,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BUFF_FIRE",
             Name = "Fire Up",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             DamageModifications = new() {
                 new() { RequiredTag = "Fire", Type = ModificationType.FLAT, Value = 2 }
             }
@@ -43,7 +43,7 @@ public class DamageResolutionServiceTests
         {
             Id = "RESIST_PHYS",
             Name = "Iron Skin",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             DamageModifications = new() {
                 // Agora usamos a Tag "Physical" que é adicionada automaticamente pelo DamageCategory.Physical
                 // OU podemos manter "Martial" se o efeito tiver essa tag.
@@ -56,7 +56,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_GENERIC",
             Name = "Shield",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             Barrier = new BarrierProperties { BaseAmount = 100, BlockedTags = new() } // Bloqueia tudo
         };
 
@@ -64,7 +64,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_FIRE",
             Name = "Fire Ward",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Fire" } }
         };
 
@@ -236,7 +236,7 @@ public class DamageResolutionServiceTests
         {
             Id = "BARRIER_MAGIC",
             Name = "Anti-Magic Shell",
-            Type = ModifierType.BLESS,
+            Type = ModifierType.Bless,
             Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Magical" } }
         };
 
