@@ -10,7 +10,12 @@ public class AbilityDefinition
     public required string Id { get; set; }
     public required string Name { get; set; }
 
-    
+    /// <summary>
+    /// The cost in Action Points to execute this ability.
+    /// Default is 1. Reactive abilities (Triggers) should be 0.
+    /// </summary>
+    public int ActionPointCost { get; set; } = 1;
+
     /// <summary>
     /// The list of essence costs required to activate this ability.
     /// </summary>

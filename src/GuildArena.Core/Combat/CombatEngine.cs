@@ -27,6 +27,7 @@ public class CombatEngine : ICombatEngine
     private readonly IStatusConditionService _statusService;
     private readonly IHitChanceService _hitChanceService;
     private readonly IRandomProvider _random;
+    private readonly IStatCalculationService _statService;
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -37,7 +38,8 @@ public class CombatEngine : ICombatEngine
         ITargetResolutionService targetService,
         IStatusConditionService statusService,
         IHitChanceService hitChanceService,
-        IRandomProvider random)
+        IRandomProvider random,
+        IStatCalculationService statService)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
@@ -50,6 +52,7 @@ public class CombatEngine : ICombatEngine
         _statusService = statusService;
         _hitChanceService = hitChanceService;
         _random = random;
+        _statService = statService;
     }
 
     /// <inheritdoc />
@@ -69,7 +72,12 @@ public class CombatEngine : ICombatEngine
         }
 
         // VERIFICAR PRÉ-CONDIÇÕES
-        if (!CanExecuteAbility(source, currentState, ability, resolvedTargets, resourceAllocation, out var calculatedCost))
+        if (!CanExecuteAbility(
+            source,
+            currentState,
+            ability,
+            resolvedTargets,
+            resourceAllocation, out var calculatedCost))
         {
             return;
         }
@@ -78,6 +86,14 @@ public class CombatEngine : ICombatEngine
 
         //  PAGAR CUSTOS
         ConsumeAbilityResources(source, currentState, resourceAllocation, calculatedCost);
+
+        //CONSUMIR ACTION POINTS
+        if (ability.ActionPointCost > 0)
+        {
+            source.ActionsTakenThisTurn += ability.ActionPointCost;
+            _logger.LogInformation(
+                "{Source} spent {Cost} Action Point(s).", source.Name, ability.ActionPointCost);
+        }
 
         //  APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
@@ -160,12 +176,31 @@ public class CombatEngine : ICombatEngine
     {
         calculatedCost = null!;
 
+        //validar status effects
         var statusResult = _statusService.CheckStatusConditions(source, ability);
         if (statusResult != ActionStatusResult.Allowed)
         {
             _logger.LogWarning("Combatant {Name} cannot act. Reason: {Reason}", source.Name, statusResult);
             return false;
         }
+
+        // 2. Validar Action Points
+        if (ability.ActionPointCost > 0)
+        {
+            // Ler o Stat "MaxActions" (base + buffs/debuffs)            
+            int maxActions = (int)_statService.GetStatValue(source, StatType.MaxActions);
+
+            // Não há maxActions negativo
+            if (maxActions <= 0) maxActions = 0;
+
+            if (source.ActionsTakenThisTurn + ability.ActionPointCost > maxActions)
+            {
+                _logger.LogWarning("{Source} has no actions left (Used: {Used}, Max: {Max}).",
+                    source.Name, source.ActionsTakenThisTurn, maxActions);
+                return false;
+            }
+        }
+
 
         // Cooldowns
         var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);

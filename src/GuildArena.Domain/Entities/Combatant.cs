@@ -21,8 +21,17 @@ public class Combatant
     // Os stats finais já calculados (Nível + Equipamento) (sem modifiers)
     public required BaseStats BaseStats { get; set; }
 
-    // A "receita" do ataque básico que este combatente usa
+    // Habilidades comuns. GuardAbility e FocusAbility são exclusivas, ou uma ou outra
     public AbilityDefinition? BasicAttack { get; set; }
+    public AbilityDefinition? GuardAbility { get; set; }
+    public AbilityDefinition? FocusAbility { get; set; }
+
+
+    /// <summary>
+    /// Tracks how many Action Points this combatant has consumed in the current turn.
+    /// Must be reset to 0 at the start of the player's turn.
+    /// </summary>
+    public int ActionsTakenThisTurn { get; set; }
 
     public List<ActiveCooldown> ActiveCooldowns { get; set; } = new();
     public List<ActiveModifier> ActiveModifiers { get; set; } = new();

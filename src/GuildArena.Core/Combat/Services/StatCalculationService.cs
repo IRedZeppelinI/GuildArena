@@ -1,5 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Domain.Abstractions.Repositories; // <-- Adicionar
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -9,11 +9,9 @@ using System.Collections.Generic;
 namespace GuildArena.Core.Combat.Services;
 
 public class StatCalculationService : IStatCalculationService
-{
-    // "repo"  BD de JSONs
+{    
     private readonly IReadOnlyDictionary<string, ModifierDefinition> _modifierDefinitions;
-
-    // repositório via DI
+    
     public StatCalculationService(IModifierDefinitionRepository modifierRepository)
     {
         // Obtém o dicionário 1 vez e guarda-o.
@@ -30,16 +28,16 @@ public class StatCalculationService : IStatCalculationService
         float flatBonus = 0;
         float percentBonus = 0;
 
-        // 2. Iterar pelos Modifiers ATIVOS
+        // Iterar pelos Modifiers ATIVOS
         foreach (var activeMod in combatant.ActiveModifiers)
         {
-            // 3. Procurar o "molde" (Definition) no dicionário
+            //  Procurar o Definition no dicionário
             if (!_modifierDefinitions.TryGetValue(activeMod.DefinitionId, out var modDef))
             {
                 continue; // Modificador desconhecido
             }
 
-            // 4. Iterar pelas modificações de stats
+            // Iterar pelas modificações de stats
             foreach (var statMod in modDef.StatModifications)
             {
                 if (statMod.Stat == statType)
@@ -71,6 +69,7 @@ public class StatCalculationService : IStatCalculationService
             StatType.Agility => stats.Agility,
             StatType.Magic => stats.Magic,
             StatType.MagicDefense => stats.MagicDefense,
+            StatType.MaxActions => stats.MaxActions,
             _ => 0f
         };
     }

@@ -86,6 +86,9 @@ public class TurnManagerService : ITurnManagerService
 
         foreach (var combatant in combatantsStartingTurn)
         {
+            //reset ás actions
+            combatant.ActionsTakenThisTurn = 0;
+
             var context = new TriggerContext
             {
                 Source = combatant,

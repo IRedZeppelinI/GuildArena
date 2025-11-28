@@ -6,5 +6,9 @@ public enum StatType
     Defense,
     Agility,
     Magic,
-    MagicDefense
+    MagicDefense,
+    /// <summary>
+    /// Determines the maximum number of Action Points available per turn.
+    /// </summary>
+    MaxActions
 }
