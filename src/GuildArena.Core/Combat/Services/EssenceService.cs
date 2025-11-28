@@ -36,7 +36,7 @@ public class EssenceService : IEssenceService
 
         for (int i = 0; i < baseAmount; i++)
         {
-            ApplyEssenceChange(player, GetRandomEssenceType(), 1);
+            AddEssence(player, GetRandomEssenceType(), 1);
         }
 
         // 2. GERAÇÃO VIA MODIFIERS (Fixa)
@@ -54,7 +54,7 @@ public class EssenceService : IEssenceService
                     {
                         // Buff Aleatório: Ganha qualquer tipo
                         EssenceType type = GetRandomEssenceType();
-                        ApplyEssenceChange(player, type, genRule.Amount);
+                        AddEssence(player, type, genRule.Amount);
                         LogChange(player, type, genRule.Amount, activeMod.DefinitionId, true);
                     }
                     else if (genRule.Amount < 0)
@@ -63,7 +63,7 @@ public class EssenceService : IEssenceService
                         // Se não tiver essence nenhuma, não acontece nada.
                         if (TryGetExistingRandomEssence(player, out EssenceType typeToRemove))
                         {
-                            ApplyEssenceChange(player, typeToRemove, genRule.Amount);
+                            AddEssence(player, typeToRemove, genRule.Amount);
                             LogChange(player, typeToRemove, genRule.Amount, activeMod.DefinitionId, true);
                         }
                     }
@@ -72,7 +72,7 @@ public class EssenceService : IEssenceService
                 else
                 {
                     // Buff ou Debuff específico (ex: +1 Vigor ou -1 Vigor)
-                    ApplyEssenceChange(player, genRule.EssenceType, genRule.Amount);
+                    AddEssence(player, genRule.EssenceType, genRule.Amount);
                     LogChange(player, genRule.EssenceType, genRule.Amount, activeMod.DefinitionId, false);
                 }
             }
@@ -139,9 +139,12 @@ public class EssenceService : IEssenceService
         }
     }
 
-    //  Helpers 
 
-    private void ApplyEssenceChange(CombatPlayer player, EssenceType type, int amount)
+    
+
+
+
+    public void AddEssence(CombatPlayer player, EssenceType type, int amount)
     {
         // Se for adicionar (Buff), verifica Cap
         if (amount > 0)
@@ -162,6 +165,9 @@ public class EssenceService : IEssenceService
             player.EssencePool[type] = 0;
     }
 
+
+
+    //  Helpers 
     // --- Helper para encontrar essence existente (para debuffs random) ---
     private bool TryGetExistingRandomEssence(CombatPlayer player, out EssenceType type)
     {

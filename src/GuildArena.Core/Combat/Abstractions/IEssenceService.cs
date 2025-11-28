@@ -33,4 +33,14 @@ public interface IEssenceService
     /// <param name="player">The player paying.</param>
     /// <param name="payment">A dictionary mapping EssenceType to the Amount to consume.</param>
     void ConsumeEssence(CombatPlayer player, Dictionary<EssenceType, int> payment);
+
+
+    /// <summary>
+    /// Adds (or removes if negative) a specific amount of essence to the player's pool, respecting the cap.
+    /// Used for abilities like Channeling or essence generation.
+    /// </summary>
+    /// <param name="player">The player to affect.</param>
+    /// <param name="type">The type of essence.</param>
+    /// <param name="amount">The amount to add.</param>
+    void AddEssence(CombatPlayer player, EssenceType type, int amount);
 }

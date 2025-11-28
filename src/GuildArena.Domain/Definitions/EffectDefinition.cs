@@ -1,4 +1,5 @@
 ﻿using GuildArena.Domain.Enums;
+using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Domain.Definitions;
 
@@ -24,4 +25,11 @@ public class EffectDefinition
     /// Default is true.
     /// </summary>
     public bool CanBeEvaded { get; set; } = true;
+
+
+    /// <summary>
+    /// Defines the type and amount of essence to generate.
+    /// Used only when EffectType is GENERATE_RESOURCE.
+    /// </summary>
+    public List<EssenceAmount> GeneratedEssences { get; set; } = new();
 }

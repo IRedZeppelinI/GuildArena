@@ -14,25 +14,25 @@ public static class DependencyInjection
     /// </summary>
     public static IServiceCollection AddCoreServices(this IServiceCollection services)
     {
-        // Regista o Orquestrador Principal
+        
         services.AddScoped<ICombatEngine, CombatEngine>();
 
-        // Regista os Serviços Auxiliares
+        // Serviços 
         services.AddScoped<IStatCalculationService, StatCalculationService>();
-        //services.AddScoped<IDamageModificationService, DamageModificationService>();
         services.AddScoped<IDamageResolutionService, DamageResolutionService>();
         services.AddScoped<ICooldownCalculationService, CooldownCalculationService>();
-
         services.AddScoped<ITurnManagerService, TurnManagerService>();
         services.AddScoped<IEssenceService, EssenceService>();
         services.AddScoped<ICostCalculationService, CostCalculationService>();
         services.AddScoped<ITargetResolutionService, TargetResolutionService>();
         services.AddScoped<ITriggerProcessor, TriggerProcessor>();
         services.AddScoped<IStatusConditionService, StatusConditionService>();
+        services.AddScoped<IRandomProvider, SystemRandomProvider>();
 
-        // Registar todos os Handlers de Efeito        
+        //  Handlers     
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
         services.AddScoped<IEffectHandler, ApplyModifierHandler>();
+        services.AddScoped<IEffectHandler, GenerateResourceHandler>();
         // services.AddScoped<IEffectHandler, HealEffectHandler>();         
 
         return services;

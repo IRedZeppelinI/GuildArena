@@ -252,7 +252,7 @@ public class CombatEngine : ICombatEngine
     /// Verifies if the provided payment dictionary covers all costs in the invoice, 
     /// including neutral costs.
     /// </summary>
-    private bool ValidateAllocationAgainstCost(Dictionary<EssenceType, int> payment, List<EssenceCost> requiredCost)
+    private bool ValidateAllocationAgainstCost(Dictionary<EssenceType, int> payment, List<EssenceAmount> requiredCost)
     {
         // Clonar pool para simular consumo
         var allocationPool = new Dictionary<EssenceType, int>(payment);
