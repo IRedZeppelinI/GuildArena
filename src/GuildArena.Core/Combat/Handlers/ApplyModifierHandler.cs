@@ -75,7 +75,7 @@ public class ApplyModifierHandler : IEffectHandler
                 TurnsRemaining = def.DurationInTurns,
                 CasterId = source.Id,
                 CurrentBarrierValue = initialBarrierValue,
-                ActiveStatusEffects = modDef.GrantedStatusEffects 
+                ActiveStatusEffects = modDef.GrantedStatusEffects.ToList()
             };
 
             target.ActiveModifiers.Add(newActiveModifier);

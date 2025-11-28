@@ -235,4 +235,28 @@ public class TurnManagerServiceTests
                 ctx.Tags.Contains("TurnStart")
             ));
     }
+
+    [Fact]
+    public void AdvanceTurn_ShouldResetActionPoints_ForStartingPlayer()
+    {
+        // ARRANGE
+        // Cenário: O Jogador 0 (AI) vai começar o turno.
+        // O seu combatente gastou ações no turno anterior 
+        var startingCombatant = _gameState.Combatants.First(c => c.OwnerId == 0);
+        startingCombatant.ActionsTakenThisTurn = 5; // Simular uso prévio
+
+        // O Jogador 1 (que vai acabar) também tem ações gastas (não devem mudar para 0 ainda, tecnicamente)
+        var endingCombatant = _gameState.Combatants.First(c => c.OwnerId == 1);
+        endingCombatant.ActionsTakenThisTurn = 2;
+
+        // ACT
+        _service.AdvanceTurn(_gameState);
+
+        // ASSERT
+        // Quem começa o turno (P0) deve ter as ações a zero para poder jogar
+        startingCombatant.ActionsTakenThisTurn.ShouldBe(0);
+
+        // Quem acabou o turno (P1) fica como estava (ou podia ir a zero, mas a lógica crítica é o reset de quem começa)        
+        endingCombatant.ActionsTakenThisTurn.ShouldBe(2);
+    }
 }
