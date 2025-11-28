@@ -25,6 +25,8 @@ public class CombatEngine : ICombatEngine
     private readonly IEssenceService _essenceService;
     private readonly ITargetResolutionService _targetService;
     private readonly IStatusConditionService _statusService;
+    private readonly IHitChanceService _hitChanceService;
+    private readonly IRandomProvider _random;
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -33,7 +35,9 @@ public class CombatEngine : ICombatEngine
         ICostCalculationService costCalcService, 
         IEssenceService essenceService,
         ITargetResolutionService targetService,
-        IStatusConditionService statusService)
+        IStatusConditionService statusService,
+        IHitChanceService hitChanceService,
+        IRandomProvider random)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
@@ -44,6 +48,8 @@ public class CombatEngine : ICombatEngine
         _essenceService = essenceService;
         _targetService = targetService;
         _statusService = statusService;
+        _hitChanceService = hitChanceService;
+        _random = random;
     }
 
     /// <inheritdoc />
@@ -76,6 +82,9 @@ public class CombatEngine : ICombatEngine
         //  APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
 
+        // Guarda resultado evasion para habilidades com multiEffect (falha o hit não há nenhum dos efeito)
+        var evasionCache = new Dictionary<int, bool>();
+
         // RESOLVER EFEITOS
         foreach (var effect in ability.Effects)
         {
@@ -92,8 +101,30 @@ public class CombatEngine : ICombatEngine
                 //  VERIFICAÇÃO IMUNIDADE
                 if (IsCombatantInvulnerable(target))
                 {
-                    _logger.LogInformation("{Target} is invulnerable. Effect {Effect} ignored.", target.Name, effect.Type);
+                    _logger.LogInformation("{Target} is invulnerable. Effect {Effect} ignored.",
+                        target.Name, effect.Type);
                     continue; // O efeito naõ resolve e não acontece nada
+                }
+
+                //Verificar evasion
+                if (effect.CanBeEvaded)
+                {
+                    if (!evasionCache.TryGetValue(target.Id, out bool hitSuccess))
+                    { // bloco so corre se o cache com resultados de evasion estiver vazio, senao usa esse valor
+                        float chance = _hitChanceService.CalculateHitChance(source, target, effect);
+                        double roll = _random.NextDouble();
+
+                        hitSuccess = roll < chance; // Sucesso se roll for menor que a chance
+                        evasionCache[target.Id] = hitSuccess; // Guardar resultado
+
+                        if (!hitSuccess)
+                        {
+                            _logger.LogInformation("{Source} MISSED {Target}! (Chance: {Chance:P0})", source.Name, target.Name, chance);
+                        }
+                    }
+
+                    // Se falhou a primeira vez, falhha para todos os efeitos da habilidade
+                    if (!hitSuccess) continue;
                 }
 
                 handler.Apply(effect, source, target, currentState);
