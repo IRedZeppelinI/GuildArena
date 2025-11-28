@@ -14,7 +14,7 @@ public class AbilityDefinition
     /// <summary>
     /// The list of essence costs required to activate this ability.
     /// </summary>
-    public List<EssenceCost> Costs { get; set; } = new();
+    public List<EssenceAmount> Costs { get; set; } = new();
     public int HPCost { get; set; }
     public int BaseCooldown { get; set; }
     public List<TargetingRule> TargetingRules { get; set; } = new();

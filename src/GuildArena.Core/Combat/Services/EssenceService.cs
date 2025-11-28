@@ -79,7 +79,7 @@ public class EssenceService : IEssenceService
         }
     }
 
-    public bool HasEnoughEssence(CombatPlayer player, List<EssenceCost> costs)
+    public bool HasEnoughEssence(CombatPlayer player, List<EssenceAmount> costs)
     {
         // Clona o pool do jogador para simular o gasto sem alterar o original
         var tempPool = new Dictionary<EssenceType, int>(player.EssencePool);

@@ -33,7 +33,7 @@ public class CostCalculationService : ICostCalculationService
         
         // Copiar custos base da habilidade para não alterar obj original da cache        
         var finalEssenceCosts = ability.Costs
-            .Select(c => new EssenceCost { Type = c.Type, Amount = c.Amount })
+            .Select(c => new EssenceAmount { Type = c.Type, Amount = c.Amount })
             .ToList();
 
         int finalHPCost = ability.HPCost;
@@ -102,7 +102,7 @@ public class CostCalculationService : ICostCalculationService
 
     //  Helpers 
 
-    private void ApplyEssenceModification(List<EssenceCost> costs, CostModification mod)
+    private void ApplyEssenceModification(List<EssenceAmount> costs, CostModification mod)
     {
         // Se TargetEssenceType for null, assumimos que reduz o custo Neutral primeiro
         var targetType = mod.TargetEssenceType ?? EssenceType.Neutral;
@@ -115,11 +115,11 @@ public class CostCalculationService : ICostCalculationService
         }
         else if (mod.Value > 0) // Só adiciona se for debuff (aumento de custo)
         {
-            costs.Add(new EssenceCost { Type = targetType, Amount = mod.Value });
+            costs.Add(new EssenceAmount { Type = targetType, Amount = mod.Value });
         }
     }
 
-    private void AddEssenceCost(List<EssenceCost> costs, EssenceCost extraCost)
+    private void AddEssenceCost(List<EssenceAmount> costs, EssenceAmount extraCost)
     {
         var existing = costs.FirstOrDefault(c => c.Type == extraCost.Type);
         if (existing != null)
@@ -128,7 +128,7 @@ public class CostCalculationService : ICostCalculationService
         }
         else
         {
-            costs.Add(new EssenceCost { Type = extraCost.Type, Amount = extraCost.Amount });
+            costs.Add(new EssenceAmount { Type = extraCost.Type, Amount = extraCost.Amount });
         }
     }
 }

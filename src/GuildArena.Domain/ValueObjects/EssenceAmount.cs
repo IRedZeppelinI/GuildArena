@@ -5,7 +5,7 @@ namespace GuildArena.Domain.ValueObjects;
 /// <summary>
 /// Represents a specific amount of a certain essence type required as a cost.
 /// </summary>
-public class EssenceCost
+public class EssenceAmount
 {
     /// <summary>
     /// The type of essence required.

@@ -11,7 +11,7 @@ public class FinalAbilityCosts
     /// <summary>
     /// The list of essence required, consolidated by type.
     /// </summary>
-    public List<EssenceCost> EssenceCosts { get; set; } = new();
+    public List<EssenceAmount> EssenceCosts { get; set; } = new();
 
     /// <summary>
     /// The total HP cost required (sacrificial cost + blood wards).

@@ -41,7 +41,7 @@ public class ModifierDefinition
     /// Additional costs that an opponent must pay to target the unit 
     /// possessing this modifier (Ward mechanic).
     /// </summary>
-    public List<EssenceCost> TargetingEssenceCosts { get; set; } = new();
+    public List<EssenceAmount> TargetingEssenceCosts { get; set; } = new();
 
 
     /// <summary>

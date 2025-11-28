@@ -24,7 +24,7 @@ public interface IEssenceService
     /// <param name="player">The player attempting to pay.</param>
     /// <param name="costs">The calculated invoice (from CostCalculationService).</param>
     /// <returns>True if the player can afford the cost.</returns>
-    bool HasEnoughEssence(CombatPlayer player, List<EssenceCost> costs);
+    bool HasEnoughEssence(CombatPlayer player, List<EssenceAmount> costs);
 
 
     /// <summary>

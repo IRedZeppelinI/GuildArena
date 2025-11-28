@@ -170,7 +170,7 @@ public class CombatEngineTests
 
         _essenceMock.HasEnoughEssence(
             Arg.Any<CombatPlayer>(),
-            Arg.Any<List<EssenceCost>>())
+            Arg.Any<List<EssenceAmount>>())
             .Returns(true);
 
         _targetServiceMock.ResolveTargets(

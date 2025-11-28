@@ -160,7 +160,7 @@ public class EssenceServiceTests
         var player = new CombatPlayer { PlayerId = 1 };
         player.EssencePool.Add(EssenceType.Vigor, 2);
 
-        var costs = new List<EssenceCost> { new() { Type = EssenceType.Vigor, Amount = 2 } };
+        var costs = new List<EssenceAmount> { new() { Type = EssenceType.Vigor, Amount = 2 } };
 
         // Act & Assert
         _service.HasEnoughEssence(player, costs).ShouldBeTrue();
@@ -173,7 +173,7 @@ public class EssenceServiceTests
         var player = new CombatPlayer { PlayerId = 1 };
         player.EssencePool.Add(EssenceType.Vigor, 5); // Tem muito dinheiro, mas cor errada
 
-        var costs = new List<EssenceCost> { new() { Type = EssenceType.Mind, Amount = 1 } };
+        var costs = new List<EssenceAmount> { new() { Type = EssenceType.Mind, Amount = 1 } };
 
         // Act & Assert
         _service.HasEnoughEssence(player, costs).ShouldBeFalse();
@@ -188,7 +188,7 @@ public class EssenceServiceTests
         player.EssencePool.Add(EssenceType.Mind, 1);
 
         // Custo: 2 Neutral
-        var costs = new List<EssenceCost> { new() { Type = EssenceType.Neutral, Amount = 2 } };
+        var costs = new List<EssenceAmount> { new() { Type = EssenceType.Neutral, Amount = 2 } };
 
         // Act & Assert
         _service.HasEnoughEssence(player, costs).ShouldBeTrue();
@@ -203,7 +203,7 @@ public class EssenceServiceTests
         player.EssencePool.Add(EssenceType.Mind, 3);  // Sobra 3 para pagar o Neutral
 
         // Custo: 2 Vigor + 3 Neutral
-        var costs = new List<EssenceCost>
+        var costs = new List<EssenceAmount>
         {
             new() { Type = EssenceType.Vigor, Amount = 2 },
             new() { Type = EssenceType.Neutral, Amount = 3 }
@@ -222,7 +222,7 @@ public class EssenceServiceTests
         player.EssencePool.Add(EssenceType.Mind, 1);  // Só tem 1 de sobra
 
         // Custo: 2 Vigor + 3 Neutral (Precisa de 3 de sobra, só tem 1)
-        var costs = new List<EssenceCost>
+        var costs = new List<EssenceAmount>
         {
             new() { Type = EssenceType.Vigor, Amount = 2 },
             new() { Type = EssenceType.Neutral, Amount = 3 }
