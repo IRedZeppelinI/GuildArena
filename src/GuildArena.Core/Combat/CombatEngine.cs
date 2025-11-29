@@ -28,6 +28,7 @@ public class CombatEngine : ICombatEngine
     private readonly IHitChanceService _hitChanceService;
     private readonly IRandomProvider _random;
     private readonly IStatCalculationService _statService;
+    private readonly ITriggerProcessor _triggerProcessor;
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -39,7 +40,8 @@ public class CombatEngine : ICombatEngine
         IStatusConditionService statusService,
         IHitChanceService hitChanceService,
         IRandomProvider random,
-        IStatCalculationService statService)
+        IStatCalculationService statService,
+        ITriggerProcessor triggerProcessor)
     {
         // O construtor (via DI) recebe *todos* os handlers e organiza-os
         // num dicionário para acesso instantâneo.
@@ -53,6 +55,7 @@ public class CombatEngine : ICombatEngine
         _hitChanceService = hitChanceService;
         _random = random;
         _statService = statService;
+        _triggerProcessor = triggerProcessor;
     }
 
     /// <inheritdoc />
@@ -94,6 +97,19 @@ public class CombatEngine : ICombatEngine
             _logger.LogInformation(
                 "{Source} spent {Cost} Action Point(s).", source.Name, ability.ActionPointCost);
         }
+
+
+        //  TRIGGER ON_ABILITY_CAST 
+        var castContext = new TriggerContext
+        {
+            Source = source,
+            Target = null, // Cast é uma ação do Source, não tem alvo específico neste contexto
+            GameState = currentState,
+            Tags = new HashSet<string>(ability.Tags, StringComparer.OrdinalIgnoreCase)
+        };
+
+        _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_ABILITY_CAST, castContext);
+
 
         //  APLICAR COOLDOWN
         ApplyAbilityCooldown(source, ability);
