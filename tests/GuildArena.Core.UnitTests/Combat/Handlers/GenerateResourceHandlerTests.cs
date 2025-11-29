@@ -13,15 +13,15 @@ namespace GuildArena.Core.UnitTests.Combat.Handlers;
 public class GenerateResourceHandlerTests
 {
     private readonly IEssenceService _essenceServiceMock;
-    private readonly ILogger<GenerateResourceHandler> _loggerMock;
-    private readonly GenerateResourceHandler _handler;
+    private readonly ILogger<ManipulateEssenceHandler> _loggerMock;
+    private readonly ManipulateEssenceHandler _handler;
     private readonly GameState _gameState;
 
     public GenerateResourceHandlerTests()
     {
         _essenceServiceMock = Substitute.For<IEssenceService>();
-        _loggerMock = Substitute.For<ILogger<GenerateResourceHandler>>();
-        _handler = new GenerateResourceHandler(_essenceServiceMock, _loggerMock);
+        _loggerMock = Substitute.For<ILogger<ManipulateEssenceHandler>>();
+        _handler = new ManipulateEssenceHandler(_essenceServiceMock, _loggerMock);
 
         // Setup básico do GameState com 2 jogadores
         var p1 = new CombatPlayer { PlayerId = 1 };
@@ -36,9 +36,9 @@ public class GenerateResourceHandlerTests
         // Cenário: Channeling (Self-Cast). O Source e o Target são o mesmo.
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Self", // Required prop
-            GeneratedEssences = new List<EssenceAmount>
+            EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Mind, Amount = 1 }
             }
@@ -65,9 +65,9 @@ public class GenerateResourceHandlerTests
         // Cenário: Transferir Mana. Caster (P1) dá mana ao Aliado (P1).
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Ally", // Required prop
-            GeneratedEssences = new List<EssenceAmount>
+            EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Vigor, Amount = 2 }
             }
@@ -95,9 +95,9 @@ public class GenerateResourceHandlerTests
         // Cenário: Uma habilidade que dá mana ao INIMIGO (trade-off).
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Enemy", // Required prop
-            GeneratedEssences = new List<EssenceAmount>
+            EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Shadow, Amount = 1 }
             }
@@ -125,9 +125,9 @@ public class GenerateResourceHandlerTests
         // Cenário: Psylian Channeling (Gera 1 Mind + 1 Neutral)
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Self", // Required prop
-            GeneratedEssences = new List<EssenceAmount>
+            EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Mind, Amount = 1 },
                 new EssenceAmount { Type = EssenceType.Neutral, Amount = 1 }
@@ -150,9 +150,9 @@ public class GenerateResourceHandlerTests
         // ARRANGE
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Self", // Required prop
-            GeneratedEssences = new List<EssenceAmount>() // Lista vazia
+            EssenceManipulations = new List<EssenceAmount>() // Lista vazia
         };
         var caster = new Combatant { Id = 1, OwnerId = 1, Name = "Caster", BaseStats = new() };
 
@@ -178,9 +178,9 @@ public class GenerateResourceHandlerTests
         // Cenário: Usar skill num Mob Neutro (OwnerId = 0 ou -1) que não está na lista de Players
         var effect = new EffectDefinition
         {
-            Type = EffectType.GENERATE_RESOURCE,
+            Type = EffectType.MANIPULATE_ESSENCE,
             TargetRuleId = "T_Mob", // Required prop
-            GeneratedEssences = new List<EssenceAmount> { new EssenceAmount { Amount = 1 } }
+            EssenceManipulations = new List<EssenceAmount> { new EssenceAmount { Amount = 1 } }
         };
 
         var caster = new Combatant { Id = 1, OwnerId = 1, Name = "Caster", BaseStats = new() };

@@ -32,7 +32,7 @@ public static class DependencyInjection
         //  Handlers     
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
         services.AddScoped<IEffectHandler, ApplyModifierHandler>();
-        services.AddScoped<IEffectHandler, GenerateResourceHandler>();
+        services.AddScoped<IEffectHandler, ManipulateEssenceHandler>();
         // services.AddScoped<IEffectHandler, HealEffectHandler>();         
 
         return services;

@@ -28,8 +28,8 @@ public class EffectDefinition
 
 
     /// <summary>
-    /// Defines the type and amount of essence to generate.
-    /// Used only when EffectType is GENERATE_RESOURCE.
+    /// Defines the list of essence manipulations to execute immediately (Add/Remove).
+    /// Used only when EffectType is MANIPULATE_ESSENCE.
     /// </summary>
-    public List<EssenceAmount> GeneratedEssences { get; set; } = new();
+    public List<EssenceAmount> EssenceManipulations { get; set; } = new();
 }

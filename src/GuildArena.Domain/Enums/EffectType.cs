@@ -5,5 +5,5 @@ public enum EffectType
     DAMAGE,
     HEAL,
     APPLY_MODIFIER,
-    GENERATE_RESOURCE
+    MANIPULATE_ESSENCE
 }

@@ -36,11 +36,18 @@ public interface IEssenceService
 
 
     /// <summary>
-    /// Adds (or removes if negative) a specific amount of essence to the player's pool, respecting the cap.
-    /// Used for abilities like Channeling or essence generation.
+    /// Directly modifies the essence pool of the specified player.
+    /// <para>
+    /// If <paramref name="amount"/> is positive, essence is added up to the player's cap.
+    /// If <paramref name="amount"/> is negative, essence is removed (clamped to zero).
+    /// </para>
+    /// <para>
+    /// If <paramref name="type"/> is <see cref="EssenceType.Random"/>, the service automatically 
+    /// selects a random type to add (generated) or remove (from existing pool).
+    /// </para>
     /// </summary>
-    /// <param name="player">The player to affect.</param>
-    /// <param name="type">The type of essence.</param>
-    /// <param name="amount">The amount to add.</param>
+    /// <param name="player">The player whose pool will be modified.</param>
+    /// <param name="type">The specific type of essence, or <see cref="EssenceType.Random"/>.</param>
+    /// <param name="amount">The quantity to add (positive) or remove (negative).</param>
     void AddEssence(CombatPlayer player, EssenceType type, int amount);
 }
