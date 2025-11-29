@@ -10,5 +10,6 @@ public enum EssenceType
     Light,   // Amarelo Dourado (Divine)
     Shadow,  // Roxo Profundo (Void)
     Flux,    // Cobre/Ambar (Primal)
-    Neutral  // Cinzento (Incolor/Genérico)
+    Neutral,  // Cinzento (Incolor/Genérico)
+    Random
 }

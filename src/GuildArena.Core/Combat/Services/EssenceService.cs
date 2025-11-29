@@ -24,89 +24,116 @@ public class EssenceService : IEssenceService
         _logger = logger;
     }
 
+
+
+
+    /// <inheritdoc />
+    public void AddEssence(CombatPlayer player, EssenceType type, int amount)
+    {
+        // 1. RESOLVER RANDOM 
+        if (type == EssenceType.Random)
+        {
+            if (amount > 0)
+            {
+                // Ganhar: Escolhe uma cor qualquer
+                type = GetRandomEssenceType();
+            }
+            else if (amount < 0)
+            {
+                // Perder: Só pode perder o que TEM
+                if (TryGetExistingRandomEssence(player, out var existingType))
+                {
+                    type = existingType;
+                }
+                else
+                {
+                    _logger.LogInformation("Player {Id} has no essence to remove (Random selection).", player.PlayerId);
+                    return; // Não tem nada para tirar
+                }
+            }
+            // Se amount for 0, ignora
+        }
+
+        // 2. ADICIONAR / REMOVER
+        // Se for adicionar (Buff), verifica Cap
+        if (amount > 0)
+        {
+            int currentTotal = player.EssencePool.Values.Sum();
+            if (currentTotal >= player.MaxTotalEssence)
+            {
+                // Cap atingido
+                return;
+            }
+
+            int spaceLeft = player.MaxTotalEssence - currentTotal;
+            if (amount > spaceLeft) amount = spaceLeft;
+        }
+
+        if (!player.EssencePool.ContainsKey(type))
+        {
+            player.EssencePool[type] = 0;
+        }
+
+        player.EssencePool[type] += amount;
+
+        // Clamp a zero (para não ter essence negativa)
+        if (player.EssencePool[type] < 0)
+            player.EssencePool[type] = 0;
+
+        if (amount != 0)
+        {
+            _logger.LogDebug("Player {Id} essence change: {Amount} {Type}. New Total: {Total}",
+                player.PlayerId, amount, type, player.EssencePool[type]);
+        }
+    }
+
+
+
     /// <summary>
     /// Generates the start-of-turn essence (Base + Modifiers) and applies it to the player's pool.
     /// </summary>
+
     public void GenerateStartOfTurnEssence(CombatPlayer player, int turnNumber)
     {
-        var allDefinitions = _modifierRepository.GetAllDefinitions();
-
-        // 1. GERAÇÃO BASE (Aleatória) - Primerio turno 2 essence, restantes turnos 4
+        // 1. GERAÇÃO BASE
         int baseAmount = (turnNumber == 1) ? 2 : 4;
 
         for (int i = 0; i < baseAmount; i++)
-        {
-            AddEssence(player, GetRandomEssenceType(), 1);
+        {            
+            AddEssence(player, EssenceType.Random, 1);
         }
 
-        // 2. GERAÇÃO VIA MODIFIERS (Fixa)
+        // 2. GERAÇÃO VIA MODIFIERS
+        var allDefinitions = _modifierRepository.GetAllDefinitions();
         foreach (var activeMod in player.ActiveModifiers)
         {
-            if (!allDefinitions.TryGetValue(activeMod.DefinitionId, out var modDef))
-                continue;
+            if (!allDefinitions.TryGetValue(activeMod.DefinitionId, out var modDef)) continue;
 
             foreach (var genRule in modDef.EssenceGenerationModifications)
-            {
-                // CASO A: Aleatório (Random)
-                if (genRule.IsRandom)
-                {
-                    if (genRule.Amount > 0)
-                    {
-                        // Buff Aleatório: Ganha qualquer tipo
-                        EssenceType type = GetRandomEssenceType();
-                        AddEssence(player, type, genRule.Amount);
-                        LogChange(player, type, genRule.Amount, activeMod.DefinitionId, true);
-                    }
-                    else if (genRule.Amount < 0)
-                    {
-                        // Debuff Aleatório: Remove algo QUE EXISTA
-                        // Se não tiver essence nenhuma, não acontece nada.
-                        if (TryGetExistingRandomEssence(player, out EssenceType typeToRemove))
-                        {
-                            AddEssence(player, typeToRemove, genRule.Amount);
-                            LogChange(player, typeToRemove, genRule.Amount, activeMod.DefinitionId, true);
-                        }
-                    }
-                }
-                // CASO B: Fixo (Specific Type)
-                else
-                {
-                    // Buff ou Debuff específico (ex: +1 Vigor ou -1 Vigor)
-                    AddEssence(player, genRule.EssenceType, genRule.Amount);
-                    LogChange(player, genRule.EssenceType, genRule.Amount, activeMod.DefinitionId, false);
-                }
+            {                
+                var typeToGen = genRule.IsRandom ? EssenceType.Random : genRule.EssenceType;
+
+                AddEssence(player, typeToGen, genRule.Amount);                
             }
         }
     }
 
     public bool HasEnoughEssence(CombatPlayer player, List<EssenceAmount> costs)
     {
-        // Clona o pool do jogador para simular o gasto sem alterar o original
         var tempPool = new Dictionary<EssenceType, int>(player.EssencePool);
 
-        // 1. Pagar custos Específicos (Coloridos)
         foreach (var cost in costs.Where(c => c.Type != EssenceType.Neutral))
         {
             if (!tempPool.TryGetValue(cost.Type, out int available) || available < cost.Amount)
-            {
-                return false; // Não tem cor suficiente
-            }
+                return false;
             tempPool[cost.Type] -= cost.Amount;
         }
 
-        // 2. Pagar custos Neutros (com o que sobrou)
-        int neutralNeeded = costs
-            .Where(c => c.Type == EssenceType.Neutral)
-            .Sum(c => c.Amount);
-
+        int neutralNeeded = costs.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
         if (neutralNeeded > 0)
         {
-            // Soma tudo o que sobrou no pool
             int totalAvailable = tempPool.Values.Sum();
-            if (totalAvailable < neutralNeeded)
-            {
-                return false; // Não tem quantidade total suficiente
-            }
+            if (totalAvailable < neutralNeeded) return false;
         }
 
         return true;
@@ -119,59 +146,25 @@ public class EssenceService : IEssenceService
     {
         foreach (var kvp in payment)
         {
-            var typeToConsume = kvp.Key;
-            var amountToConsume = kvp.Value;
-
-            if (player.EssencePool.TryGetValue(typeToConsume, out int currentAmount))
+            if (player.EssencePool.TryGetValue(kvp.Key, out int current))
             {
-                // Deduz e garante que não vai abaixo de zero 
-                player.EssencePool[typeToConsume] = Math.Max(0, currentAmount - amountToConsume);
-
-                _logger.LogInformation("Player {Id} consume {Amount} {Type} essence.",
-                    player.PlayerId, amountToConsume, typeToConsume);
-            }
-            else
-            {
-                // HasEnoughEssence e validação  UI não podem permiytir
-                _logger.LogWarning("Player {Id} tried to consume {Amount} {Type} but has none in pool.",
-                    player.PlayerId, amountToConsume, typeToConsume);
+                player.EssencePool[kvp.Key] = Math.Max(0, current - kvp.Value);
             }
         }
     }
+
+
+
+
 
 
     
 
 
 
-    public void AddEssence(CombatPlayer player, EssenceType type, int amount)
-    {
-        // Se for adicionar (Buff), verifica Cap
-        if (amount > 0)
-        {
-            int currentTotal = player.EssencePool.Values.Sum();
-            if (currentTotal >= player.MaxTotalEssence) return;
-        }
-
-        if (!player.EssencePool.ContainsKey(type))
-        {
-            player.EssencePool[type] = 0;
-        }
-
-        player.EssencePool[type] += amount;
-
-        // Clamp a zero (para Debuffs não criarem essence negativa)
-        if (player.EssencePool[type] < 0)
-            player.EssencePool[type] = 0;
-    }
-
-
-
-    //  Helpers 
-    // --- Helper para encontrar essence existente (para debuffs random) ---
+    //  Helpers     
     private bool TryGetExistingRandomEssence(CombatPlayer player, out EssenceType type)
     {
-        // Lista apenas os tipos que o jogador REALMENTE tem (> 0)
         var availableTypes = player.EssencePool
             .Where(kvp => kvp.Value > 0)
             .Select(kvp => kvp.Key)
@@ -180,11 +173,9 @@ public class EssenceService : IEssenceService
         if (availableTypes.Count == 0)
         {
             type = default;
-            return false; // Jogador já sem essence
+            return false;
         }
-
-        int index = _random.Next(availableTypes.Count);
-        type = availableTypes[index];
+        type = availableTypes[_random.Next(availableTypes.Count)];
         return true;
     }
 
@@ -198,14 +189,5 @@ public class EssenceService : IEssenceService
         return validTypes[_random.Next(validTypes.Length)];
     }
 
-    private void LogChange(CombatPlayer p, EssenceType t, int amount, string modId, bool isRandom)
-    {
-        _logger.LogDebug("Player {Id} {Action} {Amount} {Type} (Rule: {Rule}) from {Mod}",
-            p.PlayerId,
-            amount > 0 ? "gained" : "lost",
-            Math.Abs(amount),
-            t,
-            isRandom ? "Random" : "Fixed",
-            modId);
-    }
+
 }
