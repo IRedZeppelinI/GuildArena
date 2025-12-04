@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using GuildArena.Domain.Definitions;
 
-namespace GuildArena.Domain.Abstractions.Repositories
+namespace GuildArena.Domain.Abstractions.Repositories;
+
+public interface IRaceDefinitionRepository
 {
-    internal class IRaceDefinitionRepository
-    {
-    }
+    bool TryGetDefinition(string raceId, out RaceDefinition definition);
+    IReadOnlyDictionary<string, RaceDefinition> GetAllDefinitions();
 }

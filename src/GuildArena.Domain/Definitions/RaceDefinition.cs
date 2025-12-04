@@ -12,8 +12,12 @@ public class RaceDefinition
     public string? Description { get; set; }
 
     /// <summary>
+    /// Base HP contribution from the race (before constitution scaling).
+    /// </summary>
+    public int BaseHP { get; set; } 
+
+    /// <summary>
     /// List of modifier IDs that are permanently applied to characters of this race.
-    /// Example: "MOD_HUMAN_SCAVENGER", "MOD_VALDRIN_SKIN".
     /// </summary>
     public List<string> RacialModifierIds { get; set; } = new();
 
@@ -21,4 +25,6 @@ public class RaceDefinition
     /// Base stat bonuses granted by this race (added to Character base stats).
     /// </summary>
     public BaseStats BonusStats { get; set; } = new();
+
+    
 }

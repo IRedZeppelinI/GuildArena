@@ -26,6 +26,12 @@ public class Combatant
     public AbilityDefinition? GuardAbility { get; set; }
     public AbilityDefinition? FocusAbility { get; set; }
 
+    /// <summary>
+    /// The list of active abilities/skills this combatant can use in battle.
+    /// Does not include Basic Attack, Guard or Focus.
+    /// </summary>
+    public List<AbilityDefinition> Abilities { get; set; } = new();
+
 
     /// <summary>
     /// Tracks how many Action Points this combatant has consumed in the current turn.
