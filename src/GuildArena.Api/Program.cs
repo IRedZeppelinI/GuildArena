@@ -31,13 +31,15 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 
-// 3. WARMUP (Fail Fast)
+// Load defRepos
 using (var scope = app.Services.CreateScope())
 {
     try
     {
         var modifierRepo = scope.ServiceProvider.GetRequiredService<IModifierDefinitionRepository>();
         var abilityRepo = scope.ServiceProvider.GetRequiredService<IAbilityDefinitionRepository>();
+        var raceRepo = scope.ServiceProvider.GetRequiredService<IRaceDefinitionRepository>(); 
+        var charRepo = scope.ServiceProvider.GetRequiredService<ICharacterDefinitionRepository>(); 
         // GetRequiredService corre e carrega os JSONs para falhar no arranque se houver erro        
     }
     catch (Exception ex)

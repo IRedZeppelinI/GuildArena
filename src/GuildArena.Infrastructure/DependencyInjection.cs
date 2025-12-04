@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddSingleton<IModifierDefinitionRepository, JsonModifierDefinitionRepository>();
         services.AddSingleton<IAbilityDefinitionRepository, JsonAbilityDefinitionRepository>();
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
+        services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>(); 
 
 
         return services;
