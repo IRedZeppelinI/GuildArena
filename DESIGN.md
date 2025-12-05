@@ -1,3 +1,12 @@
+Peço desculpa pela mudança repentina para Inglês na resposta anterior, foi um lapso no "context switching".
+
+Aqui tens o **DESIGN.md** totalmente atualizado e em Português.
+Incluí todas as alterações arquiteturais que fizemos (Factory, Raças, Action Points, Evasão, Triggers) e garanti que o `DamageResolutionService` está devidamente referenciado com a nova lógica de `DamageCategory`.
+
+Podes substituir o conteúdo do teu ficheiro atual por este:
+
+---
+
 # [GuildArena] Documento de Design de Arquitetura
 
 Este documento descreve a arquitetura de software de alto nível do projeto GuildArena, com foco na lógica de combate, persistência de estado e na estrutura do `Domain`.
@@ -24,78 +33,81 @@ A persistência é dividida em três tipos de dados, otimizados para diferentes 
 
 ### 2.2. Dados Estáticos (Regras do Jogo)
 * **O que são:** Os "moldes" (blueprints) do jogo definidos pelo developer.
-* **Exemplos:** `CharacterDefinition`, `AbilityDefinition`, `ModifierDefinition`.
-* **Tecnologia:** **Ficheiros JSON** (ex: `abilities.json`).
-* **Implementação:** Lidos no arranque para uma **Cache Singleton (Dicionário O(1))**.
-* **Interface:** `IModifierDefinitionRepository`.
+* **Tecnologia:** **Ficheiros JSON** (carregados via `IOptions` e Repositórios na Infrastructure).
+* **Implementação:** Lidos no arranque (`Warmup` no Program.cs) para uma **Cache Singleton (Dicionário O(1))**.
+* **Definições Principais:**
+    * `CharacterDefinition`: Stats base, crescimento, referência à Raça.
+    * `RaceDefinition`: Bónus de stats e Traits raciais (modificadores).
+    * `AbilityDefinition`: Regras de habilidades (Custos, Efeitos).
+    * `ModifierDefinition`: Regras de buffs/curses (Stats, Triggers).
 
 ### 2.3. Dados Voláteis (Estado do Combate Ativo)
 * **O que são:** O estado em tempo real de um combate a decorrer (`GameState`).
 * **Tecnologia:** **Redis (Chave-Valor)**.
-* **Porquê:** Performance extrema (leitura/escrita em milissegundos) e suporte para reconexão (o estado vive no servidor, não no cliente).
-* **Ciclo de Vida:** Criado no `StartCombat`, atualizado a cada ação, apagado no fim do combate.
+* **Porquê:** Performance extrema (leitura/escrita em milissegundos) e suporte para reconexão (o estado vive no servidor).
 * **Interface:** `ICombatStateRepository` (Implementação: `RedisCombatStateRepository`).
 
 ---
 
 ## 3. Arquitetura do Motor de Combate (Core)
 
-A lógica de combate segue o **Padrão Strategy** (Especialistas) e o **Padrão Orchestrator** (Orquestrador). O `CombatEngine` não realiza cálculos complexos; ele coordena serviços especializados.
+A lógica de combate segue o **Padrão Strategy** (Especialistas) e o **Padrão Orchestrator** (Orquestrador). O `CombatEngine` coordena serviços especializados.
 
 ### 3.1. Os Participantes (O "Quem")
-* **`Combatant`:** A unidade no tabuleiro. Contém `CurrentHP`, `BaseStats`, `ActiveCooldowns` e `ActiveModifiers` (que podem conter Barreiras).
-* **`CombatPlayer`:** Representa o controlador (Humano ou AI). Gere recursos globais como a `EssencePool` (Dicionário de Essences) e Modifiers globais.
-* **`GameState`:** O objeto raiz que contém a lista de `Combatants`, `Players`, e o fluxo de turnos.
+* **`Combatant`:** A unidade no tabuleiro.
+    * **Stats:** `BaseStats` unificados (incluindo `MaxHP` e `MaxActions`).
+    * **Estado:** `CurrentHP`, `ActionsTakenThisTurn`.
+    * **Slots:** `BasicAttack`, `GuardAbility`, `FocusAbility` e lista de `Abilities`.
+    * **Modifiers:** Lista de `ActiveModifier` (que contêm `ActiveStatusEffects` em cache).
+* **`CombatPlayer`:** Representa o controlador. Gere a `EssencePool` e Modifiers globais.
 
-### 3.2. Subsistema de Targeting (`ITargetResolutionService`)
-Responsável por identificar quem será afetado por uma habilidade.
-* **Pipeline de Resolução:**
-    1.  **Identificação:** Filtra candidatos baseados na Regra (Aliado, Inimigo, Self, All).
-    2.  **Estado:** Filtra mortos/vivos conforme a regra (`CanTargetDead`).
-    3.  **Visibilidade (Stealth):** Filtra alvos com modifiers `IsUntargetable` (apenas em seleção unitária).
-    4.  **Seleção:** Aplica a estratégia definida (`Manual`, `LowestHP`, `Random`, `AoE`), usando desempate determinístico por ID.
+### 3.2. Instanciação (`ICombatantFactory`)
+Responsável por converter dados persistentes em combatentes de batalha.
+* **Localização:** `GuildArena.Core.Combat.Factories`.
+* **Fluxo de Criação:**
+    1.  Carrega `CharacterDefinition` e `RaceDefinition`.
+    2.  **Cálculo de Stats:** Soma Base + Raça + (Crescimento * Nível).
+    3.  **Snapshot de HP:** Calcula o `MaxHP` inicial baseado na Defesa Total (fórmula de constituição) e congela o valor.
+    4.  **Skills e Traits:** Resolve IDs de habilidades e aplica modificadores passivos (Raciais e Perks).
 
-### 3.3. Subsistema de Economia e Custos
-A execução de habilidades exige recursos (Essence e HP). Este sistema está dividido em "Contabilista" e "Banco".
+### 3.3. Sistema de Controlo e Validação (`IStatusConditionService`)
+Valida se um combatente pode agir antes de processar custos.
+* **Lógica:** Baseada no enum `ActionStatusResult` (Allowed, Stunned, Silenced, Disarmed).
+* **Regras Partilhadas (`StatusEffectRules`):** Extension methods no Domain que definem o comportamento de cada `StatusEffectType` (ex: Stun bloqueia tudo, Silence bloqueia Skills). Usado tanto pelo Backend (validação) como pelo Frontend (UI).
+* **Economia de Ações:** O `CombatEngine` valida e consome `ActionPointCost` contra o stat `MaxActions`.
 
-* **Cálculo de Custos (`ICostCalculationService`):**
-    * Gera a "Fatura" (`FinalAbilityCosts`) antes da execução.
-    * **Lógica:** `Custo Base` - `Descontos do Caster` (CostModification) + `Taxas do Alvo` (Wards de Essence/HP).
-* **Gestão de Recursos (`IEssenceService`):**
-    * **Validação (`HasEnoughEssence`):** Verifica se o jogador tem saldo para pagar a fatura.
-    * **Consumo (`ConsumeEssence`):** Deduz os valores da `EssencePool` baseando-se na alocação específica enviada pela UI.
-    * **Geração:** Gere a entrada de Essence no início do turno (Base + Modifiers de Geração).
+### 3.4. Sistema de Dano e Precisão
+Substitui a lógica simples por um pipeline de combate tático.
 
-### 3.4. Subsistema de Dano e Resolução (`IDamageResolutionService`)
-Substitui a antiga lógica fragmentada. Centraliza todo o cálculo pós-mitigação.
+* **Precisão (`IHitChanceService`):**
+    * Calcula a probabilidade de acerto (0% a 100%) antes de aplicar efeitos.
+    * **Fórmula:** Base + (Ataque/Magia do Caster) - (Agilidade/MDef do Alvo) + Delta de Nível.
+    * **Cache de Evasão:** O `CombatEngine` garante que o teste de evasão é feito apenas uma vez por alvo por habilidade (consistência entre múltiplos efeitos).
+* **Mitigação e Resolução (`IDamageResolutionService`):**
+    * Recebe o dano bruto se o ataque acertar.
+    * **Categorias (`DamageCategory`):** Physical (mitigado por Defense), Magical (mitigado por MagicDefense) e True (ignora defesa).
+    * **Interações:** Aplica modificadores percentuais/flat e resolve absorção de Barreiras baseada em Tags.
 
-* **Fluxo de Dano:**
-    1.  **Mitigação (Handler):** O `DamageEffectHandler` calcula o dano bruto vs Defesa/Resistência Mágica.
-    2.  **Resolução (Service):** O `IDamageResolutionService` recebe o dano mitigado.
-        * **Modificadores:** Aplica Buffs (Caster) e Resistências Percentuais/Flat (Alvo).
-        * **Barreiras:** Verifica modifiers com `BarrierProperties`. Se as Tags coincidirem (ex: Barreira de Fogo vs Ataque de Fogo), o dano é absorvido pelo escudo.
-    3.  **Aplicação:** O resultado final é subtraído ao HP do alvo.
-* **True Damage:** Ignora Defesa, Resistências e Barreiras.
+### 3.5. Sistema de Recursos e Custos
+* **`EssenceAmount`:** ValueObject que define par Tipo/Quantidade (usado para custos e ganhos).
+* **`ICostCalculationService`:** Calcula a "Fatura Final" (Custo Base - Descontos + Taxas de Wards).
+* **`IEssenceService`:** Gere a pool do jogador. Suporta `AddEssence` com lógica de tipos aleatórios (`EssenceType.Random`) e caps máximos.
+* **Manipulação (`ManipulateEssenceHandler`):** Handler de efeito para gerar recursos (Channeling) ou destruir recursos (Manaburn).
 
-### 3.5. Outros Serviços Especialistas
-* **`IStatCalculationService`:** Calcula stats finais: `(Base + Flat) * (1 + Percent)`.
-* **`ICooldownCalculationService`:** Calcula o cooldown final, aplicando modificadores (ex: "Haste").
+### 3.6. Sistema de Eventos (`ITriggerProcessor`)
+Permite reações automáticas a eventos de combate.
+* **Funcionamento:** O `TriggerProcessor` itera sobre os modificadores ativos para encontrar gatilhos correspondentes (ex: `ON_RECEIVE_DAMAGE`, `ON_ABILITY_CAST`).
+* **Snapshot:** Usa um `TriggerContext` imutável para capturar o estado do evento.
+* **Integração:** Injetado nos pontos críticos (`TurnManager`, `CombatEngine`, `DamageEffectHandler`) para disparar habilidades internas (ex: Thorns, DoTs).
 
 ---
 
-## 4. Gestão de Turnos e Fluxo de Jogo
+## 4. Gestão de Turnos (`ITurnManagerService`)
 
-A gestão do fluxo de tempo é separada da execução de habilidades.
-
-### 4.1. O Padrão "Carregar -> Modificar -> Guardar"
-Como a API é *stateless*, todas as ações de jogo seguem este fluxo rigoroso no `Application Layer`:
-1.  **Carregar:** O Handler obtém o `GameState` do Redis via Repositório.
-2.  **Modificar:** O Handler invoca um Serviço de Domínio (`Core`) para alterar o estado em memória.
-3.  **Guardar:** O Handler persiste o `GameState` alterado no Redis.
-
-### 4.2. O Gestor de Turnos (`ITurnManagerService`)
-Este serviço (`Core`) é responsável pela lógica de transição:
-1.  **Tick de Fim de Turno:** Reduz a duração de `ActiveCooldowns` e `ActiveModifiers` do jogador atual.
-2.  **Rotação (Round-Robin):** Identifica o próximo `CombatPlayer` na lista.
-3.  **Novo Turno:** Atualiza o `CurrentPlayerId` e incrementa o `CurrentTurnNumber`.
-4.  **Recursos:** Invoca o `IEssenceService` para gerar a Essence do novo jogador.
+Serviço responsável pela transição de estado temporal.
+1.  **Fim de Turno:** Dispara triggers `ON_TURN_END`, reduz cooldowns e durações de modifiers.
+2.  **Rotação:** Identifica o próximo jogador.
+3.  **Início de Turno:**
+    * Reseta `ActionsTakenThisTurn` a 0.
+    * Gera Essence para o novo jogador.
+    * Dispara triggers `ON_TURN_START`.
