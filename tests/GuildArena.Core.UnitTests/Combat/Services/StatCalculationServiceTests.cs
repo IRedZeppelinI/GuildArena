@@ -1,28 +1,27 @@
 ﻿using GuildArena.Core.Combat.Services;
-using GuildArena.Domain.Abstractions.Repositories; 
-using GuildArena.Domain.Definitions; 
+using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects;
-using NSubstitute; 
+using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 
 public class StatCalculationServiceTests
 {
-    private readonly IModifierDefinitionRepository _modifierDefinitionRepositoryMock; 
-    private readonly StatCalculationService _statCalculationService;
+    private readonly IModifierDefinitionRepository _modifierRepoMock;
+    private readonly StatCalculationService _service;
 
-    // Definições de Modifiers para os testes
     private readonly ModifierDefinition _attackBuff;
     private readonly ModifierDefinition _defenseBuff;
+    private readonly ModifierDefinition _healthBuff;
 
     public StatCalculationServiceTests()
     {
         // ARRANGE Global
-
-        // Criar os mods para testes
         _attackBuff = new ModifierDefinition
         {
             Id = "MOD_ATTACK_UP",
@@ -41,91 +40,108 @@ public class StatCalculationServiceTests
                 new() { Stat = StatType.Defense, Type = ModificationType.PERCENTAGE, Value = 0.20f }
             }
         };
+        _healthBuff = new ModifierDefinition
+        {
+            Id = "MOD_HP_BOOST",
+            Name = "+50 MaxHP",
+            Type = ModifierType.Bless,
+            StatModifications = new() {
+                new() { Stat = StatType.MaxHP, Type = ModificationType.FLAT, Value = 50 }
+            }
+        };
 
-        // Criar o Mock do Repositório
-        _modifierDefinitionRepositoryMock = Substitute.For<IModifierDefinitionRepository>();
-
-        //  Configurar o Mock
-        // _modifierDefinitionRepositoryMock devolve os mods definitions criados para testes
-        _modifierDefinitionRepositoryMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
+        _modifierRepoMock = Substitute.For<IModifierDefinitionRepository>();
+        _modifierRepoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
             { _attackBuff.Id, _attackBuff },
-            { _defenseBuff.Id, _defenseBuff }
+            { _defenseBuff.Id, _defenseBuff },
+            { _healthBuff.Id, _healthBuff }
         });
 
-        // Injetar o Mock no Serviço
-        _statCalculationService = new StatCalculationService(_modifierDefinitionRepositoryMock);
+        _service = new StatCalculationService(_modifierRepoMock);
     }
 
     [Fact]
     public void GetStatValue_WithNoModifiers_ShouldReturnBaseStat()
     {
-        //ARRANGE
-        var combatant = new Combatant
-        {
-            Id = 1,
-            Name = "Test",
-            BaseStats = new BaseStats { Attack = 10 }
-        };
-
-        // ACT
-        var finalAttack = _statCalculationService.GetStatValue(combatant, StatType.Attack);
-
-        // ASSERT
-        finalAttack.ShouldBe(10);
+        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Attack = 10 } };
+        var result = _service.GetStatValue(combatant, StatType.Attack);
+        result.ShouldBe(10);
     }
 
     [Fact]
     public void GetStatValue_WithOneFlatModifier_ShouldReturnBasePlusFlat()
     {
-        // ARRANGE
-        var combatant = new Combatant
-        {
-            Id = 1,
-            Name = "Test",
-            BaseStats = new BaseStats { Attack = 10 }
-        };
+        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Attack = 10 } };
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_ATTACK_UP" });
 
-        // Aplicar o buff "+10 Attack"
-        combatant.ActiveModifiers.Add(new ActiveModifier
-        {
-            DefinitionId = "MOD_ATTACK_UP", 
-            TurnsRemaining = 3,
-            CasterId = 1
-        });
-
-        // ACT
-        var finalAttack = _statCalculationService.GetStatValue(combatant, StatType.Attack);
-
-        // ASSERT
-        // (Base: 10 + Flat: 10) * (1 + 0%) = 20
-        finalAttack.ShouldBe(20);
+        var result = _service.GetStatValue(combatant, StatType.Attack);
+        // 10 + 10 = 20
+        result.ShouldBe(20);
     }
 
     [Fact]
     public void GetStatValue_WithOnePercentageModifier_ShouldReturnBaseTimesPercent()
     {
-        // ARRANGE
+        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Defense = 50 } };
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_DEFENSE_PERCENT" });
+
+        var result = _service.GetStatValue(combatant, StatType.Defense);
+        // 50 * 1.20 = 60
+        result.ShouldBe(60);
+    }
+
+    [Fact]
+    public void GetStatValue_MaxHP_ShouldIncludeModifiers()
+    {
+        // Este teste valida se o MaxHP está a ser tratado como um stat real
         var combatant = new Combatant
         {
             Id = 1,
-            Name = "Test",
-            BaseStats = new BaseStats { Defense = 50 }
+            Name = "Tank",
+            BaseStats = new BaseStats { MaxHP = 100 }
         };
 
-        // Aplicar o buff "+20% Defesa"
-        combatant.ActiveModifiers.Add(new ActiveModifier
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_HP_BOOST" }); // +50 Flat
+
+        var result = _service.GetStatValue(combatant, StatType.MaxHP);
+
+        // 100 Base + 50 Modifier = 150
+        result.ShouldBe(150);
+    }
+
+    [Fact]
+    public void GetStatValue_MaxHP_ShouldNeverBeLessThanOne()
+    {
+        // Cenário: Debuff massivo de MaxHP (ex: -200 HP)
+        var curseMod = new ModifierDefinition
         {
-            DefinitionId = "MOD_DEFENSE_PERCENT", // O mock do repo sabe o que é isto
-            TurnsRemaining = 3,
-            CasterId = 1
+            Id = "MOD_CURSE",
+            Name = "Curse",
+            Type = ModifierType.Curse,
+            StatModifications = new() { new()
+            {
+                Stat = StatType.MaxHP,
+                Type = ModificationType.FLAT,
+                Value = -200
+            } }
+        };
+
+        _modifierRepoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
+        {
+            { "MOD_CURSE", curseMod }
         });
 
-        // ACT
-        var finalDefense = _statCalculationService.GetStatValue(combatant, StatType.Defense);
+        
+        var localService = new StatCalculationService(_modifierRepoMock);
 
-        // 3. ASSERT
-        // (Base: 50 + Flat: 0) * (1 + 0.20) = 60
-        finalDefense.ShouldBe(60);
+        var combatant = new Combatant { Id = 1, Name = "Victim", BaseStats = new BaseStats { MaxHP = 100 } };
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_CURSE" });
+
+        
+        var result = localService.GetStatValue(combatant, StatType.MaxHP);
+
+        // Deve ser clampado a 1, não 0 ou negativo
+        result.ShouldBe(1);
     }
 }
