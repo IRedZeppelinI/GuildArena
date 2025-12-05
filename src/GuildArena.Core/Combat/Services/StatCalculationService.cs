@@ -57,7 +57,17 @@ public class StatCalculationService : IStatCalculationService
         //  Aplicar os modifiers
         float finalValue = (baseValue + flatBonus) * (1 + percentBonus);
 
-        return (float)Math.Round(finalValue);
+        //verificar valores abaixo de 0 (ou 0 no caso de maxHP)
+        if (statType == StatType.MaxHP)
+        {
+            if (finalValue < 1) finalValue = 1;
+        }
+        else
+        {
+            if (finalValue < 0) finalValue = 0;
+        }
+
+        return (float)Math.Round(finalValue, MidpointRounding.AwayFromZero);
     }
 
     private float GetBaseStat(BaseStats stats, StatType statType)
@@ -70,6 +80,7 @@ public class StatCalculationService : IStatCalculationService
             StatType.Magic => stats.Magic,
             StatType.MagicDefense => stats.MagicDefense,
             StatType.MaxActions => stats.MaxActions,
+            StatType.MaxHP => stats.MaxHP,
             _ => 0f
         };
     }

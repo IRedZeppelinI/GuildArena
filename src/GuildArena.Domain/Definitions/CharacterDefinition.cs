@@ -21,30 +21,23 @@ public class CharacterDefinition
     // --- ESTATÍSTICAS ---
     /// <summary>
     /// The starting stats at Level 1 (before Race bonuses).
+    /// Includes Attack, Defense, MaxHP, etc.
     /// </summary>
     public required BaseStats BaseStats { get; set; }
 
     /// <summary>
     /// The amount of stats gained per level up.
+    /// Includes HP growth via the MaxHP property.
     /// </summary>
     public required BaseStats StatsGrowthPerLevel { get; set; }
 
-    /// <summary>
-    /// Base HP at Level 1 (before Constitution/Defense scaling).
-    /// </summary>
-    public int BaseHP { get; set; }
-
-    /// <summary>
-    /// HP gained per level (Flat).
-    /// </summary>
-    public int HPGrowthPerLevel { get; set; }
+    
 
     // --- HABILIDADES (Loadout Base) ---
 
     public required string BasicAttackAbilityId { get; set; }
 
-    // Habilidades de defesa/foco específicas deste herói 
-    // (Se null, a Factory usará as defaults da Raça)
+    // Habilidades de defesa/foco específicas deste herói    
     public string? GuardAbilityId { get; set; }
     public string? FocusAbilityId { get; set; }
 

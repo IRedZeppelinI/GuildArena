@@ -11,11 +11,7 @@ public class RaceDefinition
     public required string Name { get; set; }
     public string? Description { get; set; }
 
-    /// <summary>
-    /// Base HP contribution from the race (before constitution scaling).
-    /// </summary>
-    public int BaseHP { get; set; } 
-
+    
     /// <summary>
     /// List of modifier IDs that are permanently applied to characters of this race.
     /// </summary>
@@ -23,6 +19,7 @@ public class RaceDefinition
 
     /// <summary>
     /// Base stat bonuses granted by this race (added to Character base stats).
+    /// Can include MaxHP bonuses.
     /// </summary>
     public BaseStats BonusStats { get; set; } = new();
 

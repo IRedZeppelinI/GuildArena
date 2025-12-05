@@ -16,6 +16,7 @@ public class CombatantFactory : ICombatantFactory
     private readonly IModifierDefinitionRepository _modifierRepo;
     private readonly ILogger<CombatantFactory> _logger;
 
+
     public CombatantFactory(
         ICharacterDefinitionRepository charRepo,
         IRaceDefinitionRepository raceRepo,
@@ -34,26 +35,21 @@ public class CombatantFactory : ICombatantFactory
     {
         // 1. Carregar Definições
         if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionID, out var charDef))
-        {
-            throw new KeyNotFoundException($"Character Definition '{hero.CharacterDefinitionID}' not found.");
-        }
+            throw new KeyNotFoundException($"Character '{hero.CharacterDefinitionID}' not found.");
 
         if (!_raceRepo.TryGetDefinition(charDef.RaceId, out var raceDef))
-        {
-            throw new KeyNotFoundException($"Race Definition '{charDef.RaceId}' not found for character '{charDef.Id}'.");
-        }
+            throw new KeyNotFoundException($"Race '{charDef.RaceId}' not found.");
 
-        // 2. Calcular Stats Finais
-        var finalStats = CalculateStats(charDef, raceDef, hero.CurrentLevel);
+        // 2. Calcular Base Stats (Incluindo MaxHP, sem misturar Defesa)
+        // A lógica de scaling é aplicada uniformemente a todos os stats.
+        var finalStats = CalculateStandardStats(charDef, raceDef, hero.CurrentLevel);
 
-        // 3. Calcular HP Máximo
-        // Fórmula: HP Base Char + (HP Base Raça * FatorDefesa * Nível)
-        float defenseMultiplier = 1.0f + (finalStats.Defense * 0.05f);
-        int maxHp = charDef.BaseHP + (int)(raceDef.BaseHP * defenseMultiplier * hero.CurrentLevel);
-
+        // 3. Instanciar Combatant
+        // O MaxHP é simplesmente o valor que calculámos no passo anterior.
+        // O sistema de stats trata do resto (modifiers passivos, buffs, etc.)
+        int maxHp = (int)finalStats.MaxHP;
         if (maxHp < 1) maxHp = 1;
 
-        // 4. Instanciar Combatant
         var combatant = new Combatant
         {
             Id = hero.Id,
@@ -66,23 +62,21 @@ public class CombatantFactory : ICombatantFactory
             ActionsTakenThisTurn = 0
         };
 
-        // 5. Configurar Habilidades (Loadout)
-
+        // 4. Configurar Habilidades
         combatant.BasicAttack = ResolveAbility(charDef.BasicAttackAbilityId);
-        combatant.GuardAbility = ResolveAbility(charDef.GuardAbilityId); 
+        combatant.GuardAbility = ResolveAbility(charDef.GuardAbilityId);
         combatant.FocusAbility = ResolveAbility(charDef.FocusAbilityId);
 
-        // aplicar skills
         foreach (var skillId in charDef.SkillIds)
         {
             var ability = ResolveAbility(skillId);
-            if (ability != null)
-            {
-                combatant.Abilities.Add(ability);
-            }
+            if (ability != null) combatant.Abilities.Add(ability);
         }
 
-        // 6. Aplicar Modificadores Passivos (Raciais + Perks)
+        // 5. Aplicar Modificadores (Raciais + Perks)
+        // Nota: Já não precisamos de "pré-calcular" modifiers para o HP, 
+        // porque decidimos que o HP Base é definido apenas por Char/Race/Level.
+        // Os modifiers aplicados aqui (Traits de +HP) serão somados pelo StatService em runtime.
         foreach (var modId in raceDef.RacialModifierIds)
         {
             AddPassiveModifier(combatant, modId);
@@ -96,26 +90,25 @@ public class CombatantFactory : ICombatantFactory
         return combatant;
     }
 
-    private BaseStats CalculateStats(CharacterDefinition cDef, RaceDefinition rDef, int level)
+    private BaseStats CalculateStandardStats(CharacterDefinition cDef, RaceDefinition rDef, int level)
     {
+        // Nível 1 = Base. Scaling começa ao subir para 2.
         int levelsToScale = Math.Max(0, level - 1);
 
-        
         return new BaseStats
         {
-            Attack = cDef.BaseStats.Attack + rDef.BonusStats.Attack + 
-                (cDef.StatsGrowthPerLevel.Attack * levelsToScale),
-            Defense = cDef.BaseStats.Defense + rDef.BonusStats.Defense + 
-                (cDef.StatsGrowthPerLevel.Defense * levelsToScale),
-            Agility = cDef.BaseStats.Agility + rDef.BonusStats.Agility +
-                (cDef.StatsGrowthPerLevel.Agility * levelsToScale),
-            Magic = cDef.BaseStats.Magic + rDef.BonusStats.Magic + 
-                (cDef.StatsGrowthPerLevel.Magic * levelsToScale),
-            MagicDefense = cDef.BaseStats.MagicDefense + rDef.BonusStats.MagicDefense +
-                (cDef.StatsGrowthPerLevel.MagicDefense * levelsToScale),
+            Attack = cDef.BaseStats.Attack + rDef.BonusStats.Attack + (cDef.StatsGrowthPerLevel.Attack * levelsToScale),
+            Defense = cDef.BaseStats.Defense + rDef.BonusStats.Defense + (cDef.StatsGrowthPerLevel.Defense * levelsToScale),
+            Agility = cDef.BaseStats.Agility + rDef.BonusStats.Agility + (cDef.StatsGrowthPerLevel.Agility * levelsToScale),
+            Magic = cDef.BaseStats.Magic + rDef.BonusStats.Magic + (cDef.StatsGrowthPerLevel.Magic * levelsToScale),
+            MagicDefense = cDef.BaseStats.MagicDefense + rDef.BonusStats.MagicDefense + (cDef.StatsGrowthPerLevel.MagicDefense * levelsToScale),
 
-            // MaxActions: Base do Char + Bónus da Raça
-            MaxActions = cDef.BaseStats.MaxActions + rDef.BonusStats.MaxActions
+            // MaxActions: Soma base char + base raça (normalmente Growth é 0)
+            MaxActions = cDef.BaseStats.MaxActions + rDef.BonusStats.MaxActions,
+
+            // MaxHP: Tratado exatamente como os outros stats.
+            // CharBase + RaceBonus + (CharGrowth * Level)
+            MaxHP = cDef.BaseStats.MaxHP + rDef.BonusStats.MaxHP + (cDef.StatsGrowthPerLevel.MaxHP * levelsToScale)
         };
     }
 
@@ -123,8 +116,7 @@ public class CombatantFactory : ICombatantFactory
     {
         if (string.IsNullOrEmpty(abilityId)) return null;
         if (_abilityRepo.TryGetDefinition(abilityId, out var def)) return def;
-
-        _logger.LogWarning("Ability ID '{Id}' not found in repository.", abilityId);
+        _logger.LogWarning("Ability ID '{Id}' not found.", abilityId);
         return null;
     }
 
@@ -138,14 +130,9 @@ public class CombatantFactory : ICombatantFactory
                 CasterId = combatant.Id,
                 TurnsRemaining = -1,
                 CurrentBarrierValue = 0,
-                // Garantir cópia da lista de status
                 ActiveStatusEffects = def.GrantedStatusEffects.ToList()
             };
             combatant.ActiveModifiers.Add(activeMod);
-        }
-        else
-        {
-            _logger.LogWarning("Passive Modifier '{Id}' not found.", modifierId);
         }
     }
 }

@@ -12,4 +12,10 @@ public class BaseStats
     /// The base number of actions allowed per turn. Default is 1.
     /// </summary>
     public float MaxActions { get; set; } = 1;
+
+    /// <summary>
+    /// The base Maximum HP. 
+    /// Used in Character Definitions (Base), Race Definitions (Bonus), and Growth.
+    /// </summary>
+    public float MaxHP { get; set; }
 }
