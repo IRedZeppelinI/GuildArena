@@ -185,7 +185,7 @@ public class CombatantFactoryTests
             BaseStats = new BaseStats(),
             StatsGrowthPerLevel = new BaseStats(),
             BasicAttackAbilityId = "ATK_BASIC",
-            SkillIds = new List<string> { "SKILL_1", "SKILL_2" }
+            AbilityIds = new List<string> { "SKILL_1", "SKILL_2" }
         };
 
         var raceDef = new RaceDefinition { Id = "RACE_A", Name = "Race A" };
@@ -216,5 +216,98 @@ public class CombatantFactoryTests
         combatant.Abilities.Count.ShouldBe(2);
         combatant.Abilities.ShouldContain(a => a.Id == "SKILL_1");
         combatant.Abilities.ShouldContain(a => a.Id == "SKILL_2");
+    }
+
+
+    [Fact]
+    public void Create_ShouldResolveSpecialAbility_FromGuardId()
+    {
+        // ARRANGE
+        var hero = new HeroCharacter { Id = 1, CharacterDefinitionID = "HERO_GUARD", CurrentLevel = 1 };
+
+        var charDef = new CharacterDefinition
+        {
+            Id = "HERO_GUARD",
+            RaceId = "RACE_A",
+            Name = "Tank",
+            BaseStats = new BaseStats(),
+            StatsGrowthPerLevel = new BaseStats(),
+            BasicAttackAbilityId = "ATK",
+            // Configurar apenas o Guard
+            GuardAbilityId = "ABIL_GUARD_01",
+            FocusAbilityId = null
+        };
+
+        var raceDef = new RaceDefinition { Id = "RACE_A", Name = "Race" };
+
+        _charRepo.TryGetDefinition("HERO_GUARD", out Arg.Any<CharacterDefinition>())
+            .Returns(x => { x[1] = charDef; return true; });
+
+        _raceRepo.TryGetDefinition("RACE_A", out Arg.Any<RaceDefinition>())
+            .Returns(x => { x[1] = raceDef; return true; });
+
+        _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>())
+            .Returns(true); // Default mock for basic attack
+
+        // Mock específico para o Guard
+        _abilityRepo.TryGetDefinition("ABIL_GUARD_01", out Arg.Any<AbilityDefinition>())
+            .Returns(x => {
+                x[1] = new AbilityDefinition { Id = "ABIL_GUARD_01", Name = "Iron Skin" };
+                return true;
+            });
+
+        // ACT
+        var combatant = _factory.Create(hero, 1);
+
+        // ASSERT
+        combatant.SpecialAbility.ShouldNotBeNull();
+        combatant.SpecialAbility.Id.ShouldBe("ABIL_GUARD_01");
+        combatant.SpecialAbility.Name.ShouldBe("Iron Skin");
+    }
+
+    [Fact]
+    public void Create_ShouldResolveSpecialAbility_FromFocusId()
+    {
+        // ARRANGE
+        var hero = new HeroCharacter { Id = 1, CharacterDefinitionID = "HERO_FOCUS", CurrentLevel = 1 };
+
+        var charDef = new CharacterDefinition
+        {
+            Id = "HERO_FOCUS",
+            RaceId = "RACE_A",
+            Name = "Mage",
+            BaseStats = new BaseStats(),
+            StatsGrowthPerLevel = new BaseStats(),
+            BasicAttackAbilityId = "ATK",
+            // Configurar apenas o Focus
+            GuardAbilityId = null,
+            FocusAbilityId = "ABIL_FOCUS_01"
+        };
+
+        var raceDef = new RaceDefinition { Id = "RACE_A", Name = "Race" };
+
+        _charRepo.TryGetDefinition("HERO_FOCUS", out Arg.Any<CharacterDefinition>())
+            .Returns(x => { x[1] = charDef; return true; });
+
+        _raceRepo.TryGetDefinition("RACE_A", out Arg.Any<RaceDefinition>())
+            .Returns(x => { x[1] = raceDef; return true; });
+
+        _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>())
+            .Returns(true);
+
+        // Mock específico para o Focus
+        _abilityRepo.TryGetDefinition("ABIL_FOCUS_01", out Arg.Any<AbilityDefinition>())
+            .Returns(x => {
+                x[1] = new AbilityDefinition { Id = "ABIL_FOCUS_01", Name = "Meditate" };
+                return true;
+            });
+
+        // ACT
+        var combatant = _factory.Create(hero, 1);
+
+        // ASSERT
+        combatant.SpecialAbility.ShouldNotBeNull();
+        combatant.SpecialAbility.Id.ShouldBe("ABIL_FOCUS_01");
+        combatant.SpecialAbility.Name.ShouldBe("Meditate");
     }
 }

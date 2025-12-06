@@ -44,5 +44,5 @@ public class CharacterDefinition
     /// <summary>
     /// The list of Ability IDs that this character knows by default.
     /// </summary>
-    public List<string> SkillIds { get; set; } = new();
+    public List<string> AbilityIds { get; set; } = new();
 }

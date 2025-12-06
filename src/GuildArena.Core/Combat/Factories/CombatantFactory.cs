@@ -64,10 +64,17 @@ public class CombatantFactory : ICombatantFactory
 
         // 4. Configurar Habilidades
         combatant.BasicAttack = ResolveAbility(charDef.BasicAttackAbilityId);
-        combatant.GuardAbility = ResolveAbility(charDef.GuardAbilityId);
-        combatant.FocusAbility = ResolveAbility(charDef.FocusAbilityId);
 
-        foreach (var skillId in charDef.SkillIds)
+        // Special Ability
+        // Verifica se o herói tem Guard ou Focus        
+        string? specialId = !string.IsNullOrEmpty(charDef.GuardAbilityId)
+            ? charDef.GuardAbilityId
+            : charDef.FocusAbilityId;
+
+        combatant.SpecialAbility = ResolveAbility(specialId);
+
+
+        foreach (var skillId in charDef.AbilityIds)
         {
             var ability = ResolveAbility(skillId);
             if (ability != null) combatant.Abilities.Add(ability);

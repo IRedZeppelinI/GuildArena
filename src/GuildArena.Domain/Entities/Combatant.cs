@@ -23,8 +23,18 @@ public class Combatant
 
     // Habilidades comuns. GuardAbility e FocusAbility são exclusivas, ou uma ou outra
     public AbilityDefinition? BasicAttack { get; set; }
-    public AbilityDefinition? GuardAbility { get; set; }
-    public AbilityDefinition? FocusAbility { get; set; }
+
+    /// <summary>
+    /// The unique utility ability available to this combatant.
+    /// <para>
+    /// This slot typically holds either a <b>Guard</b> ability (Defensive, grants armor/shield) 
+    /// or a <b>Focus</b> ability (Utility, regenerates essence/resources), but never both simultaneously.
+    /// </para>
+    /// <para>
+    /// The specific behavior is determined by the ability's definition and tags.
+    /// </para>
+    /// </summary>
+    public AbilityDefinition? SpecialAbility { get; set; }
 
     /// <summary>
     /// The list of active abilities/skills this combatant can use in battle.
