@@ -9,10 +9,10 @@ namespace GuildArena.Domain.Abstractions.Factories;
 public interface ICombatantFactory
 {
     /// <summary>
-    /// Creates a fully initialized Combatant instance based on the hero's persistent data.
+    /// Creates a combatant with Race bonuses, Fixed Trait, and Player Selected Loadout.
     /// </summary>
-    /// <param name="hero">The persistent hero data (Level, IDs, etc).</param>
-    /// <param name="ownerId">The Player ID controlling this combatant.</param>
-    /// <returns>A combatant with calculated stats and active modifiers.</returns>
-    Combatant Create(HeroCharacter hero, int ownerId);
+    /// <param name="hero">The persistent hero data.</param>
+    /// <param name="ownerId">The Player ID.</param>
+    /// <param name="loadoutModifierIds">Optional list of modifiers selected by the player (Runes/Masteries).</param>
+    Combatant Create(HeroCharacter hero, int ownerId, List<string>? loadoutModifierIds = null);
 }

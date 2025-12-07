@@ -40,11 +40,10 @@ public class CombatantFactoryTests
         {
             Id = 100,
             CharacterDefinitionID = "HERO_TEST",
-            CurrentLevel = 5,
-            UnlockedPerkIds = new List<string>()
+            CurrentLevel = 5            
         };
 
-        // 1. Raça (Dá bónus de HP e Ataque)
+        // 1. Raça
         var raceDef = new RaceDefinition
         {
             Id = "RACE_TEST",
@@ -52,34 +51,29 @@ public class CombatantFactoryTests
             BonusStats = new BaseStats
             {
                 Attack = 5,
-                MaxHP = 50, // Bónus Racial de HP
+                MaxHP = 50,
                 MaxActions = 0
             }
         };
 
-        // 2. Herói (Stats Base e Crescimento)
+        // 2. Herói
         var charDef = new CharacterDefinition
         {
             Id = "HERO_TEST",
             Name = "Warrior",
             RaceId = "RACE_TEST",
-
-            // Stats Base (Nível 1)
             BaseStats = new BaseStats
             {
                 Attack = 10,
                 Defense = 10,
-                MaxHP = 100, // HP Base
+                MaxHP = 100,
                 MaxActions = 1
             },
-
-            // Crescimento por Nível
             StatsGrowthPerLevel = new BaseStats
             {
                 Attack = 2,
-                MaxHP = 10 // +10 HP por nível
+                MaxHP = 10
             },
-
             BasicAttackAbilityId = "ATK_BASIC"
         };
 
@@ -97,39 +91,32 @@ public class CombatantFactoryTests
         var combatant = _factory.Create(hero, ownerId: 1);
 
         // ASSERT
-        // Nível 5 significa 4 subidas de nível (5 - 1 = 4)
-
-        // Attack: 10 (Base) + 5 (Raça) + (2 * 4) (Growth) = 23
-        combatant.BaseStats.Attack.ShouldBe(23);
-
-        // MaxHP: 100 (Base) + 50 (Raça) + (10 * 4) (Growth) = 190
-        combatant.BaseStats.MaxHP.ShouldBe(190);
-
-        // Verifica se as propriedades de atalho também ficaram corretas
+        combatant.BaseStats.Attack.ShouldBe(23); // 10 + 5 + (2*4)
+        combatant.BaseStats.MaxHP.ShouldBe(190); // 100 + 50 + (10*4)
         combatant.MaxHP.ShouldBe(190);
         combatant.CurrentHP.ShouldBe(190);
-
-        // MaxActions: 1 (Base) + 0 (Raça) = 1
         combatant.BaseStats.MaxActions.ShouldBe(1);
     }
 
     [Fact]
-    public void Create_ShouldApplyPassiveModifiers_FromRaceAndPerks()
+    public void Create_ShouldApplyModifiers_From_Race_Trait_And_Loadout()
     {
         // ARRANGE
         var hero = new HeroCharacter
         {
             Id = 1,
             CharacterDefinitionID = "HERO_A",
-            CurrentLevel = 1,
-            UnlockedPerkIds = new List<string> { "MOD_PERK" } // Perk do jogador
+            CurrentLevel = 1            
         };
+
+        // Loadout selecionado no lobby
+        var playerLoadout = new List<string> { "MOD_LOADOUT_RUNES" };
 
         var raceDef = new RaceDefinition
         {
             Id = "RACE_A",
             Name = "Race A",
-            RacialModifierIds = new List<string> { "MOD_RACIAL" } // Trait Racial
+            RacialModifierIds = new List<string> { "MOD_RACIAL" } // 1. RACIAL
         };
 
         var charDef = new CharacterDefinition
@@ -137,14 +124,16 @@ public class CombatantFactoryTests
             Id = "HERO_A",
             RaceId = "RACE_A",
             Name = "A",
+            TraitModifierId = "MOD_HERO_TRAIT", // 2. TRAIT FIXO
             BaseStats = new BaseStats(),
             StatsGrowthPerLevel = new BaseStats(),
             BasicAttackAbilityId = "ATK"
         };
 
-        // Definições dos Modifiers
+        // Definições dos Modifiers 
         var racialMod = new ModifierDefinition { Id = "MOD_RACIAL", Name = "Racial Trait" };
-        var perkMod = new ModifierDefinition { Id = "MOD_PERK", Name = "Selected Perk" };
+        var traitMod = new ModifierDefinition { Id = "MOD_HERO_TRAIT", Name = "Hero Identity" };
+        var loadoutMod = new ModifierDefinition { Id = "MOD_LOADOUT_RUNES", Name = "Selected Runes" };
 
         _charRepo.TryGetDefinition("HERO_A", out Arg.Any<CharacterDefinition>()).
             Returns(x => { x[1] = charDef; return true; });
@@ -159,20 +148,22 @@ public class CombatantFactoryTests
         _modifierRepo.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
             { "MOD_RACIAL", racialMod },
-            { "MOD_PERK", perkMod }
+            { "MOD_HERO_TRAIT", traitMod },
+            { "MOD_LOADOUT_RUNES", loadoutMod }
         });
 
-        // ACT
-        var combatant = _factory.Create(hero, 1);
+        // ACT - Passamos o loadout como argumento extra
+        var combatant = _factory.Create(hero, 1, playerLoadout);
 
         // ASSERT
-        combatant.ActiveModifiers.Count.ShouldBe(2);
+        combatant.ActiveModifiers.Count.ShouldBe(3);
         combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_RACIAL");
-        combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_PERK");
+        combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_HERO_TRAIT");
+        combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_LOADOUT_RUNES");
     }
 
     [Fact]
-    public void Create_ShouldLoadSkills_FromCharacterDefinition()
+    public void Create_ShouldLoadAbilities_FromCharacterDefinition()
     {
         // ARRANGE
         var hero = new HeroCharacter { Id = 1, CharacterDefinitionID = "HERO_A", CurrentLevel = 1 };
@@ -196,7 +187,7 @@ public class CombatantFactoryTests
         _raceRepo.TryGetDefinition("RACE_A", out Arg.Any<RaceDefinition>()).
             Returns(x => { x[1] = raceDef; return true; });
 
-        // Mock Abilities
+        // Mocks Abilities
         _abilityRepo.TryGetDefinition("ATK_BASIC", out Arg.Any<AbilityDefinition>())
             .Returns(x => { x[1] = new AbilityDefinition { Id = "ATK_BASIC", Name = "Basic" }; return true; });
 
@@ -217,7 +208,6 @@ public class CombatantFactoryTests
         combatant.Abilities.ShouldContain(a => a.Id == "SKILL_1");
         combatant.Abilities.ShouldContain(a => a.Id == "SKILL_2");
     }
-
 
     [Fact]
     public void Create_ShouldResolveSpecialAbility_FromGuardId()

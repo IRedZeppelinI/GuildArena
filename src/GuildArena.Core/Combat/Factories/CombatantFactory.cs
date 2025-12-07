@@ -31,7 +31,7 @@ public class CombatantFactory : ICombatantFactory
         _logger = logger;
     }
 
-    public Combatant Create(HeroCharacter hero, int ownerId)
+    public Combatant Create(HeroCharacter hero, int ownerId, List<string>? loadoutModifierIds = null)
     {
         // 1. Carregar Definições
         if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionID, out var charDef))
@@ -80,18 +80,26 @@ public class CombatantFactory : ICombatantFactory
             if (ability != null) combatant.Abilities.Add(ability);
         }
 
-        // 5. Aplicar Modificadores (Raciais + Perks)
-        // Nota: Já não precisamos de "pré-calcular" modifiers para o HP, 
-        // porque decidimos que o HP Base é definido apenas por Char/Race/Level.
-        // Os modifiers aplicados aqui (Traits de +HP) serão somados pelo StatService em runtime.
+        
+        // Modifiers raça
         foreach (var modId in raceDef.RacialModifierIds)
         {
             AddPassiveModifier(combatant, modId);
         }
 
-        foreach (var perkId in hero.UnlockedPerkIds)
+        //modifier único de character
+        if (!string.IsNullOrEmpty(charDef.TraitModifierId))
         {
-            AddPassiveModifier(combatant, perkId);
+            AddPassiveModifier(combatant, charDef.TraitModifierId);
+        }
+
+        // Loadout para combate
+        if (loadoutModifierIds != null)
+        {
+            foreach (var modId in loadoutModifierIds)
+            {
+                AddPassiveModifier(combatant, modId);
+            }
         }
 
         return combatant;

@@ -31,9 +31,15 @@ public class CharacterDefinition
     /// </summary>
     public required BaseStats StatsGrowthPerLevel { get; set; }
 
-    
+
 
     // --- HABILIDADES (Loadout Base) ---
+    /// <summary>
+    /// The ID of a specific modifier (Trait) unique to this character.
+    /// Applied automatically at the start of combat.
+    /// </summary>
+    public string? TraitModifierId { get; set; } 
+
 
     public required string BasicAttackAbilityId { get; set; }
 

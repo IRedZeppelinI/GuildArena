@@ -10,6 +10,5 @@ public class HeroCharacter
     public int CurrentXP { get; set; }
     public int CurrentHP { get; set; }
 
-    public List<string> UnlockedPerkIds { get; set; } = new();
-
+    
 }
