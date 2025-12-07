@@ -1,0 +1,147 @@
+[
+  {
+    "Id": "ABIL_GARRET_PRECISION",
+    "Name": "Precision Strike",
+    "Description": "A calculated strike that deals heavy damage.",
+    "Tags": [ "Physical", "Melee" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 2,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 15,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.2,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_GARRET_POMMEL",
+    "Name": "Pommel Bash",
+    "Description": "Strikes the enemy, stunning them for 1 turn.",
+    "Tags": [ "Physical", "Melee", "CC" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      },
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 5,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 0.5,
+        "TargetRuleId": "TGT",
+        "Tags": []
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_STUN",
+        "DurationInTurns": 1,
+        "TargetRuleId": "TGT",
+        "CanBeEvaded": true
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_GARRET_ADRENALINE",
+    "Name": "Adrenaline",
+    "Description": "Increases stats for 2 turns.",
+    "Tags": [ "Buff" ],
+    "ActionPointCost": 0,
+    "BaseCooldown": 4,
+    "Costs": [
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_GARRET_ADRENALINE",
+        "DurationInTurns": 2,
+        "TargetRuleId": "SELF",
+        "CanBeEvaded": false
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_GARRET_EXECUTE",
+    "Name": "Slayer's Mercy",
+    "Description": "A devastating finisher.",
+    "Tags": [ "Physical", "Melee", "Ultimate" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 5,
+    "HPCost": 0,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 2
+      },
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "True",
+        "Delivery": "Melee",
+        "BaseAmount": 40,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Execute" ]
+      }
+    ]
+  }
+]

@@ -1,29 +1,47 @@
 [
   {
-    "Id": "MOD_THORNS",
-    "Name": "Spiked Carapace",
+    "Id": "MOD_COMMON_GUARD",
+    "Name": "Guarding",
     "Type": "Bless",
-    "Description": "Deals damage based on Defense when hit.",
-    "Tags": [ "Physical", "Defensive" ],
-    "Triggers": [ "ON_RECEIVE_MELEE_ATTACK" ],
-    "TriggeredAbilityId": "INT_THORNS_REFLECT"
+    "Description": "Raises Defense significantly for one turn.",
+    "StatModifications": [
+      {
+        "Stat": "Defense",
+        "Type": "PERCENTAGE",
+        "Value": 0.5
+      }
+    ],
+    "GrantedStatusEffects": []
   },
   {
-    "Id": "MOD_ADRENALINE",
-    "Name": "Adrenaline Rush",
+    "Id": "MOD_GARRET_TRAIT",
+    "Name": "Slayer's Instinct",
     "Type": "Bless",
-    "Description": "Reduces cooldowns of Physical skills and Essence Cost.",
-    "CooldownModifications": [
+    "Description": "[Passive] Garret deals +2 damage with all Physical attacks.",
+    "DamageModifications": [
       {
         "RequiredTag": "Physical",
         "Type": "FLAT",
-        "Value": -1
+        "Value": 2
       }
     ],
-    "EssenceCostModifications": [
+    "Triggers": []
+  },
+  {
+    "Id": "MOD_GARRET_ADRENALINE",
+    "Name": "Adrenaline Rush",
+    "Type": "Bless",
+    "Description": "Increases Attack by 20% and Agility by 10%.",
+    "StatModifications": [
       {
-        "TargetEssenceType": "Neutral",
-        "Value": -1
+        "Stat": "Attack",
+        "Type": "PERCENTAGE",
+        "Value": 0.2
+      },
+      {
+        "Stat": "Agility",
+        "Type": "PERCENTAGE",
+        "Value": 0.1
       }
     ]
   },
@@ -31,7 +49,20 @@
     "Id": "MOD_STUN",
     "Name": "Stunned",
     "Type": "Curse",
-    "Description": "Cannot act.",
+    "Description": "Unit cannot act.",
     "GrantedStatusEffects": [ "Stun" ]
+  },
+  {
+    "Id": "MOD_RACIAL_ROCK_SKIN",
+    "Name": "Rock Skin",
+    "Type": "Bless",
+    "Description": "Reduces incoming Physical damage.",
+    "DamageModifications": [
+      {
+        "RequiredTag": "Physical",
+        "Type": "PERCENTAGE",
+        "Value": -0.15
+      }
+    ]
   }
 ]

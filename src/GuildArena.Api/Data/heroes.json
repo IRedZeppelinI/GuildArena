@@ -1,0 +1,36 @@
+[
+  {
+    "Id": "HERO_GARRET",
+    "Name": "Garret",
+    "Description": "A seasoned slayer. Deals heavy physical damage.",
+    "RaceId": "RACE_HUMAN",
+    "TraitModifierId": "MOD_GARRET_TRAIT",
+    "BaseStats": {
+      "Attack": 12,
+      "Defense": 8,
+      "Agility": 10,
+      "Magic": 5,
+      "MagicDefense": 5,
+      "MaxActions": 1,
+      "MaxHP": 120
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 2.5,
+      "Defense": 1.0,
+      "Agility": 1.5,
+      "Magic": 0.0,
+      "MagicDefense": 0.5,
+      "MaxActions": 0,
+      "MaxHP": 15
+    },
+    "BasicAttackAbilityId": "ABIL_COMMON_SLASH",
+    "GuardAbilityId": "ABIL_COMMON_GUARD",
+    "FocusAbilityId": null,
+    "AbilityIds": [
+      "ABIL_GARRET_PRECISION",
+      "ABIL_GARRET_POMMEL",
+      "ABIL_GARRET_ADRENALINE",
+      "ABIL_GARRET_EXECUTE"
+    ]
+  }
+]

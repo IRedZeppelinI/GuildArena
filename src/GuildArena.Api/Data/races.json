@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "RACE_HUMAN",
+    "Name": "Human",
+    "Description": "Adaptable and restless. Humans start with more action potential.",
+    "RacialModifierIds": [],
+    "BonusStats": {
+      "Attack": 0,
+      "Defense": 0,
+      "Agility": 0,
+      "Magic": 0,
+      "MagicDefense": 0,
+      "MaxActions": 1,
+      "MaxHP": 0
+    }
+  },
+  {
+    "Id": "RACE_VALDRIN",
+    "Name": "Valdrin",
+    "Description": "Stone-kin warriors with hardened skin.",
+    "RacialModifierIds": [ "MOD_RACIAL_ROCK_SKIN" ],
+    "BonusStats": {
+      "Attack": 0,
+      "Defense": 5,
+      "Agility": -2,
+      "Magic": 0,
+      "MagicDefense": 0,
+      "MaxActions": 0,
+      "MaxHP": 20
+    }
+  }
+]
