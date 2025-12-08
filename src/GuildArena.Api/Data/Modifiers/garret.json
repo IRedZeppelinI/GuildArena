@@ -1,0 +1,33 @@
+[
+  {
+    "Id": "MOD_GARRET_TRAIT",
+    "Name": "Slayer's Instinct",
+    "Type": "Bless",
+    "Description": "[Passive] Garret deals +2 damage with all Physical attacks.",
+    "DamageModifications": [
+      {
+        "RequiredTag": "Physical",
+        "Type": "FLAT",
+        "Value": 2
+      }
+    ]
+  },
+  {
+    "Id": "MOD_GARRET_ADRENALINE",
+    "Name": "Adrenaline Rush",
+    "Type": "Bless",
+    "Description": "Increases Attack by 20% and Agility by 10%.",
+    "StatModifications": [
+      {
+        "Stat": "Attack",
+        "Type": "PERCENTAGE",
+        "Value": 0.2
+      },
+      {
+        "Stat": "Agility",
+        "Type": "PERCENTAGE",
+        "Value": 0.1
+      }
+    ]
+  }
+]

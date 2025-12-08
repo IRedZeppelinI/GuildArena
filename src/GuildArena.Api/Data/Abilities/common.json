@@ -1,0 +1,53 @@
+[
+  {
+    "Id": "ABIL_COMMON_SLASH",
+    "Name": "Slash",
+    "Description": "A basic melee attack.",
+    "Tags": [ "Physical", "Melee" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "TargetingRules": [
+      {
+        "RuleId": "TGT_MAIN",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Manual"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 5,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT_MAIN",
+        "Tags": [ "Physical" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_COMMON_GUARD",
+    "Name": "Guard",
+    "Description": "Defensive stance.",
+    "Tags": [ "Physical", "Utility" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_COMMON_GUARD",
+        "DurationInTurns": 1,
+        "TargetRuleId": "SELF"
+      }
+    ]
+  }
+]

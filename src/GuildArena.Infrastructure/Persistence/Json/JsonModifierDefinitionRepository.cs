@@ -34,38 +34,43 @@ public class JsonModifierDefinitionRepository : IModifierDefinitionRepository
     }
 
     private void LoadDefinitions()
-    {
-        var filePath = Path.Combine(_options.AbsoluteRootPath, _options.ModifiersFile);
+    {        
+        var modifiersPath = Path.Combine(_options.AbsoluteRootPath, _options.ModifiersFolder);
 
-        if (!File.Exists(filePath))
+        if (!Directory.Exists(modifiersPath))
         {
-            throw new FileNotFoundException($"Modifiers file not found at: {filePath}");
+            throw new DirectoryNotFoundException($"Modifiers directory not found at: {modifiersPath}");
         }
 
-        try
+        var files = Directory.GetFiles(modifiersPath, "*.json", SearchOption.TopDirectoryOnly);
+        var options = JsonOptionsFactory.Create();
+
+        foreach (var filePath in files)
         {
-            var jsonContent = File.ReadAllText(filePath);
-            var serializerOptions = JsonOptionsFactory.Create(); // us ao helper
-            var list = JsonSerializer.Deserialize<List<ModifierDefinition>>(jsonContent, serializerOptions);
-
-            if (list == null) throw new Exception("JSON deserialization returned null.");
-
-            foreach (var def in list)
+            try
             {
-                if (_definitions.ContainsKey(def.Id))
-                {
-                    _logger.LogError("Duplicate Modifier ID: {Id}", def.Id);
-                    continue;
-                }
-                _definitions[def.Id] = def;
-            }
+                var jsonContent = File.ReadAllText(filePath);
+                var list = JsonSerializer.Deserialize<List<ModifierDefinition>>(jsonContent, options);
 
-            _logger.LogInformation("Loaded {Count} modifiers from {Path}", _definitions.Count, filePath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogCritical(ex, "Failed to load modifiers.");
-            throw; // Propaga o erro para o Warmup no Program.cs
+                if (list == null) continue;
+
+                foreach (var def in list)
+                {
+                    if (_definitions.ContainsKey(def.Id))
+                    {
+                        _logger.LogError("Duplicate Modifier ID: {Id} in {File}", def.Id, Path.GetFileName(filePath));
+                        // Fail Fast para duplicados também
+                        throw new Exception($"Duplicate Modifier ID: {def.Id}");
+                    }
+                    _definitions[def.Id] = def;
+                }
+                _logger.LogInformation("Loaded {Count} modifiers from {File}", list.Count, Path.GetFileName(filePath));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "Failed to load modifiers from {File}", Path.GetFileName(filePath));
+                throw;
+            }
         }
     }
 }

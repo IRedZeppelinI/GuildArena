@@ -1,0 +1,22 @@
+[
+  {
+    "Id": "MOD_COMMON_GUARD",
+    "Name": "Guarding",
+    "Type": "Bless",
+    "Description": "Raises Defense significantly for one turn.",
+    "StatModifications": [
+      {
+        "Stat": "Defense",
+        "Type": "PERCENTAGE",
+        "Value": 0.5
+      }
+    ]
+  },
+  {
+    "Id": "MOD_STUN",
+    "Name": "Stunned",
+    "Type": "Curse",
+    "Description": "Unit cannot act.",
+    "GrantedStatusEffects": [ "Stun" ]
+  }
+]

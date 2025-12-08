@@ -6,6 +6,7 @@ using GuildArena.Infrastructure.Persistence.Json;
 using Microsoft.Extensions.Logging.Abstractions; // NullLogger
 using Microsoft.Extensions.Options;
 using Shouldly;
+using System.IO;
 
 namespace GuildArena.IntegrationTests.Data;
 
@@ -13,6 +14,8 @@ public class DataIntegrityTests
 {
     private readonly IModifierDefinitionRepository _modifierRepo;
     private readonly IAbilityDefinitionRepository _abilityRepo;
+    private readonly IRaceDefinitionRepository _raceRepo;
+    private readonly ICharacterDefinitionRepository _heroRepo;
 
     public DataIntegrityTests()
     {
@@ -22,137 +25,197 @@ public class DataIntegrityTests
 
         if (!Directory.Exists(dataPath))
         {
-            throw new DirectoryNotFoundException($"Could not find Game Data folder at: {dataPath}. Check path logic.");
+            throw new DirectoryNotFoundException(
+                $"Could not find Game Data folder at: {dataPath}. Check path logic.");
         }
 
-        // 2. Configurar as Options manualmente (Simulando o appsettings.json)
+        // 2. Configurar as Options manualmente        
         var options = new GameDataOptions
         {
             AbsoluteRootPath = dataPath,
-            RootFolder = "", // Já estamos dentro da pasta Data
-            ModifiersFile = "modifiers.json",
-            AbilitiesFolder = "Abilities"
+            RootFolder = "", 
+
+            // Ficheiros na raiz de Data/
+            RacesFile = "races.json",
+            CharactersFile = "heroes.json",
+
+            // Pastas
+            AbilitiesFolder = "Abilities",
+            ModifiersFolder = "Modifiers" 
         };
 
         var optionsWrapper = Options.Create(options);
-        var loggerMod = NullLogger<JsonModifierDefinitionRepository>.Instance;
-        var loggerAbil = NullLogger<JsonAbilityDefinitionRepository>.Instance;
 
-        // 3. Instanciar os Repositórios REAIS (Infrastructure)
-        // Isto vai efetivamente ler os ficheiros do disco. Se o JSON estiver mal formatado, rebenta aqui.
-        _modifierRepo = new JsonModifierDefinitionRepository(optionsWrapper, loggerMod);
-        _abilityRepo = new JsonAbilityDefinitionRepository(optionsWrapper, loggerAbil);
+        // 3. Instanciar todos os Repositórios REAIS (Infrastructure)        
+        _modifierRepo = new JsonModifierDefinitionRepository(
+            optionsWrapper, NullLogger<JsonModifierDefinitionRepository>.Instance);
+        _abilityRepo = new JsonAbilityDefinitionRepository(
+            optionsWrapper, NullLogger<JsonAbilityDefinitionRepository>.Instance);
+        _raceRepo = new JsonRaceDefinitionRepository(
+            optionsWrapper, NullLogger<JsonRaceDefinitionRepository>.Instance);
+        _heroRepo = new JsonCharacterDefinitionRepository(
+            optionsWrapper, NullLogger<JsonCharacterDefinitionRepository>.Instance);
     }
 
-    // --- TESTES DE INTEGRIDADE ---
+    // --- TESTES DE CARREGAMENTO BÁSICO ---
 
     [Fact]
-    public void Modifiers_ShouldLoadSuccessfully_AndHaveUniqueIds()
+    public void Load_ShouldLoadAllDefinitionsWithoutErrors()
     {
+        // Este teste passa se os construtores não lançarem exceções.
+        // Verificamos apenas se não estão vazios.
+        _raceRepo.GetAllDefinitions().ShouldNotBeEmpty("Races repo is empty.");
+        _heroRepo.GetAllDefinitions().ShouldNotBeEmpty("Heroes repo is empty.");
+        _abilityRepo.GetAllDefinitions().ShouldNotBeEmpty("Abilities repo is empty.");
+        _modifierRepo.GetAllDefinitions().ShouldNotBeEmpty("Modifiers repo is empty.");
+    }
+
+    // --- TESTES DE INTEGRIDADE RELACIONAL (HERÓIS) ---
+
+    [Fact]
+    public void Integrity_Heroes_ShouldHaveValidReferences()
+    {
+        var heroes = _heroRepo.GetAllDefinitions().Values;
+        var races = _raceRepo.GetAllDefinitions();
         var modifiers = _modifierRepo.GetAllDefinitions();
-
-        modifiers.ShouldNotBeEmpty();
-
-        // Validação extra: Garantir que campos obrigatórios estão preenchidos
-        foreach (var mod in modifiers.Values)
-        {
-            mod.Name.ShouldNotBeNullOrWhiteSpace($"Modifier {mod.Id} must have a name.");
-        }
-    }
-
-    [Fact]
-    public void Abilities_ShouldLoadSuccessfully_AndHaveUniqueIds()
-    {
         var abilities = _abilityRepo.GetAllDefinitions();
 
-        abilities.ShouldNotBeEmpty();
+        var errors = new List<string>();
 
-        foreach (var abil in abilities.Values)
+        foreach (var hero in heroes)
         {
-            abil.Name.ShouldNotBeNullOrWhiteSpace($"Ability {abil.Id} must have a name.");
+            // 1. Validar Raça
+            if (!races.ContainsKey(hero.RaceId))
+                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown RaceId: '{hero.RaceId}'");
+
+            // 2. Validar Trait Fixo (se existir)
+            if (!string.IsNullOrEmpty(hero.TraitModifierId))
+            {
+                if (!modifiers.ContainsKey(hero.TraitModifierId))
+                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown TraitModifierId: '{hero.TraitModifierId}'");
+            }
+
+            // 3. Validar Habilidades (Lista AbilityIds)
+            foreach (var abilId in hero.AbilityIds)
+            {
+                if (!abilities.ContainsKey(abilId))
+                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown AbilityId: '{abilId}'");
+            }
+
+            // 4. Validar Basic Attack
+            if (!abilities.ContainsKey(hero.BasicAttackAbilityId))
+                errors.Add(
+                    $"Hero '{hero.Name}' ({hero.Id}) references unknown BasicAttackAbilityId:" +
+                    $" '{hero.BasicAttackAbilityId}'");
+
+            // 5. Validar Special (Guard ou Focus)
+            if (!string.IsNullOrEmpty(hero.GuardAbilityId) && !abilities.ContainsKey(hero.GuardAbilityId))
+                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown GuardAbilityId:" +
+                    $" '{hero.GuardAbilityId}'");
+
+            if (!string.IsNullOrEmpty(hero.FocusAbilityId) && !abilities.ContainsKey(hero.FocusAbilityId))
+                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown FocusAbilityId:" +
+                    $" '{hero.FocusAbilityId}'");
         }
+
+        errors.ShouldBeEmpty($"Found Integrity Errors in Heroes:\n{string.Join("\n", errors)}");
     }
 
+    // --- TESTES DE INTEGRIDADE RELACIONAL (RAÇAS) ---
+
     [Fact]
-    public void Integrity_AllAbilityModifiers_ShouldExistInModifierRepo()
-    {       
-        // Verifica se a Fireball aponta para um ModifierID que realmente existe.
-
-        var abilities = _abilityRepo.GetAllDefinitions();
+    public void Integrity_Races_ShouldHaveValidModifiers()
+    {
+        var races = _raceRepo.GetAllDefinitions().Values;
         var modifiers = _modifierRepo.GetAllDefinitions();
+        var errors = new List<string>();
 
-        var missingReferences = new List<string>();
+        foreach (var race in races)
+        {
+            foreach (var modId in race.RacialModifierIds)
+            {
+                if (!modifiers.ContainsKey(modId))
+                    errors.Add($"Race '{race.Name}' ({race.Id}) references unknown RacialModifierId:" +
+                        $" '{modId}'");
+            }
+        }
 
-        foreach (var ability in abilities.Values)
+        errors.ShouldBeEmpty(
+            $"Found Integrity Errors in Races:\n{string.Join("\n", errors)}");
+    }
+
+    // --- TESTES DE INTEGRIDADE RELACIONAL (HABILIDADES) ---
+
+    [Fact]
+    public void Integrity_Abilities_ShouldReferenceValidModifiers()
+    {
+        var abilities = _abilityRepo.GetAllDefinitions().Values;
+        var modifiers = _modifierRepo.GetAllDefinitions();
+        var errors = new List<string>();
+
+        foreach (var ability in abilities)
         {
             foreach (var effect in ability.Effects)
             {
-                // verificar efeitos do tipo APPLY_MODIFIER
                 if (effect.Type == EffectType.APPLY_MODIFIER)
                 {
                     if (string.IsNullOrEmpty(effect.ModifierDefinitionId))
                     {
-                        missingReferences.Add($"Ability '{ability.Id}' has an APPLY_MODIFIER effect with null/empty ModifierId.");
+                        errors.Add($"Ability '{ability.Id}' has APPLY_MODIFIER effect with null ID.");
                         continue;
                     }
 
                     if (!modifiers.ContainsKey(effect.ModifierDefinitionId))
-                    {
-                        missingReferences.Add($"Ability '{ability.Id}' references unknown Modifier: '{effect.ModifierDefinitionId}'");
-                    }
+                        errors.Add($"Ability '{ability.Id}' references unknown ModifierId:" +
+                            $" '{effect.ModifierDefinitionId}'");
                 }
             }
         }
 
-        // Se a lista tiver erros, o teste falha e imprime o relatório
-        missingReferences.ShouldBeEmpty(
-            "Found broken references in Ability Definitions:\n" + string.Join("\n", missingReferences));
+        errors.ShouldBeEmpty(
+            $"Found Integrity Errors in Abilities:\n{string.Join("\n", errors)}");
     }
 
+    // --- TESTES DE INTEGRIDADE RELACIONAL (MODIFIERS) ---
+
     [Fact]
-    public void Integrity_AllTriggeredAbilities_ShouldExistInAbilityRepo()
+    public void Integrity_Modifiers_ShouldReferenceValidTriggeredAbilities()
     {
-        // se um Modificador dispara uma Habilidade (TriggeredAbilityId),
-        // essa habilidade tem de existir.
-
+        var modifiers = _modifierRepo.GetAllDefinitions().Values;
         var abilities = _abilityRepo.GetAllDefinitions();
-        var modifiers = _modifierRepo.GetAllDefinitions();
+        var errors = new List<string>();
 
-        var missingReferences = new List<string>();
-
-        foreach (var mod in modifiers.Values)
+        foreach (var mod in modifiers)
         {
             if (!string.IsNullOrEmpty(mod.TriggeredAbilityId))
             {
                 if (!abilities.ContainsKey(mod.TriggeredAbilityId))
-                {
-                    missingReferences.Add($"Modifier '{mod.Id}' triggers unknown Ability: '{mod.TriggeredAbilityId}'");
-                }
+                    errors.Add($"Modifier '{mod.Id}' triggers unknown AbilityId: " +
+                        $"'{mod.TriggeredAbilityId}'");
             }
         }
 
-        missingReferences.ShouldBeEmpty("Found broken references in Modifier Definitions:\n" + string.Join("\n", missingReferences));
+        errors.ShouldBeEmpty(
+            $"Found Integrity Errors in Modifiers:\n{string.Join("\n", errors)}");
     }
 
-    // --- HELPER: Navegação de Pastas ---
+    // --- HELPER ---
     private string FindSolutionRoot()
     {
-        var currentDir = Directory.GetCurrentDirectory();
-        var dirInfo = new DirectoryInfo(currentDir);
+        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
 
-        // Sobe até encontrar o ficheiro .sln ou chegar à raiz
-        while (dirInfo != null && !dirInfo.GetFiles("*.sln").Any())
+        
+        while (directory != null && !directory.GetFiles("*.sln").Any())
         {
-            dirInfo = dirInfo.Parent;
+            directory = directory.Parent;
         }
 
-        if (dirInfo == null)
+        
+        if (directory == null)
         {
-            // Fallback: assumir estrutura padrão ../../../..
-            // (bin / Debug / net9.0 / GuildArena.IntegrationTests / tests / ROOT)
-            return Path.GetFullPath(Path.Combine(currentDir, "../../../../..")); //TODO: rever smelly hack
+            throw new DirectoryNotFoundException("Could not locate the Solution root (looking for *.sln file). Ensure you are running tests within the project structure.");
         }
 
-        return dirInfo.FullName;
+        return directory.FullName;
     }
 }
