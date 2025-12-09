@@ -36,37 +36,44 @@ public class JsonCharacterDefinitionRepository : ICharacterDefinitionRepository
 
     private void LoadDefinitions()
     {
-        var filePath = Path.Combine(_options.AbsoluteRootPath, _options.CharactersFile);
+        //  PASTA Characters
+        var folderPath = Path.Combine(_options.AbsoluteRootPath, _options.CharactersFolder);
 
-        if (!File.Exists(filePath))
+        if (!Directory.Exists(folderPath))
         {
-            throw new FileNotFoundException($"Characters file not found at: {filePath}");
+            throw new DirectoryNotFoundException($"Characters directory not found at: {folderPath}");
         }
 
-        try
+        // 2. Ler todos os ficheiros (heroes.json, mobs.json, bosses.json...)
+        var files = Directory.GetFiles(folderPath, "*.json", SearchOption.TopDirectoryOnly);
+        var options = JsonOptionsFactory.Create();
+
+        foreach (var filePath in files)
         {
-            var jsonContent = File.ReadAllText(filePath);
-            var serializerOptions = JsonOptionsFactory.Create();
-            var list = JsonSerializer.Deserialize<List<CharacterDefinition>>(jsonContent, serializerOptions);
-
-            if (list == null) throw new Exception("JSON deserialization returned null.");
-
-            foreach (var def in list)
+            try
             {
-                if (_definitions.ContainsKey(def.Id))
-                {
-                    _logger.LogError("Duplicate Character ID: {Id}", def.Id);
-                    continue;
-                }
-                _definitions[def.Id] = def;
-            }
+                var jsonContent = File.ReadAllText(filePath);
+                var list = JsonSerializer.Deserialize<List<CharacterDefinition>>(jsonContent, options);
 
-            _logger.LogInformation("Loaded {Count} characters from {Path}", _definitions.Count, filePath);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogCritical(ex, "Failed to load characters.");
-            throw;
+                if (list == null) continue;
+
+                foreach (var def in list)
+                {
+                    if (_definitions.ContainsKey(def.Id))
+                    {
+                        _logger.LogError("Duplicate Character ID: {Id} in file {File}", def.Id, Path.GetFileName(filePath));
+                        throw new Exception($"Duplicate Character ID: {def.Id}");
+                    }
+                    _definitions[def.Id] = def;
+                }
+
+                _logger.LogInformation("Loaded {Count} characters from {File}", list.Count, Path.GetFileName(filePath));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogCritical(ex, "Failed to load characters from {File}", Path.GetFileName(filePath));
+                throw;
+            }
         }
     }
 }

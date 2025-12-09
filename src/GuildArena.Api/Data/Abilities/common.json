@@ -2,13 +2,15 @@
   {
     "Id": "ABIL_COMMON_SLASH",
     "Name": "Slash",
-    "Description": "A basic melee attack.",
-    "Tags": [ "Physical", "Melee" ],
+    "Description": "A basic cutting attack.",
+    "Tags": [ "Physical", "Melee", "Slashing" ],
     "ActionPointCost": 1,
     "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
     "TargetingRules": [
       {
-        "RuleId": "TGT_MAIN",
+        "RuleId": "TGT",
         "Type": "Enemy",
         "Count": 1,
         "Strategy": "Manual"
@@ -22,8 +24,38 @@
         "BaseAmount": 5,
         "ScalingStat": "Attack",
         "ScalingFactor": 1.0,
-        "TargetRuleId": "TGT_MAIN",
-        "Tags": [ "Physical" ]
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Slashing" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_COMMON_SMASH",
+    "Name": "Smash",
+    "Description": "A heavy blunt attack.",
+    "Tags": [ "Physical", "Melee", "Blunt" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Manual"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 8,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.2,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Blunt" ]
       }
     ]
   },
@@ -34,6 +66,8 @@
     "Tags": [ "Physical", "Utility" ],
     "ActionPointCost": 1,
     "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
     "TargetingRules": [
       {
         "RuleId": "SELF",

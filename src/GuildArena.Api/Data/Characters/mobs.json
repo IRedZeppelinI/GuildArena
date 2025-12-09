@@ -1,0 +1,54 @@
+[
+  {
+    "Id": "MOB_BANDIT_RECRUIT",
+    "Name": "Bandit Recruit",
+    "RaceId": "RACE_HUMAN",
+    "TraitModifierId": null,
+    "BaseStats": {
+      "Attack": 8,
+      "Defense": 2,
+      "Agility": 5,
+      "Magic": 0,
+      "MagicDefense": 0,
+      "MaxActions": 1,
+      "MaxHP": 40
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 1,
+      "Defense": 0.5,
+      "Agility": 0.5,
+      "Magic": 0,
+      "MagicDefense": 0,
+      "MaxActions": 0,
+      "MaxHP": 5
+    },
+    "BasicAttackAbilityId": "ABIL_COMMON_SLASH",
+    "AbilityIds": []
+  },
+  {
+    "Id": "MOB_STONE_SENTINEL",
+    "Name": "Stone Sentinel",
+    "RaceId": "RACE_VALDRIN",
+    "TraitModifierId": null,
+    "BaseStats": {
+      "Attack": 6,
+      "Defense": 10,
+      "Agility": 0,
+      "Magic": 0,
+      "MagicDefense": 10,
+      "MaxActions": 1,
+      "MaxHP": 60
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 1,
+      "Defense": 2,
+      "Agility": 0,
+      "Magic": 0,
+      "MagicDefense": 1,
+      "MaxActions": 0,
+      "MaxHP": 10
+    },
+    "BasicAttackAbilityId": "ABIL_COMMON_SMASH",
+    "AbilityIds": []
+  }
+]

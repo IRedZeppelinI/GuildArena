@@ -18,8 +18,7 @@ public class DataIntegrityTests
     private readonly ICharacterDefinitionRepository _heroRepo;
 
     public DataIntegrityTests()
-    {
-        // 1. Encontrar o caminho real da pasta 'Data' no projeto API        
+    {         
         var solutionRoot = FindSolutionRoot();
         var dataPath = Path.Combine(solutionRoot, "src", "GuildArena.Api", "Data");
 
@@ -33,15 +32,12 @@ public class DataIntegrityTests
         var options = new GameDataOptions
         {
             AbsoluteRootPath = dataPath,
-            RootFolder = "", 
-
-            // Ficheiros na raiz de Data/
+            RootFolder = "",            
             RacesFile = "races.json",
-            CharactersFile = "heroes.json",
-
             // Pastas
+            CharactersFolder = "Characters", 
             AbilitiesFolder = "Abilities",
-            ModifiersFolder = "Modifiers" 
+            ModifiersFolder = "Modifiers"
         };
 
         var optionsWrapper = Options.Create(options);
@@ -62,8 +58,6 @@ public class DataIntegrityTests
     [Fact]
     public void Load_ShouldLoadAllDefinitionsWithoutErrors()
     {
-        // Este teste passa se os construtores não lançarem exceções.
-        // Verificamos apenas se não estão vazios.
         _raceRepo.GetAllDefinitions().ShouldNotBeEmpty("Races repo is empty.");
         _heroRepo.GetAllDefinitions().ShouldNotBeEmpty("Heroes repo is empty.");
         _abilityRepo.GetAllDefinitions().ShouldNotBeEmpty("Abilities repo is empty.");
@@ -84,38 +78,34 @@ public class DataIntegrityTests
 
         foreach (var hero in heroes)
         {
-            // 1. Validar Raça
             if (!races.ContainsKey(hero.RaceId))
                 errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown RaceId: '{hero.RaceId}'");
 
-            // 2. Validar Trait Fixo (se existir)
             if (!string.IsNullOrEmpty(hero.TraitModifierId))
             {
                 if (!modifiers.ContainsKey(hero.TraitModifierId))
-                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown TraitModifierId: '{hero.TraitModifierId}'");
+                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown TraitModifierId:" +
+                        $" '{hero.TraitModifierId}'");
             }
 
-            // 3. Validar Habilidades (Lista AbilityIds)
             foreach (var abilId in hero.AbilityIds)
             {
                 if (!abilities.ContainsKey(abilId))
-                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown AbilityId: '{abilId}'");
+                    errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown AbilityId:" +
+                        $" '{abilId}'");
             }
 
-            // 4. Validar Basic Attack
             if (!abilities.ContainsKey(hero.BasicAttackAbilityId))
-                errors.Add(
-                    $"Hero '{hero.Name}' ({hero.Id}) references unknown BasicAttackAbilityId:" +
+                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown BasicAttackAbilityId:" +
                     $" '{hero.BasicAttackAbilityId}'");
 
-            // 5. Validar Special (Guard ou Focus)
             if (!string.IsNullOrEmpty(hero.GuardAbilityId) && !abilities.ContainsKey(hero.GuardAbilityId))
                 errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown GuardAbilityId:" +
                     $" '{hero.GuardAbilityId}'");
 
             if (!string.IsNullOrEmpty(hero.FocusAbilityId) && !abilities.ContainsKey(hero.FocusAbilityId))
-                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown FocusAbilityId:" +
-                    $" '{hero.FocusAbilityId}'");
+                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown FocusAbilityId: " +
+                    $"'{hero.FocusAbilityId}'");
         }
 
         errors.ShouldBeEmpty($"Found Integrity Errors in Heroes:\n{string.Join("\n", errors)}");
@@ -135,13 +125,11 @@ public class DataIntegrityTests
             foreach (var modId in race.RacialModifierIds)
             {
                 if (!modifiers.ContainsKey(modId))
-                    errors.Add($"Race '{race.Name}' ({race.Id}) references unknown RacialModifierId:" +
-                        $" '{modId}'");
+                    errors.Add($"Race '{race.Name}' ({race.Id}) references unknown RacialModifierId: '{modId}'");
             }
         }
 
-        errors.ShouldBeEmpty(
-            $"Found Integrity Errors in Races:\n{string.Join("\n", errors)}");
+        errors.ShouldBeEmpty($"Found Integrity Errors in Races:\n{string.Join("\n", errors)}");
     }
 
     // --- TESTES DE INTEGRIDADE RELACIONAL (HABILIDADES) ---
@@ -166,14 +154,46 @@ public class DataIntegrityTests
                     }
 
                     if (!modifiers.ContainsKey(effect.ModifierDefinitionId))
-                        errors.Add($"Ability '{ability.Id}' references unknown ModifierId:" +
-                            $" '{effect.ModifierDefinitionId}'");
+                        errors.Add($"Ability '{ability.Id}' references unknown ModifierId: '{effect.ModifierDefinitionId}'");
                 }
             }
         }
 
-        errors.ShouldBeEmpty(
-            $"Found Integrity Errors in Abilities:\n{string.Join("\n", errors)}");
+        errors.ShouldBeEmpty($"Found Integrity Errors in Abilities:\n{string.Join("\n", errors)}");
+    }
+
+    // --- TESTE DE VALIDAÇÃO DE REGRAS ---
+
+    [Fact]
+    public void Integrity_ActiveAbilities_ShouldHaveValidConfiguration()
+    {
+        var abilities = _abilityRepo.GetAllDefinitions().Values;
+        var errors = new List<string>();
+
+        foreach (var abil in abilities)
+        {
+            // Validae apenas habilidades "User Facing" (prefixo ABIL_)
+            // Ignore habilidades internas (INT_) ou de triggers
+            if (abil.Id.StartsWith("ABIL_", StringComparison.OrdinalIgnoreCase))
+            {
+                if (abil.ActionPointCost < 0)
+                    errors.Add($"Active Ability '{abil.Id}' has negative ActionPointCost.");
+
+                if (abil.BaseCooldown < 0)
+                    errors.Add($"Active Ability '{abil.Id}' has negative BaseCooldown.");
+
+                // Garante que a lista de custos existe (mesmo que vazia) para evitar NRE no motor
+                if (abil.Costs == null)
+                    errors.Add($"Active Ability '{abil.Id}' has null Essence Costs list.");
+
+                if (abil.TargetingRules == null || abil.TargetingRules.Count == 0)
+                    errors.Add($"Active Ability '{abil.Id}' has no Targeting Rules defined.");
+            }
+        }
+
+        errors.ShouldBeEmpty
+            ($"Found Configuration Errors in Active Abilities:" +
+            $"\n{string.Join("\n", errors)}");
     }
 
     // --- TESTES DE INTEGRIDADE RELACIONAL (MODIFIERS) ---
@@ -190,13 +210,11 @@ public class DataIntegrityTests
             if (!string.IsNullOrEmpty(mod.TriggeredAbilityId))
             {
                 if (!abilities.ContainsKey(mod.TriggeredAbilityId))
-                    errors.Add($"Modifier '{mod.Id}' triggers unknown AbilityId: " +
-                        $"'{mod.TriggeredAbilityId}'");
+                    errors.Add($"Modifier '{mod.Id}' triggers unknown AbilityId: '{mod.TriggeredAbilityId}'");
             }
         }
 
-        errors.ShouldBeEmpty(
-            $"Found Integrity Errors in Modifiers:\n{string.Join("\n", errors)}");
+        errors.ShouldBeEmpty($"Found Integrity Errors in Modifiers:\n{string.Join("\n", errors)}");
     }
 
     // --- HELPER ---
@@ -204,13 +222,11 @@ public class DataIntegrityTests
     {
         var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
 
-        
         while (directory != null && !directory.GetFiles("*.sln").Any())
         {
             directory = directory.Parent;
         }
 
-        
         if (directory == null)
         {
             throw new DirectoryNotFoundException("Could not locate the Solution root (looking for *.sln file). Ensure you are running tests within the project structure.");
