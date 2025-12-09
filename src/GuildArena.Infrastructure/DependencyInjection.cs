@@ -26,8 +26,7 @@ public static class DependencyInjection
             redisConnection = "localhost:6379";            
         }
 
-        //  Regista o IConnectionMultiplexer como Singleton.
-        // para ser partilhada por toda a app.
+        //  Redis como Singleton.        
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnection)
         );
