@@ -8,7 +8,7 @@ public class HeroCharacter
 
     public int CurrentLevel { get; set; }
     public int CurrentXP { get; set; }
-    public int CurrentHP { get; set; }
+    
 
     
 }
