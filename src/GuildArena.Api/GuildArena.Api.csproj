@@ -14,6 +14,7 @@
     <ProjectReference Include="..\GuildArena.Application\GuildArena.Application.csproj" />
     <ProjectReference Include="..\GuildArena.Core\GuildArena.Core.csproj" />
     <ProjectReference Include="..\GuildArena.Infrastructure\GuildArena.Infrastructure.csproj" />
+    <ProjectReference Include="..\GuildArena.Shared\GuildArena.Shared.csproj" />
   </ItemGroup>
 
 </Project>
