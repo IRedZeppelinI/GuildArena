@@ -15,18 +15,20 @@ public class StartCombatCommandHandler : IRequestHandler<StartCombatCommand, str
     private readonly IEssenceService _essenceService;
     private readonly ICombatantFactory _combatantFactory;
     private readonly ILogger<StartCombatCommandHandler> _logger;
-    private readonly Random _rng = new();
+    private readonly IRandomProvider _rng;
 
     public StartCombatCommandHandler(
         ICombatStateRepository combatRepo,
         IEssenceService essenceService,
         ICombatantFactory combatantFactory,
-        ILogger<StartCombatCommandHandler> logger)
+        ILogger<StartCombatCommandHandler> logger,
+        IRandomProvider rng)
     {
         _combatRepo = combatRepo;
         _essenceService = essenceService;
         _combatantFactory = combatantFactory;
         _logger = logger;
+        _rng = rng;
     }
 
     public async Task<string> Handle(StartCombatCommand request, CancellationToken cancellationToken)

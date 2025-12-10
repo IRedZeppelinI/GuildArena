@@ -14,14 +14,16 @@ public class EssenceService : IEssenceService
 {
     private readonly IModifierDefinitionRepository _modifierRepository;
     private readonly ILogger<EssenceService> _logger;
-    private readonly Random _random = new();
+    private readonly IRandomProvider _random;
 
     public EssenceService(
         IModifierDefinitionRepository modifierRepository,
-        ILogger<EssenceService> logger)
+        ILogger<EssenceService> logger,
+        IRandomProvider random)
     {
         _modifierRepository = modifierRepository;
         _logger = logger;
+        _random = random;
     }
 
 

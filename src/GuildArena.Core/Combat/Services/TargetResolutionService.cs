@@ -9,12 +9,13 @@ namespace GuildArena.Core.Combat.Services;
 
 public class TargetResolutionService : ITargetResolutionService
 {
-    private readonly ILogger<TargetResolutionService> _logger;    
-    private readonly Random _random = new();
+    private readonly ILogger<TargetResolutionService> _logger;
+    private readonly IRandomProvider _random;
 
-    public TargetResolutionService(ILogger<TargetResolutionService> logger)
+    public TargetResolutionService(ILogger<TargetResolutionService> logger, IRandomProvider random)
     {
-        _logger = logger;        
+        _logger = logger;   
+        _random = random;
     }
 
     public List<Combatant> ResolveTargets(
@@ -103,7 +104,7 @@ public class TargetResolutionService : ITargetResolutionService
                 return new List<Combatant>();
 
             case TargetSelectionStrategy.Random:
-                return potencialTargets.OrderBy(x => _random.Next()).Take(rule.Count).ToList();
+                return potencialTargets.OrderBy(x => _random.Next(int.MaxValue)).Take(rule.Count).ToList();
 
             //TODO: Rever tie-break
             case TargetSelectionStrategy.LowestHP:

@@ -1,4 +1,5 @@
-﻿using GuildArena.Core.Combat.Services;
+﻿using GuildArena.Core.Combat.Abstractions; 
+using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -14,6 +15,7 @@ public class EssenceServiceTests
 {
     private readonly IModifierDefinitionRepository _repoMock;
     private readonly ILogger<EssenceService> _loggerMock;
+    private readonly IRandomProvider _randomMock; 
     private readonly EssenceService _service;
 
     // Definitions for testing generation
@@ -25,7 +27,14 @@ public class EssenceServiceTests
     {
         _repoMock = Substitute.For<IModifierDefinitionRepository>();
         _loggerMock = Substitute.For<ILogger<EssenceService>>();
-        _service = new EssenceService(_repoMock, _loggerMock);
+        _randomMock = Substitute.For<IRandomProvider>(); 
+
+        
+        //  quando o EssenceService pede uma cor aleatória devolve 0, 
+        // escolhendo sempre a primeira do array (Vigor), tornando o teste previsível.
+        _randomMock.Next(Arg.Any<int>()).Returns(0);
+
+        _service = new EssenceService(_repoMock, _loggerMock, _randomMock); 
 
         // 1. Fixed Generation (+1 Mind)
         _manaSpringMod = new ModifierDefinition
@@ -128,6 +137,7 @@ public class EssenceServiceTests
         player.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_DRAIN" }); // -1 Random
 
         // Act
+        // Como o Mock do Random retorna 0, e a Vigor é a primeira key, ele vai tentar drenar Vigor.
         // Turno 2 (Gera +4) - Drain (-1) = Net +3
         // Total esperado: 5 (Inicial) + 3 = 8
         _service.GenerateStartOfTurnEssence(player, 2);
@@ -151,7 +161,7 @@ public class EssenceServiceTests
         player.EssencePool.Values.Sum().ShouldBe(3);
     }
 
-    // --- TESTES DE VALIDAÇÃO (HasEnoughEssence) ---
+    // --- TESTES DE VALIDAÇÃO (HasEnoughEssence) ---    
 
     [Fact]
     public void HasEnoughEssence_WithExactChange_ShouldReturnTrue()
@@ -171,7 +181,7 @@ public class EssenceServiceTests
     {
         // Arrange
         var player = new CombatPlayer { PlayerId = 1 };
-        player.EssencePool.Add(EssenceType.Vigor, 5); // Tem muito dinheiro, mas cor errada
+        player.EssencePool.Add(EssenceType.Vigor, 5); // Tem muito essence, mas cor errada
 
         var costs = new List<EssenceAmount> { new() { Type = EssenceType.Mind, Amount = 1 } };
 
@@ -232,7 +242,7 @@ public class EssenceServiceTests
         _service.HasEnoughEssence(player, costs).ShouldBeFalse();
     }
 
-    // --- TESTES DE PAGAMENTO (PayEssence) ---
+    // --- TESTES DE PAGAMENTO Essencfe ---
 
     [Fact]
     public void PayEssence_ShouldDeductCorrectAmounts()

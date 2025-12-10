@@ -8,4 +8,6 @@ namespace GuildArena.Core.Combat.Services;
 public class SystemRandomProvider : IRandomProvider
 {    
     public double NextDouble() => Random.Shared.NextDouble();
+
+    public int Next(int maxValue) => Random.Shared.Next(maxValue);
 }

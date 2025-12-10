@@ -1,19 +1,18 @@
-﻿using GuildArena.Core.Combat.Services;
-using GuildArena.Domain.Abstractions.Repositories;
-using GuildArena.Domain.Definitions;
+﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 
 public class TargetResolutionServiceTests
 {
     private readonly ILogger<TargetResolutionService> _loggerMock;
+    private readonly IRandomProvider _randomMock; 
     private readonly TargetResolutionService _service;
 
     private readonly GameState _gameState;
@@ -22,7 +21,14 @@ public class TargetResolutionServiceTests
     public TargetResolutionServiceTests()
     {
         _loggerMock = Substitute.For<ILogger<TargetResolutionService>>();
-        _service = new TargetResolutionService(_loggerMock);
+        _randomMock = Substitute.For<IRandomProvider>(); 
+
+        // Configuração Padrão do Random Mock
+        // Quando pedir um Inteiro (Next), devolve 0.
+        // Isto garante que em testes de "Random Target", escolhe sempre o primeiro da lista.
+        _randomMock.Next(Arg.Any<int>()).Returns(0);
+
+        _service = new TargetResolutionService(_loggerMock, _randomMock); 
 
         // Arrange Global: Cenário de Combate 2v2
         _source = new Combatant
@@ -226,6 +232,29 @@ public class TargetResolutionServiceTests
 
         // Assert
         result.Single().Id.ShouldBe(4); // 10% < 40%
+    }
+
+    // ---  RANDOM STRATEGY  ---
+    [Fact]
+    public void ResolveTargets_RandomStrategy_ShouldUseProvider()
+    {
+        // Arrange
+        var rule = new TargetingRule
+        {
+            RuleId = "T1",
+            Type = TargetType.Enemy,
+            Count = 1,
+            Strategy = TargetSelectionStrategy.Random
+        };
+
+        // Act
+        var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
+
+        // Assert
+        // O Mock devolve 0, logo o OrderBy(x => 0) mantém a ordem original ou é estável.
+        // O importante é garantir que não rebenta e devolve 1 alvo.
+        result.Count.ShouldBe(1);
+        _randomMock.Received(2).Next(Arg.Any<int>()); // Verifica se o serviço chamou o Random
     }
 
     // --- TESTES DE VIVO/MORTO ---
