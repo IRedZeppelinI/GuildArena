@@ -13,8 +13,8 @@ public interface IEssenceService
     /// Generates the start-of-turn essence (Base + Modifiers) and applies it to the player's pool.
     /// </summary>
     /// <param name="player">The player to receive the essence.</param>
-    /// <param name="turnNumber">The current turn number (affects base generation).</param>
-    void GenerateStartOfTurnEssence(CombatPlayer player, int turnNumber);
+    /// <param name="baseAmount">The current turn number (affects base generation).</param>
+    void GenerateStartOfTurnEssence(CombatPlayer player, int baseAmount = 4);
 
 
     /// <summary>

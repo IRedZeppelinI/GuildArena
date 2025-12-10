@@ -95,10 +95,9 @@ public class EssenceService : IEssenceService
     /// Generates the start-of-turn essence (Base + Modifiers) and applies it to the player's pool.
     /// </summary>
 
-    public void GenerateStartOfTurnEssence(CombatPlayer player, int turnNumber)
+    public void GenerateStartOfTurnEssence(CombatPlayer player, int baseAmount = 4)
     {
-        // 1. GERAÇÃO BASE
-        int baseAmount = (turnNumber == 1) ? 2 : 4;
+        // 1. GERAÇÃO BASE       
 
         for (int i = 0; i < baseAmount; i++)
         {            

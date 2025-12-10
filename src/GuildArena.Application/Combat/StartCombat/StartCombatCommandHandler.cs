@@ -65,7 +65,7 @@ public class StartCombatCommandHandler : IRequestHandler<StartCombatCommand, str
 
             // 4. Inicializar Essence do primeiro jogador
             var startingPlayer = gameState.Players.First(p => p.PlayerId == gameState.CurrentPlayerId);
-            _essenceService.GenerateStartOfTurnEssence(startingPlayer, 1);
+            _essenceService.GenerateStartOfTurnEssence(startingPlayer, 2);
         }
         else
         {

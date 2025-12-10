@@ -37,7 +37,7 @@ public class TurnManagerService : ITurnManagerService
         // 1. Processar o FIM do turno para o jogador atual
         var combatantsEndingTurn = gameState.Combatants
             .Where(c => c.OwnerId == playerWhoseTurnEnded && c.IsAlive)
-            .ToList(); //
+            .ToList(); 
 
         foreach (var combatant in combatantsEndingTurn)
         {
@@ -77,7 +77,8 @@ public class TurnManagerService : ITurnManagerService
 
         var newPlayer = gameState.Players.First(p => p.PlayerId == nextPlayerId);
 
-        _essenceService.GenerateStartOfTurnEssence(newPlayer, gameState.CurrentTurnNumber);
+        //gerar essence de novo turno
+        _essenceService.GenerateStartOfTurnEssence(newPlayer);
 
         // Processar Start Turn Triggers        
         var combatantsStartingTurn = gameState.Combatants
