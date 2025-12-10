@@ -11,8 +11,8 @@ namespace GuildArena.Application.Combat.EndTurn;
 /// </summary>
 public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
 {
-    private readonly ITurnManagerService _turnManagerService; //  Core
-    private readonly ICombatStateRepository _combatStateRepo; // Infrastructure (redis)
+    private readonly ITurnManagerService _turnManagerService; 
+    private readonly ICombatStateRepository _combatStateRepo; 
     private readonly ILogger<EndTurnCommandHandler> _logger;
     //TODO:  Injetar IHubContext<CombatHub> para o SignalR
 
@@ -42,12 +42,10 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
 
         // TODO: Validação - O jogador que fez o pedido é o gameState.CurrentPlayerId?)
 
-        // 2. MODIFICAR (Modify)
-        // Delegar lógica
+        // 2. MODIFICAR (Modify)        
         _turnManagerService.AdvanceTurn(gameState);
 
-        // 3. GUARDAR (Save)
-        // Persistir o novo estado modificado de volta no Redis.
+        // 3. GUARDAR (Save)        
         await _combatStateRepo.SaveAsync(request.CombatId, gameState);
 
         // 4. NOTIFICAR (Notify)
