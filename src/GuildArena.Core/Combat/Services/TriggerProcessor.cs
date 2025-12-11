@@ -62,7 +62,7 @@ public class TriggerProcessor : ITriggerProcessor
         // Lógica para triggers Defensivos (Quem recebe a ação)
         if (trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_RECEIVE_DAMAGE)
+            trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK)
         {
             // O trigger só dispara se o portador do modifier for o ALVO do evento
             return context.Target?.Id == holder.Id;
@@ -71,7 +71,7 @@ public class TriggerProcessor : ITriggerProcessor
         // Lógica para triggers Ofensivos (Quem causa a ação)
         if (trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_DEAL_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_DEAL_MAGIC_DAMAGE)
+            trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK)
         {
             // O trigger só dispara se o portador do modifier for a FONTE do evento
             return context.Source.Id == holder.Id;
@@ -104,10 +104,11 @@ public class TriggerProcessor : ITriggerProcessor
             ability,
             source,
             autoTargets,
-            payment
+            payment,
+            isTriggeredAction: true
         );
 
-        // 4. Enqueue (A grande mudança: Agendar em vez de Executar)
+        // 4. Enqueue 
         _actionQueue.Enqueue(action);
     }
 
@@ -126,7 +127,8 @@ public class TriggerProcessor : ITriggerProcessor
                 targets.SelectedTargets[rule.RuleId] = new List<int> { context.Source.Id };
             }
             // Se a regra pede Self/Friendly, e o contexto tem Target, usamos esse
-            else if ((rule.Type == TargetType.Self || rule.Type == TargetType.Friendly) && context.Target != null)
+            else if ((rule.Type == TargetType.Self || rule.Type == TargetType.Friendly) 
+                && context.Target != null)
             {
                 targets.SelectedTargets[rule.RuleId] = new List<int> { source.Id };
             }

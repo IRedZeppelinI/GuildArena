@@ -121,17 +121,16 @@ public class CombatEngine : ICombatEngine
             var action = _actionQueue.Dequeue();
             if (action == null) continue;
 
-            // Verificar morte antes de executar
-            // Se a fonte da ação morreu entretanto
-            // (ex: morreu no trigger anterior), a ação falha ou é ignorada
-            if (!action.Source.IsAlive)
-            {
-                AppLogger.LogInformation(
-                    "Action {Action} skipped because source {Source} is dead.",
-                    action.Name,
-                    action.Source.Name);
-                continue;
-            }
+            
+            //A REMOVER porque Impede triggers ON_DEATH e mecânicas especiais.
+            //if (!action.Source.IsAlive)
+            //{
+            //    AppLogger.LogInformation(
+            //        "Action {Action} skipped because source {Source} is dead.",
+            //        action.Name,
+            //        action.Source.Name);
+            //    continue;
+            //}
 
             // Executar a Ação
             // Passamos 'this' porque o Engine implementa ICombatEngine que expõe os serviços necessários

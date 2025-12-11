@@ -20,6 +20,8 @@ public class ExecuteAbilityAction : ICombatAction
     private readonly AbilityTargets _userSelectedTargets;
     private readonly Dictionary<EssenceType, int> _payment;
 
+    private bool _isTriggeredAction;
+
     public string Name => $"Execute Ability: {_ability.Id}";
     public Combatant Source { get; }
 
@@ -27,12 +29,14 @@ public class ExecuteAbilityAction : ICombatAction
         AbilityDefinition ability,
         Combatant source,
         AbilityTargets userSelectedTargets,
-        Dictionary<EssenceType, int> payment)
+        Dictionary<EssenceType, int> payment,
+        bool isTriggeredAction = false)
     {
         _ability = ability;
         Source = source;
         _userSelectedTargets = userSelectedTargets;
         _payment = payment;
+        _isTriggeredAction = isTriggeredAction;
     }
 
     public CombatActionResult Execute(ICombatEngine engine, GameState gameState)
@@ -98,6 +102,12 @@ public class ExecuteAbilityAction : ICombatAction
         CombatActionResult result)
     {
         calculatedCost = null!;
+
+        if (!Source.IsAlive && !_isTriggeredAction)
+        {
+            engine.AppLogger.LogWarning("{Source} is dead and cannot act.", Source.Name);
+            return false;
+        }
 
         // Validação de Status (Stun, Silence)
         var statusResult = engine.StatusService.CheckStatusConditions(Source, _ability);
@@ -243,9 +253,7 @@ public class ExecuteAbilityAction : ICombatAction
                     if (!hit) continue; // Falhou, passa ao próximo alvo
                 }
 
-                // 3. Executar Handler (com Battle Log injection)
-                // Aqui o handler vai escrever: "Orc took 10 Damage."
-                // Para isso precisamos de atualizar o Handler (ver IEffectHandler acima)
+                // 3. Executar Handler (com Battle Log injection)                
                 handler.Apply(effect, Source, target, state, result);
             }
         }

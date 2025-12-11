@@ -1,5 +1,4 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Domain.Abstractions.Services;
 using GuildArena.Domain.Entities;
 
 namespace GuildArena.Core.Combat.Actions;

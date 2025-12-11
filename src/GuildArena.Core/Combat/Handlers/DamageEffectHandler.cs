@@ -86,11 +86,23 @@ public class DamageEffectHandler : IEffectHandler
             Tags = new HashSet<string>(def.Tags) { def.DamageCategory.ToString() }
         };
 
-        // Triggers Genéricos
+        // 1. Triggers Genéricos de Dano (Sempre disparam se houver HP loss)
         _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_DAMAGE, context);
         _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_DAMAGE, context);
 
-        // Triggers Específicos por Delivery
+        // 2. Triggers Específicos de Categoria (Physical vs Magic DAMAGE)
+        if (def.DamageCategory == DamageCategory.Physical)
+        {
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE, context);
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE, context);
+        }
+        else if (def.DamageCategory == DamageCategory.Magical)
+        {
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_MAGIC_DAMAGE, context);
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_MAGIC_DAMAGE, context);
+        }
+
+        // 3. Triggers de DELIVERY (O ato de atacar - Melee, Ranged, Magic Attack)
         switch (def.Delivery)
         {
             case DeliveryMethod.Melee:
@@ -101,8 +113,9 @@ public class DamageEffectHandler : IEffectHandler
                 _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_RANGED_ATTACK, context);
                 _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_RANGED_ATTACK, context);
                 break;
-            case DeliveryMethod.Spell:
-                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_MAGIC_DAMAGE, context);
+            case DeliveryMethod.Spell:                
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_DEAL_SPELL_ATTACK, context);
+                _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_RECEIVE_SPELL_ATTACK, context);
                 break;
         }
     }
