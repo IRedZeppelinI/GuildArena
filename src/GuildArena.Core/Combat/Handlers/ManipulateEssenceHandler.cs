@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -6,9 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Handlers;
 
-/// <summary>
-/// Handles immediate manipulation of player essence pools (Add, Remove, Random).
-/// </summary>
 public class ManipulateEssenceHandler : IEffectHandler
 {
     private readonly IEssenceService _essenceService;
@@ -24,33 +22,40 @@ public class ManipulateEssenceHandler : IEffectHandler
 
     public EffectType SupportedType => EffectType.MANIPULATE_ESSENCE;
 
-    public void Apply(EffectDefinition def, Combatant source, Combatant target, GameState gameState)
+    public void Apply(
+        EffectDefinition def,
+        Combatant source,
+        Combatant target,
+        GameState gameState,
+        CombatActionResult actionResult)
     {
-        // Validação de Segurança
-        if (def.EssenceManipulations == null || def.EssenceManipulations.Count == 0)
-        {
-            _logger.LogWarning("ManipulateEssence effect executed but list is empty.");
-            return;
-        }
+        if (def.EssenceManipulations == null || def.EssenceManipulations.Count == 0) return;
 
-        // Determinar player de target
         var beneficiaryPlayerId = target.OwnerId;
         var player = gameState.Players.FirstOrDefault(p => p.PlayerId == beneficiaryPlayerId);
 
-        if (player == null)
-        {
-            _logger.LogWarning("Target {TargetName} has no valid player. Essence manipulation ignored.", target.Name);
-            return;
-        }
+        if (player == null) return;
 
-        // Aplicar Manipulações
         foreach (var manipulation in def.EssenceManipulations)
-        {            
+        {
             _essenceService.AddEssence(player, manipulation.Type, manipulation.Amount);
 
+            // --- BATTLE LOG ---
+            if (manipulation.Amount > 0)
+            {
+                actionResult.AddBattleLog(
+                    $"{target.Name} gained {manipulation.Amount} {manipulation.Type} Essence.");
+            }
+            else
+            {
+                actionResult.AddBattleLog(
+                    $"{target.Name} lost {Math.Abs(manipulation.Amount)} {manipulation.Type} Essence.");
+            }
+
+            // App Log
             _logger.LogInformation(
-                "Manipulated essence for Player {PlayerId}: {Amount} {Type} (via Target {TargetName}).",
-                manipulation.Amount, manipulation.Type, player.PlayerId, target.Name);
+                "Manipulated essence for Player {PlayerId}: {Amount} {Type}.",
+                player.PlayerId, manipulation.Amount, manipulation.Type);
         }
     }
 }

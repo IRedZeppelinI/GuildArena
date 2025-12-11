@@ -1,7 +1,7 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
-using GuildArena.Domain.Abstractions.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -14,20 +14,19 @@ public class TriggerProcessor : ITriggerProcessor
 {
     private readonly IModifierDefinitionRepository _modifierRepo;
     private readonly IAbilityDefinitionRepository _abilityRepo;
-    // Usamos Lazy para evitar Dependência Circular, pois o CombatEngine depende do TriggerProcessor
-    private readonly Lazy<ICombatEngine> _combatEngine;
+    private readonly IActionQueue _actionQueue;
     private readonly ILogger<TriggerProcessor> _logger;
 
     public TriggerProcessor(
         IModifierDefinitionRepository modifierRepo,
-        Lazy<ICombatEngine> combatEngine,
-        ILogger<TriggerProcessor> logger,
-        IAbilityDefinitionRepository abilityRepo)
+        IAbilityDefinitionRepository abilityRepo,
+        IActionQueue actionQueue,
+        ILogger<TriggerProcessor> logger)
     {
         _modifierRepo = modifierRepo;
-        _combatEngine = combatEngine;
-        _logger = logger;
         _abilityRepo = abilityRepo;
+        _actionQueue = actionQueue;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -37,6 +36,7 @@ public class TriggerProcessor : ITriggerProcessor
 
         foreach (var combatant in context.GameState.Combatants)
         {
+            // Se estiver morto, só processa triggers de morte (ON_DEATH)
             if (!combatant.IsAlive && trigger != ModifierTrigger.ON_DEATH) continue;
 
             foreach (var activeMod in combatant.ActiveModifiers)
@@ -56,7 +56,6 @@ public class TriggerProcessor : ITriggerProcessor
 
     /// <summary>
     /// Validates if the context meets the logic requirements for the modifier holder.
-    /// E.g., If the trigger is ON_RECEIVE_DAMAGE, the holder must be the Target.
     /// </summary>
     private bool ValidateCondition(ModifierTrigger trigger, Combatant holder, TriggerContext context)
     {
@@ -78,9 +77,6 @@ public class TriggerProcessor : ITriggerProcessor
             return context.Source.Id == holder.Id;
         }
 
-        // Triggers de Turno (Start/End) ou Passivos geralmente aplicam-se sempre ao próprio
-        // ou dependem apenas de estar vivo, pelo que retornamos true por defeito.
-
         return true;
     }
 
@@ -89,38 +85,41 @@ public class TriggerProcessor : ITriggerProcessor
         // 1. Obter a definição da Habilidade
         if (!_abilityRepo.TryGetDefinition(abilityId, out var ability))
         {
-            _logger.LogWarning("Triggered Ability {AbilityId} not found in repository.", abilityId);
+            _logger.LogWarning("Triggered Ability {AbilityId} not found.", abilityId);
             return;
         }
 
-        _logger.LogInformation("Trigger executing ability {AbilityId} from source {Source}", abilityId, source.Name);
+        _logger.LogInformation(
+            "Trigger: scheduling ability {AbilityId} for {Source}", abilityId, source.Name);
 
         // 2. Definir Alvos Automáticos
-        // Por defeito, habilidades de reação (Counters) visam a FONTE do evento (o atacante).
-        // Habilidades passivas (Heal Self) visam o SELF.
-        // A lógica de targeting da AbilityDefinition decide qual regra usar.
-        // Aqui construímos um input "falso" para o Auto-Targeting do CombatEngine resolver.
+        // Triggers reativos (ex: Counter-Attack) visam a fonte do ataque original.
         var autoTargets = ResolveAutoTargets(context, ability, source);
 
-        // 3. Executar (Sem custos, ou custos especiais se definidos)
+        // 3. Criar a Ação
+        // Triggers normalmente não têm custo de essence associado ao jogador (pagamento vazio).
         var payment = new Dictionary<EssenceType, int>();
 
-        _combatEngine.Value.ExecuteAbility(
-            context.GameState,
+        var action = new ExecuteAbilityAction(
             ability,
             source,
             autoTargets,
             payment
         );
+
+        // 4. Enqueue (A grande mudança: Agendar em vez de Executar)
+        _actionQueue.Enqueue(action);
     }
 
-    private AbilityTargets ResolveAutoTargets(TriggerContext context, AbilityDefinition ability, Combatant source)
+    private AbilityTargets ResolveAutoTargets(
+        TriggerContext context,
+        AbilityDefinition ability,
+        Combatant source)
     {
         var targets = new AbilityTargets();
 
         foreach (var rule in ability.TargetingRules)
         {
-            // Lógica simplificada de Auto-Targeting para Triggers
             // Se a regra pede Inimigo, e o contexto tem um atacante (Source), usamos esse.
             if (rule.Type == TargetType.Enemy && context.Source.Id != source.Id)
             {

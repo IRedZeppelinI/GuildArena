@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -28,7 +29,12 @@ public class DamageEffectHandler : IEffectHandler
 
     public EffectType SupportedType => EffectType.DAMAGE;
 
-    public void Apply(EffectDefinition def, Combatant source, Combatant target, GameState gameState)
+    public void Apply(
+        EffectDefinition def,
+        Combatant source,
+        Combatant target,
+        GameState gameState,
+        CombatActionResult actionResult)
     {
         // 1. Calcular Dano Bruto Mitigado (Stats vs Defesa)
         float mitigatedDamage = CalculateMitigatedDamage(def, source, target);
@@ -42,21 +48,27 @@ public class DamageEffectHandler : IEffectHandler
             int damageInt = (int)resolution.FinalDamageToApply;
             target.CurrentHP -= damageInt;
 
+            // --- BATTLE LOG (Para o Cliente) ---
+            actionResult.AddBattleLog($"{target.Name} took {damageInt} damage.");
+
+            // App Log (Para nós/Debug)
             _logger.LogInformation(
                 "Hit {Target} for {Damage} (Absorbed: {Absorbed}). HP Left: {HP}",
                 target.Name, damageInt, resolution.AbsorbedDamage, target.CurrentHP);
 
-            // 4. Disparar Triggers (Ganchos)
-            // Só disparamos se houve dano real (ou se quisermos incluir '0 damage hits', removemos o if)
+            // 4. Disparar Triggers
+            // Nota: Na Fase 3 o triggerProcessor vai apenas agendar, mas por agora mantém a chamada.
             TriggerEvents(def, source, target, damageInt, gameState);
         }
         else
         {
+            // Dano totalmente absorvido ou mitigado
+            actionResult.AddBattleLog($"{target.Name} took no damage (Absorbed).");
+
             _logger.LogInformation("{Target} took no damage (Absorbed: {Absorbed}).",
                 target.Name, resolution.AbsorbedDamage);
         }
     }
-
 
     private void TriggerEvents(
         EffectDefinition def,
@@ -69,7 +81,7 @@ public class DamageEffectHandler : IEffectHandler
         {
             Source = source,
             Target = target,
-            GameState = gameState, 
+            GameState = gameState,
             Value = damageAmount,
             Tags = new HashSet<string>(def.Tags) { def.DamageCategory.ToString() }
         };
@@ -95,33 +107,28 @@ public class DamageEffectHandler : IEffectHandler
         }
     }
 
-
-    
     private float CalculateMitigatedDamage(EffectDefinition def, Combatant source, Combatant target)
     {
-        // 1. Cálculo do Ataque (Baseado no Delivery) - Mantém-se IGUAL
         float sourceStatValue = 0;
         switch (def.Delivery)
         {
-            case DeliveryMethod.Melee: 
-                sourceStatValue = _statService.GetStatValue(source, StatType.Attack); 
+            case DeliveryMethod.Melee:
+                sourceStatValue = _statService.GetStatValue(source, StatType.Attack);
                 break;
-            case DeliveryMethod.Ranged: 
+            case DeliveryMethod.Ranged:
                 sourceStatValue = _statService.GetStatValue(source, StatType.Agility);
                 break;
             case DeliveryMethod.Spell:
                 sourceStatValue = _statService.GetStatValue(source, StatType.Magic);
-                break;            
+                break;
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;
 
-        //  Cálculo da Defesa 
-        float targetDefenseValue = 0;        
+        float targetDefenseValue = 0;
 
         if (def.DamageCategory != DamageCategory.True)
         {
-            // A lógica ficou muito mais limpa:
             if (def.DamageCategory == DamageCategory.Physical)
             {
                 targetDefenseValue = _statService.GetStatValue(target, StatType.Defense);
@@ -132,7 +139,6 @@ public class DamageEffectHandler : IEffectHandler
             }
         }
 
-        return rawDamage - targetDefenseValue;
+        return Math.Max(0, rawDamage - targetDefenseValue);
     }
-    
 }

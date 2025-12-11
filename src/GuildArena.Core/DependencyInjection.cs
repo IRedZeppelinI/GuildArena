@@ -4,7 +4,6 @@ using GuildArena.Core.Combat.Factories;
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Abstractions.Factories;
-using GuildArena.Domain.Abstractions.Services; // Para o ICombatEngine
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GuildArena.Core;
@@ -20,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<ITriggerProcessor, TriggerProcessor>();
         services.AddScoped<ITargetResolutionService, TargetResolutionService>();
         services.AddScoped<IStatusConditionService, StatusConditionService>();
+        services.AddScoped<IActionQueue, ActionQueue>();
 
         // --- 2. CALCULATION SERVICES ---
         services.AddScoped<IDamageResolutionService, DamageResolutionService>();
@@ -38,23 +38,9 @@ public static class DependencyInjection
         services.AddScoped<IEffectHandler, DamageEffectHandler>();
         services.AddScoped<IEffectHandler, ApplyModifierHandler>();
         services.AddScoped<IEffectHandler, ManipulateEssenceHandler>();
-
-        //  LAZY RESOLUTION SUPPORT 
-       
-        services.AddTransient(typeof(Lazy<>), typeof(Lazier<>));
+        
 
         return services;
     }
-
-    /// <summary>
-    /// Helper class to enable Lazy<T> resolution in .NET Core DI.
-    /// Breaks circular dependencies by delaying instantiation.
-    /// </summary>
-    internal class Lazier<T> : Lazy<T> where T : class
-    {
-        public Lazier(IServiceProvider provider)
-            : base(() => provider.GetRequiredService<T>())
-        {
-        }
-    }
+    
 }

@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -26,28 +27,23 @@ public class ApplyModifierHandler : IEffectHandler
 
     public EffectType SupportedType => EffectType.APPLY_MODIFIER;
 
-    public void Apply(EffectDefinition def, Combatant source, Combatant target, GameState gameState)
+    public void Apply(
+        EffectDefinition def,
+        Combatant source,
+        Combatant target,
+        GameState gameState,
+        CombatActionResult actionResult)
     {
-        if (string.IsNullOrEmpty(def.ModifierDefinitionId))
-        {
-            _logger.LogWarning("ApplyModifierHandler: Missing ModifierDefinitionId.");
-            return;
-        }
+        if (string.IsNullOrEmpty(def.ModifierDefinitionId)) return;
 
         var definitions = _modifierRepo.GetAllDefinitions();
-        if (!definitions.TryGetValue(def.ModifierDefinitionId, out var modDef))
-        {
-            _logger.LogWarning("Modifier Definition {Id} not found.", def.ModifierDefinitionId);
-            return;
-        }
+        if (!definitions.TryGetValue(def.ModifierDefinitionId, out var modDef)) return;
 
         // Calcular valor da Barreira (se houver)
         float initialBarrierValue = 0;
         if (modDef.Barrier != null)
         {
             initialBarrierValue = CalculateBarrierValue(source, modDef.Barrier);
-
-            // Aplica Bónus de Barreiras (Modificadores do Caster)
             initialBarrierValue = ApplyBarrierBonuses(source, initialBarrierValue, definitions);
         }
 
@@ -56,19 +52,27 @@ public class ApplyModifierHandler : IEffectHandler
 
         if (existingModifier != null)
         {
+            // Lógica de Refresh
             existingModifier.TurnsRemaining = def.DurationInTurns;
 
-            // Refresh: Restaura barreira se aplicável
             if (initialBarrierValue > 0)
             {
                 existingModifier.CurrentBarrierValue = initialBarrierValue;
+                // --- BATTLE LOG ---
+                actionResult.AddBattleLog
+                    ($"{target.Name}'s {modDef.Name} was refreshed (Barrier: {initialBarrierValue}).");
+            }
+            else
+            {
+                // --- BATTLE LOG ---
+                actionResult.AddBattleLog($"{target.Name}'s {modDef.Name} was refreshed.");
             }
 
             existingModifier.ActiveStatusEffects = modDef.GrantedStatusEffects.ToList();
-            _logger.LogInformation("Refreshed modifier {ModifierId}.", def.ModifierDefinitionId);
         }
         else
         {
+            // Lógica de Nova Aplicação
             var newActiveModifier = new ActiveModifier
             {
                 DefinitionId = def.ModifierDefinitionId,
@@ -79,14 +83,19 @@ public class ApplyModifierHandler : IEffectHandler
             };
 
             target.ActiveModifiers.Add(newActiveModifier);
-            _logger.LogInformation("Applied modifier {ModifierId}. Barrier: {Val}", newActiveModifier.DefinitionId, initialBarrierValue);
+
+            // --- BATTLE LOG ---
+            // Distinção simples de texto baseada no tipo (Buff/Curse)
+            if (modDef.Type == ModifierType.Bless) // Assumindo Bless como Buff positivo
+                actionResult.AddBattleLog($"{target.Name} gained {modDef.Name}.");
+            else
+                actionResult.AddBattleLog($"{target.Name} is afflicted by {modDef.Name}!");
         }
     }
 
     private float CalculateBarrierValue(Combatant source, BarrierProperties barrierDef)
     {
         float statVal = 0;
-        // Se houver scaling, vai buscar o stat
         if (barrierDef.ScalingFactor > 0)
         {
             statVal = _statService.GetStatValue(source, barrierDef.ScalingStat);
@@ -94,7 +103,10 @@ public class ApplyModifierHandler : IEffectHandler
         return (statVal * barrierDef.ScalingFactor) + barrierDef.BaseAmount;
     }
 
-    private float ApplyBarrierBonuses(Combatant source, float baseValue, IReadOnlyDictionary<string, ModifierDefinition> definitions)
+    private float ApplyBarrierBonuses(
+        Combatant source,
+        float baseValue,
+        IReadOnlyDictionary<string, ModifierDefinition> definitions)
     {
         float flatBonus = 0;
         float percentBonus = 0;

@@ -1,8 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Core.Combat.Enums;
-using GuildArena.Core.Combat.ValueObjects;
-using GuildArena.Domain.Abstractions.Repositories;
-using GuildArena.Domain.Abstractions.Services;
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -12,316 +9,137 @@ using Microsoft.Extensions.Logging;
 namespace GuildArena.Core.Combat;
 
 /// <summary>
-/// The main orchestrator for combat actions. Responsible for validating rules, 
-/// processing costs, managing cooldowns, and executing ability effects.
+/// The main orchestrator for combat actions. 
+/// Acts as a Queue Processor and Service Locator for individual Actions.
 /// </summary>
 public class CombatEngine : ICombatEngine
 {
-    
     private readonly IReadOnlyDictionary<EffectType, IEffectHandler> _handlers;
-    private readonly ILogger<CombatEngine> _logger;
-    private readonly ICooldownCalculationService _cooldownCalcService;
-    private readonly ICostCalculationService _costCalcService;
-    private readonly IEssenceService _essenceService;
-    private readonly ITargetResolutionService _targetService;
-    private readonly IStatusConditionService _statusService;
-    private readonly IHitChanceService _hitChanceService;
-    private readonly IRandomProvider _random;
-    private readonly IStatCalculationService _statService;
-    private readonly ITriggerProcessor _triggerProcessor;
+    private readonly IActionQueue _actionQueue;
+
+    // --- Serviços Expostos ---
+    public ILogger<ICombatEngine> AppLogger { get; }
+    public ICooldownCalculationService CooldownService { get; }
+    public ICostCalculationService CostService { get; }
+    public IEssenceService EssenceService { get; }
+    public ITargetResolutionService TargetService { get; }
+    public IStatusConditionService StatusService { get; }
+    public IHitChanceService HitChanceService { get; }
+    public IRandomProvider Random { get; }
+    public IStatCalculationService StatService { get; }
+    public ITriggerProcessor TriggerProcessor { get; }
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
         ILogger<CombatEngine> logger,
         ICooldownCalculationService cooldownCalcService,
-        ICostCalculationService costCalcService, 
+        ICostCalculationService costCalcService,
         IEssenceService essenceService,
         ITargetResolutionService targetService,
         IStatusConditionService statusService,
         IHitChanceService hitChanceService,
         IRandomProvider random,
         IStatCalculationService statService,
-        ITriggerProcessor triggerProcessor)
+        ITriggerProcessor triggerProcessor,
+        IActionQueue actionQueue)
     {
-        // O construtor (via DI) recebe *todos* os handlers e organiza-os
-        // num dicionário para acesso instantâneo.
         _handlers = handlers.ToDictionary(h => h.SupportedType, h => h);
-        _logger = logger;
-        _cooldownCalcService = cooldownCalcService;
-        _costCalcService = costCalcService;
-        _essenceService = essenceService;
-        _targetService = targetService;
-        _statusService = statusService;
-        _hitChanceService = hitChanceService;
-        _random = random;
-        _statService = statService;
-        _triggerProcessor = triggerProcessor;
+        AppLogger = logger;
+        CooldownService = cooldownCalcService;
+        CostService = costCalcService;
+        EssenceService = essenceService;
+        TargetService = targetService;
+        StatusService = statusService;
+        HitChanceService = hitChanceService;
+        Random = random;
+        StatService = statService;
+        TriggerProcessor = triggerProcessor;
+        _actionQueue = actionQueue;
     }
 
     /// <inheritdoc />
-    public void ExecuteAbility(
-        GameState currentState,
+    public IEffectHandler GetEffectHandler(EffectType type)
+    {
+        return _handlers[type];
+    }
+
+    /// <inheritdoc />
+    public void EnqueueAction(ICombatAction action)
+    {
+        _actionQueue.Enqueue(action);
+    }
+
+    /// <summary>
+    /// Entry point for the API. Schedules the player's intention and processes the entire resulting chain.
+    /// </summary>
+    /// <returns>A list of results (one per action) containing Battle Logs for the UI.</returns>
+    public List<CombatActionResult> ProcessTurnAction(
+        GameState state,
         AbilityDefinition ability,
         Combatant source,
         AbilityTargets targets,
-        Dictionary<EssenceType, int> resourceAllocation)
+        Dictionary<EssenceType, int> payment)
     {
-        // RESOLVER ALVOS
-        var resolvedTargets = new List<Combatant>();
-        foreach (var rule in ability.TargetingRules)
-        {
-            var ruleTargets = _targetService.ResolveTargets(rule, source, currentState, targets);
-            resolvedTargets.AddRange(ruleTargets);
-        }
+        // 1. Limpar fila (garantia de estado limpo para o novo pedido)
+        _actionQueue.Clear();
 
-        // VERIFICAR PRÉ-CONDIÇÕES
-        if (!CanExecuteAbility(
-            source,
-            currentState,
-            ability,
-            resolvedTargets,
-            resourceAllocation, out var calculatedCost))
-        {
-            return;
-        }
+        // 2. Criar a ação raiz (A intenção do jogador)
+        var rootAction = new ExecuteAbilityAction(ability, source, targets, payment);
+        _actionQueue.Enqueue(rootAction);
 
-        _logger.LogInformation("Executing ability {AbilityId} from {SourceId}", ability.Id, source.Id);
-
-        //  PAGAR CUSTOS
-        ConsumeAbilityResources(source, currentState, resourceAllocation, calculatedCost);
-
-        //CONSUMIR ACTION POINTS
-        if (ability.ActionPointCost > 0)
-        {
-            source.ActionsTakenThisTurn += ability.ActionPointCost;
-            _logger.LogInformation(
-                "{Source} spent {Cost} Action Point(s).", source.Name, ability.ActionPointCost);
-        }
-
-
-        //  TRIGGER ON_ABILITY_CAST 
-        var castContext = new TriggerContext
-        {
-            Source = source,
-            Target = null, // Cast é uma ação do Source, não tem alvo específico neste contexto
-            GameState = currentState,
-            Tags = new HashSet<string>(ability.Tags, StringComparer.OrdinalIgnoreCase)
-        };
-
-        _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_ABILITY_CAST, castContext);
-
-
-        //  APLICAR COOLDOWN
-        ApplyAbilityCooldown(source, ability);
-
-        // Guarda resultado evasion para habilidades com multiEffect (falha o hit não há nenhum dos efeito)
-        var evasionCache = new Dictionary<int, bool>();
-
-        // RESOLVER EFEITOS
-        foreach (var effect in ability.Effects)
-        {
-            if (!_handlers.TryGetValue(effect.Type, out var handler)) continue;
-
-            var rule = ability.TargetingRules.FirstOrDefault(r => r.RuleId == effect.TargetRuleId);
-            if (rule == null) continue;
-
-            // Re-resolver targets para o efeito específico para garantir consistência
-            var effectTargets = _targetService.ResolveTargets(rule, source, currentState, targets);
-
-            foreach (var target in effectTargets)
-            {
-                //  VERIFICAÇÃO IMUNIDADE
-                if (IsCombatantInvulnerable(target))
-                {
-                    _logger.LogInformation("{Target} is invulnerable. Effect {Effect} ignored.",
-                        target.Name, effect.Type);
-                    continue; // O efeito naõ resolve e não acontece nada
-                }
-
-                //Verificar evasion
-                if (effect.CanBeEvaded)
-                {
-                    if (!evasionCache.TryGetValue(target.Id, out bool hitSuccess))
-                    { // bloco so corre se o cache com resultados de evasion estiver vazio, senao usa esse valor
-                        float chance = _hitChanceService.CalculateHitChance(source, target, effect);
-                        double roll = _random.NextDouble();
-
-                        hitSuccess = roll < chance; // Sucesso se roll for menor que a chance
-                        evasionCache[target.Id] = hitSuccess; // Guardar resultado
-
-                        if (!hitSuccess)
-                        {
-                            _logger.LogInformation("{Source} MISSED {Target}! (Chance: {Chance:P0})", source.Name, target.Name, chance);
-                        }
-                    }
-
-                    // Se falhou a primeira vez, falhha para todos os efeitos da habilidade
-                    if (!hitSuccess) continue;
-                }
-
-                handler.Apply(effect, source, target, currentState);
-            }
-        }
+        // 3. Processar tudo até a fila esvaziar
+        return ProcessQueue(state);
     }
 
-    // Helper verificar Invulnerable
-    private bool IsCombatantInvulnerable(Combatant target)
+    // --- Compatibilidade / Legacy (Opcional) ---
+    // Podes manter este método se ainda tiveres código antigo a chamá-lo, mas deve ser removido brevemente.
+    //public void ExecuteAbility(
+    //    GameState state,
+    //    AbilityDefinition ability,
+    //    Combatant source,
+    //    AbilityTargets targets,
+    //    Dictionary<EssenceType,
+    //        int> payment)
+    //{
+    //    ProcessTurnAction(state, ability, source, targets, payment);
+    //}
+
+    private List<CombatActionResult> ProcessQueue(GameState state)
     {
-        foreach (var mod in target.ActiveModifiers)
+        var results = new List<CombatActionResult>();
+        int safetyCounter = 0;
+        const int MaxActionsPerTurn = 50; // Proteção contra loops infinitos de triggers (ex: 2 gajos com thorns a baterem um no outro)
+
+        while (_actionQueue.HasNext())
         {
-            if (mod.ActiveStatusEffects.Contains(StatusEffectType.Invulnerable))
+            if (safetyCounter++ > MaxActionsPerTurn)
             {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    //Helpers
-    /// <summary>
-    /// Validates if the ability can be executed by checking cooldowns, calculating costs, 
-    /// and verifying if the player possesses enough resources (HP and Essence).
-    /// </summary>
-    private bool CanExecuteAbility(
-        Combatant source,
-        GameState state,
-        AbilityDefinition ability,
-        List<Combatant> targets,
-        Dictionary<EssenceType, int> payment,
-        out FinalAbilityCosts calculatedCost)
-    {
-        calculatedCost = null!;
-
-        //validar status effects
-        var statusResult = _statusService.CheckStatusConditions(source, ability);
-        if (statusResult != ActionStatusResult.Allowed)
-        {
-            _logger.LogWarning("Combatant {Name} cannot act. Reason: {Reason}", source.Name, statusResult);
-            return false;
-        }
-
-        // 2. Validar Action Points
-        if (ability.ActionPointCost > 0)
-        {
-            // Ler o Stat "MaxActions" (base + buffs/debuffs)            
-            int maxActions = (int)_statService.GetStatValue(source, StatType.MaxActions);
-
-            // Não há maxActions negativo
-            if (maxActions <= 0) maxActions = 0;
-
-            if (source.ActionsTakenThisTurn + ability.ActionPointCost > maxActions)
-            {
-                _logger.LogWarning("{Source} has no actions left (Used: {Used}, Max: {Max}).",
-                    source.Name, source.ActionsTakenThisTurn, maxActions);
-                return false;
-            }
-        }
-
-
-        // Cooldowns
-        var existingCooldown = source.ActiveCooldowns.FirstOrDefault(c => c.AbilityId == ability.Id);
-        if (existingCooldown != null)
-        {
-            _logger.LogWarning("Ability {Id} on cooldown ({Turns} turns).", ability.Id, existingCooldown.TurnsRemaining);
-            return false;
-        }
-
-        // Calcular Custos 
-        var casterPlayer = state.Players.First(p => p.PlayerId == source.OwnerId);
-        calculatedCost = _costCalcService.CalculateFinalCosts(casterPlayer, ability, targets);
-
-        // Validar HP 
-        if (calculatedCost.HPCost > 0 && source.CurrentHP <= calculatedCost.HPCost)
-        {
-            _logger.LogWarning("Not enough HP to pay cost. HP: {HP}, Cost: {Cost}", source.CurrentHP, calculatedCost.HPCost);
-            return false;
-        }
-
-        //  Validar Essence         
-        if (!_essenceService.HasEnoughEssence(casterPlayer, calculatedCost.EssenceCosts))
-        {
-            _logger.LogWarning("Player {Id} does not have enough essence.", casterPlayer.PlayerId);
-            return false;
-        }
-
-        // 2. O "pagamento" enviado pela UI cobre a essence calculada?
-        if (!ValidateAllocationAgainstCost(payment, calculatedCost.EssenceCosts))
-        {
-            _logger.LogWarning("Resource allocation provided does not match the calculated cost.");
-            return false;
-        }
-
-        return true;
-    }
-
-
-    /// <summary>
-    /// Deducts the essence from the player and HP from the combatant.
-    /// </summary>
-    private void ConsumeAbilityResources(
-        Combatant source,
-        GameState state,
-        Dictionary<EssenceType, int> allocation,
-        FinalAbilityCosts costs)
-    {
-        var player = state.Players.First(p => p.PlayerId == source.OwnerId);
-
-        // Pagar Essence 
-        _essenceService.ConsumeEssence(player, allocation);
-
-        // Pagar HP 
-        if (costs.HPCost > 0)
-        {
-            source.CurrentHP -= costs.HPCost;
-            _logger.LogInformation("{Source} paid {HP} HP cost.", source.Name, costs.HPCost);
-        }
-    }
-
-    /// <summary>
-    /// Calculates final countdown value aind applies it to source.
-    /// </summary>
-    private void ApplyAbilityCooldown(Combatant source, AbilityDefinition ability)
-    {
-        int finalCooldownTurns = _cooldownCalcService.GetFinalCooldown(source, ability); 
-
-        if (finalCooldownTurns > 0)
-        {
-            if (finalCooldownTurns > 0)
-            {
-                source.ActiveCooldowns.Add(
-                    new ActiveCooldown { AbilityId = ability.Id, TurnsRemaining = finalCooldownTurns });
+                AppLogger.LogError("Max actions per turn exceeded. Possible infinite trigger loop.");
+                break;
             }
 
-            _logger.LogInformation(
-                "Applied {Turns} turn(s) cooldown for Ability {AbilityId} to {SourceId}",
-                finalCooldownTurns, ability.Id, source.Id);
-        }
-    }
+            var action = _actionQueue.Dequeue();
+            if (action == null) continue;
 
+            // Verificar morte antes de executar
+            // Se a fonte da ação morreu entretanto
+            // (ex: morreu no trigger anterior), a ação falha ou é ignorada
+            if (!action.Source.IsAlive)
+            {
+                AppLogger.LogInformation(
+                    "Action {Action} skipped because source {Source} is dead.",
+                    action.Name,
+                    action.Source.Name);
+                continue;
+            }
 
-    /// <summary>
-    /// Verifies if the provided payment dictionary covers all costs in the invoice, 
-    /// including neutral costs.
-    /// </summary>
-    private bool ValidateAllocationAgainstCost(Dictionary<EssenceType, int> payment, List<EssenceAmount> requiredCost)
-    {
-        // Clonar pool para simular consumo
-        var allocationPool = new Dictionary<EssenceType, int>(payment);
+            // Executar a Ação
+            // Passamos 'this' porque o Engine implementa ICombatEngine que expõe os serviços necessários
+            var result = action.Execute(this, state);
 
-        // 1. Pagar coloridos específicos
-        foreach (var cost in requiredCost.Where(c => c.Type != EssenceType.Neutral))
-        {
-            if (!allocationPool.TryGetValue(cost.Type, out int amount) || amount < cost.Amount)
-                return false; // Falta cor específica no pagamento
-
-            allocationPool[cost.Type] -= cost.Amount;
+            results.Add(result);
         }
 
-        // 2. Pagar neutros com o que sobra
-        int neutralNeeded = requiredCost.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
-        int remainingAllocation = allocationPool.Values.Sum();
-
-        return remainingAllocation >= neutralNeeded;
+        return results;
     }
-    
 }
