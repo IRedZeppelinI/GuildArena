@@ -34,7 +34,11 @@ public class ApplyModifierHandler : IEffectHandler
         GameState gameState,
         CombatActionResult actionResult)
     {
-        if (string.IsNullOrEmpty(def.ModifierDefinitionId)) return;
+        if (string.IsNullOrEmpty(def.ModifierDefinitionId))
+        {
+            _logger.LogWarning("ApplyModifierHandler: Missing ModifierDefinitionId.");
+            return;
+        }
 
         var definitions = _modifierRepo.GetAllDefinitions();
         if (!definitions.TryGetValue(def.ModifierDefinitionId, out var modDef)) return;

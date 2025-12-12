@@ -1,5 +1,6 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Actions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
@@ -9,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace GuildArena.Core.Combat;
 
 /// <summary>
-/// The main orchestrator for combat actions. 
+/// The main orchestrator for combat logic. 
 /// Acts as a Queue Processor and Service Locator for individual Actions.
 /// </summary>
 public class CombatEngine : ICombatEngine
@@ -17,7 +18,7 @@ public class CombatEngine : ICombatEngine
     private readonly IReadOnlyDictionary<EffectType, IEffectHandler> _handlers;
     private readonly IActionQueue _actionQueue;
 
-    // --- Serviços Expostos ---
+    // --- Services Exposed to Actions (Service Locator) ---
     public ILogger<ICombatEngine> AppLogger { get; }
     public ICooldownCalculationService CooldownService { get; }
     public ICostCalculationService CostService { get; }
@@ -70,10 +71,10 @@ public class CombatEngine : ICombatEngine
     }
 
     /// <summary>
-    /// Entry point for the API. Schedules the player's intention and processes the entire resulting chain.
+    /// Executes a player's ability by scheduling the intention and processing the resulting action queue.    
     /// </summary>
     /// <returns>A list of results (one per action) containing Battle Logs for the UI.</returns>
-    public List<CombatActionResult> ProcessTurnAction(
+    public List<CombatActionResult> ExecuteAbility(
         GameState state,
         AbilityDefinition ability,
         Combatant source,
@@ -84,37 +85,26 @@ public class CombatEngine : ICombatEngine
         _actionQueue.Clear();
 
         // 2. Criar a ação raiz (A intenção do jogador)
-        var rootAction = new ExecuteAbilityAction(ability, source, targets, payment);
+        // Nota: O bool 'false' indica que é uma ação voluntária, não um trigger (respeita regras de morte)
+        var rootAction = new ExecuteAbilityAction(ability, source, targets, payment, isTriggeredAction: false);
         _actionQueue.Enqueue(rootAction);
 
         // 3. Processar tudo até a fila esvaziar
         return ProcessQueue(state);
     }
 
-    // --- Compatibilidade / Legacy (Opcional) ---
-    // Podes manter este método se ainda tiveres código antigo a chamá-lo, mas deve ser removido brevemente.
-    //public void ExecuteAbility(
-    //    GameState state,
-    //    AbilityDefinition ability,
-    //    Combatant source,
-    //    AbilityTargets targets,
-    //    Dictionary<EssenceType,
-    //        int> payment)
-    //{
-    //    ProcessTurnAction(state, ability, source, targets, payment);
-    //}
-
     private List<CombatActionResult> ProcessQueue(GameState state)
     {
         var results = new List<CombatActionResult>();
         int safetyCounter = 0;
-        const int MaxActionsPerTurn = 50; // Proteção contra loops infinitos de triggers (ex: 2 gajos com thorns a baterem um no outro)
+        const int MaxActionsPerTurn = 50;
 
         while (_actionQueue.HasNext())
         {
             if (safetyCounter++ > MaxActionsPerTurn)
             {
-                AppLogger.LogError("Max actions per turn exceeded. Possible infinite trigger loop.");
+                AppLogger.LogError(
+                    "Max actions per execution exceeded. Possible infinite trigger loop.");
                 break;
             }
 
@@ -122,18 +112,8 @@ public class CombatEngine : ICombatEngine
             if (action == null) continue;
 
             
-            //A REMOVER porque Impede triggers ON_DEATH e mecânicas especiais.
-            //if (!action.Source.IsAlive)
-            //{
-            //    AppLogger.LogInformation(
-            //        "Action {Action} skipped because source {Source} is dead.",
-            //        action.Name,
-            //        action.Source.Name);
-            //    continue;
-            //}
 
             // Executar a Ação
-            // Passamos 'this' porque o Engine implementa ICombatEngine que expõe os serviços necessários
             var result = action.Execute(this, state);
 
             results.Add(result);

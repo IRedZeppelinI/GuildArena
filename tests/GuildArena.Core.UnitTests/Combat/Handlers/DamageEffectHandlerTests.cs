@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions; // Necessário para CombatActionResult
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
@@ -38,9 +39,9 @@ public class DamageEffectHandlerTests
     [InlineData(DeliveryMethod.Melee, DamageCategory.Physical, StatType.Attack, 10f, StatType.Defense, 2f, 8)]
     [InlineData(DeliveryMethod.Ranged, DamageCategory.Physical, StatType.Agility, 12f, StatType.Defense, 2f, 10)]
     [InlineData(DeliveryMethod.Spell, DamageCategory.Magical, StatType.Magic, 15f, StatType.MagicDefense, 5f, 10)]
-    public void Apply_DamageEffect_ShouldReduceTargetHP_BasedOnDeliveryMethod(
-        DeliveryMethod delivery, DamageCategory damageCategory, StatType sourceStat, float sourceStatValue,
-        StatType targetStat, float targetStatValue, int expectedDamage)
+    public void Apply_DamageEffect_ShouldReduceTargetHP_AndLog_BasedOnDelivery(
+        DeliveryMethod delivery, DamageCategory damageCategory, StatType sourceStat,
+        float sourceStatValue, StatType targetStat, float targetStatValue, int expectedDamage)
     {
         // 1. ARRANGE
         var effectDef = new EffectDefinition
@@ -49,7 +50,7 @@ public class DamageEffectHandlerTests
             Delivery = delivery,
             DamageCategory = damageCategory,
             ScalingFactor = 1.0f,
-            BaseAmount = 0f, 
+            BaseAmount = 0f,
             TargetRuleId = "T_TestTarget"
         };
 
@@ -57,9 +58,12 @@ public class DamageEffectHandlerTests
         var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
         var gameState = new GameState();
 
-        _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
-        _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
+        _statCalculationServiceMock.GetStatValue(source, sourceStat)
+            .Returns(sourceStatValue);
+        _statCalculationServiceMock.GetStatValue(target, targetStat)
+            .Returns(targetStatValue);
 
+        // Mock Resolution Service
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(call => new DamageResolutionResult
             {
@@ -67,11 +71,18 @@ public class DamageEffectHandlerTests
                 AbsorbedDamage = 0
             });
 
+        // Create Result Container
+        var actionResult = new CombatActionResult();
+
         // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState);
+        _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
+        // Check HP reduction
         target.CurrentHP.ShouldBe(50 - expectedDamage);
+
+        // Check Battle Log
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains($"took {expectedDamage} damage"));
     }
 
     [Fact]
@@ -82,7 +93,7 @@ public class DamageEffectHandlerTests
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.True, 
+            DamageCategory = DamageCategory.True,
             ScalingFactor = 1.0f,
             BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
@@ -103,12 +114,14 @@ public class DamageEffectHandlerTests
                 FinalDamageToApply = call.Arg<float>()
             });
 
+        var actionResult = new CombatActionResult();
+
         // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState);
+        _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        // Should deal full 10 damage
-        target.CurrentHP.ShouldBe(90);
+        target.CurrentHP.ShouldBe(90); // 100 - 10
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 10 damage"));
     }
 
     [Fact]
@@ -120,7 +133,7 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget",
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.Physical, 
+            DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f
         };
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
@@ -139,23 +152,31 @@ public class DamageEffectHandlerTests
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(simulatedResult);
 
+        var actionResult = new CombatActionResult();
+
         // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState);
+        _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        target.CurrentHP.ShouldBe(95);
-        _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
+        target.CurrentHP.ShouldBe(95); // 100 - 5
+
+        // Log should reflect actual damage taken, not raw
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 5 damage"));
+
+        // Verification of service call
+        _resolutionServiceMock.Received(1)
+            .ResolveDamage(10f, effectDef, source, target);
     }
 
     [Fact]
-    public void Apply_WhenDamageIsDealt_ShouldNotifyTriggerProcessor()
+    public void Apply_WhenDamageIsDealt_ShouldNotifyTriggerProcessor_WithAllTags()
     {
         // 1. ARRANGE
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.Physical, 
+            DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f,
             TargetRuleId = "T_TestTarget"
         };
@@ -167,15 +188,17 @@ public class DamageEffectHandlerTests
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
 
-        // Simulate full damage application
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(new DamageResolutionResult { FinalDamageToApply = 10f });
 
+        var actionResult = new CombatActionResult();
+
         // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState);
+        _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        // Verify that generic damage triggers were fired
+
+        // A. Verify Generic Triggers
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
@@ -184,13 +207,18 @@ public class DamageEffectHandlerTests
             ModifierTrigger.ON_RECEIVE_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
 
-        // Verify that specific delivery trigger (Melee) was fired
+        // B. Verify Delivery Triggers (Melee)
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_MELEE_ATTACK,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
 
+        // C. Verify Category Triggers (Physical) -> NOVO
         _triggerProcessorMock.Received(1).ProcessTriggers(
-            ModifierTrigger.ON_RECEIVE_MELEE_ATTACK,
+            ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
+
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
     }
 }

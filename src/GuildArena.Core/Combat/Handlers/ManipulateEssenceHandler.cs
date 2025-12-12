@@ -29,12 +29,20 @@ public class ManipulateEssenceHandler : IEffectHandler
         GameState gameState,
         CombatActionResult actionResult)
     {
-        if (def.EssenceManipulations == null || def.EssenceManipulations.Count == 0) return;
+        if (def.EssenceManipulations == null || def.EssenceManipulations.Count == 0)
+        {            
+            _logger.LogWarning("ManipulateEssence effect executed but list is empty.");
+            return;
+        }
 
         var beneficiaryPlayerId = target.OwnerId;
         var player = gameState.Players.FirstOrDefault(p => p.PlayerId == beneficiaryPlayerId);
 
-        if (player == null) return;
+        if (player == null)
+        {            
+            _logger.LogWarning("Target {TargetName} has no valid player. Essence manipulation ignored.", target.Name);
+            return;
+        }
 
         foreach (var manipulation in def.EssenceManipulations)
         {

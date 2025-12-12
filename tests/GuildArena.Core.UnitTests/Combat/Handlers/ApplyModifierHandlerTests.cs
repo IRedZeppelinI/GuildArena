@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions; 
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
@@ -8,7 +9,6 @@ using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Handlers;
 
@@ -36,7 +36,7 @@ public class ApplyModifierHandlerTests
     }
 
     [Fact]
-    public void Apply_WithNewModifier_ShouldAddModifierToTargetList()
+    public void Apply_WithNewModifier_ShouldAddModifierToTargetList_AndLog()
     {
         // ARRANGE
         var modId = "MOD_ATTACK_UP";
@@ -44,7 +44,7 @@ public class ApplyModifierHandlerTests
         {
             Id = modId,
             Name = "Bless",
-            Type = ModifierType.Bless 
+            Type = ModifierType.Bless
         };
 
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
@@ -65,22 +65,27 @@ public class ApplyModifierHandlerTests
 
         target.ActiveModifiers.ShouldBeEmpty();
 
+        // Objeto para capturar logs
+        var actionResult = new CombatActionResult();
+
         // ACT
-        _handler.Apply(effectDef, source, target, _dummyGameState);
+        _handler.Apply(effectDef, source, target, _dummyGameState, actionResult);
 
         // ASSERT
+        // 1. Lógica de Estado
         target.ActiveModifiers.Count.ShouldBe(1);
         var appliedMod = target.ActiveModifiers.First();
         appliedMod.DefinitionId.ShouldBe(modId);
         appliedMod.TurnsRemaining.ShouldBe(3);
         appliedMod.CasterId.ShouldBe(source.Id);
+
+        // 2. Lógica de Logs (Novo)
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("gained Bless"));
     }
 
     [Fact]
     public void Apply_ModifierWithStatusEffects_ShouldCopyEffectsToActiveModifier()
     {
-        // Garante que a lista de estados (Invulnerable, Stun) é copiada da Definição para a Instância.
-
         // ARRANGE
         var modId = "MOD_ICEBLOCK";
         var modDef = new ModifierDefinition
@@ -88,7 +93,6 @@ public class ApplyModifierHandlerTests
             Id = modId,
             Name = "Ice Block",
             Type = ModifierType.Bless,
-            // A definição diz que confere Invulnerabilidade e Untargetable
             GrantedStatusEffects = new List<StatusEffectType>
             {
                 StatusEffectType.Invulnerable,
@@ -96,7 +100,8 @@ public class ApplyModifierHandlerTests
             }
         };
 
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+        _repoMock.GetAllDefinitions()
+            .Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
 
         var effectDef = new EffectDefinition
         {
@@ -106,15 +111,16 @@ public class ApplyModifierHandlerTests
         };
 
         var source = new Combatant { Id = 1, Name = "Mage", BaseStats = new() };
-        var target = new Combatant { Id = 1, Name = "Mage", BaseStats = new() }; // Self-cast
+        var target = new Combatant { Id = 1, Name = "Mage", BaseStats = new() };
+
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effectDef, source, target, _dummyGameState);
+        _handler.Apply(effectDef, source, target, _dummyGameState, actionResult);
 
         // ASSERT
         var activeMod = target.ActiveModifiers.Single();
 
-        // Verifica se a lista foi instanciada e populada
         activeMod.ActiveStatusEffects.ShouldNotBeNull();
         activeMod.ActiveStatusEffects.Count.ShouldBe(2);
         activeMod.ActiveStatusEffects.ShouldContain(StatusEffectType.Invulnerable);
@@ -139,7 +145,8 @@ public class ApplyModifierHandlerTests
             }
         };
 
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+        _repoMock.GetAllDefinitions()
+            .Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
 
         var effectDef = new EffectDefinition
         {
@@ -154,17 +161,21 @@ public class ApplyModifierHandlerTests
 
         _statServiceMock.GetStatValue(source, StatType.Magic).Returns(20f);
 
+        var actionResult = new CombatActionResult();
+
         // ACT
-        _handler.Apply(effectDef, source, target, _dummyGameState);
+        _handler.Apply(effectDef, source, target, _dummyGameState, actionResult);
 
         // ASSERT
         target.ActiveModifiers.Count.ShouldBe(1);
         var appliedMod = target.ActiveModifiers.First();
+
+        // (20 * 0.5) + 10 = 20
         appliedMod.CurrentBarrierValue.ShouldBe(20f);
     }
 
     [Fact]
-    public void Apply_WithExistingModifier_ShouldRefreshDurationAndResetBarrier()
+    public void Apply_WithExistingModifier_ShouldRefreshDuration_ResetBarrier_AndLogRefresh()
     {
         // ARRANGE
         var modId = "MOD_SHIELD";
@@ -173,7 +184,6 @@ public class ApplyModifierHandlerTests
             Id = modId,
             Name = "Shield",
             Barrier = new BarrierProperties { BaseAmount = 50 },
-            // Vamos testar também se ele atualiza os status effects no refresh
             GrantedStatusEffects = new List<StatusEffectType> { StatusEffectType.Stun }
         };
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
@@ -187,18 +197,19 @@ public class ApplyModifierHandlerTests
         var source = new Combatant { Id = 1, BaseStats = new(), Name = "Test_Combatant" };
         var target = new Combatant { Id = 2, Name = "Target", BaseStats = new() };
 
-        // Simular modifier existente (antigo, sem status effects ou com diferentes)
         target.ActiveModifiers.Add(new ActiveModifier
         {
             DefinitionId = modId,
             TurnsRemaining = 1,
             CasterId = 99,
             CurrentBarrierValue = 10,
-            ActiveStatusEffects = new List<StatusEffectType>() // Vazio
+            ActiveStatusEffects = new List<StatusEffectType>()
         });
 
+        var actionResult = new CombatActionResult();
+
         // ACT
-        _handler.Apply(effectDef, source, target, _dummyGameState);
+        _handler.Apply(effectDef, source, target, _dummyGameState, actionResult);
 
         // ASSERT
         target.ActiveModifiers.Count.ShouldBe(1);
@@ -206,9 +217,10 @@ public class ApplyModifierHandlerTests
 
         refreshedMod.TurnsRemaining.ShouldBe(5);
         refreshedMod.CurrentBarrierValue.ShouldBe(50f);
-
-        // Verifica se copiou os novos status effects no refresh
         refreshedMod.ActiveStatusEffects.ShouldContain(StatusEffectType.Stun);
+
+        // Verificação do Log de Refresh
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("was refreshed"));
     }
 
     [Fact]
@@ -225,8 +237,10 @@ public class ApplyModifierHandlerTests
         var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
         var target = new Combatant { Id = 2, Name = "Target", BaseStats = new BaseStats() };
 
+        var actionResult = new CombatActionResult();
+
         // ACT
-        _handler.Apply(effectDef, source, target, _dummyGameState);
+        _handler.Apply(effectDef, source, target, _dummyGameState, actionResult);
 
         // ASSERT
         target.ActiveModifiers.ShouldBeEmpty();

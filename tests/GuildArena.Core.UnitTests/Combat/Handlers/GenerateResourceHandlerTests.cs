@@ -1,4 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.Actions; // Necessário para CombatActionResult
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
@@ -6,6 +7,7 @@ using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using Shouldly;
 using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Handlers;
@@ -30,14 +32,14 @@ public class GenerateResourceHandlerTests
     }
 
     [Fact]
-    public void Apply_Channeling_ShouldGiveEssenceToCaster()
+    public void Apply_Channeling_ShouldGiveEssenceToCaster_AndLog()
     {
         // ARRANGE
         // Cenário: Channeling (Self-Cast). O Source e o Target são o mesmo.
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Self", // Required prop
+            TargetRuleId = "T_Self",
             EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Mind, Amount = 1 }
@@ -45,9 +47,10 @@ public class GenerateResourceHandlerTests
         };
 
         var caster = new Combatant { Id = 10, OwnerId = 1, Name = "Mage", BaseStats = new BaseStats() };
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effect, caster, caster, _gameState); // Target = Caster
+        _handler.Apply(effect, caster, caster, _gameState, actionResult);
 
         // ASSERT
         // Deve adicionar 1 Mind ao Player 1
@@ -56,17 +59,20 @@ public class GenerateResourceHandlerTests
             EssenceType.Mind,
             1
         );
+
+        // Battle Log
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("gained 1 Mind Essence"));
     }
 
     [Fact]
-    public void Apply_GiftToAlly_ShouldGiveEssenceToAllyOwner()
+    public void Apply_GiftToAlly_ShouldGiveEssenceToAllyOwner_AndLog()
     {
         // ARRANGE
-        // Cenário: Transferir Mana. Caster (P1) dá mana ao Aliado (P1).
+        // Cenário: Transferir Mana. Caster (P1) dá essence ao Aliado (P1).
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Ally", // Required prop
+            TargetRuleId = "T_Ally",
             EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Vigor, Amount = 2 }
@@ -75,9 +81,10 @@ public class GenerateResourceHandlerTests
 
         var caster = new Combatant { Id = 10, OwnerId = 1, Name = "Support", BaseStats = new BaseStats() };
         var allyTarget = new Combatant { Id = 11, OwnerId = 1, Name = "Warrior", BaseStats = new BaseStats() };
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effect, caster, allyTarget, _gameState);
+        _handler.Apply(effect, caster, allyTarget, _gameState, actionResult);
 
         // ASSERT
         _essenceServiceMock.Received(1).AddEssence(
@@ -85,9 +92,11 @@ public class GenerateResourceHandlerTests
             EssenceType.Vigor,
             2
         );
+
+        // Battle Log (Deve referir o Warrior ganhou, não o Support)
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("Warrior gained 2 Vigor Essence"));
     }
 
-    //cursedGift está como exemplo de habilidade que tem drawBack de oferecer essence ao inimigo
     [Fact]
     public void Apply_CursedGift_ShouldGiveEssenceToEnemy()
     {
@@ -96,18 +105,32 @@ public class GenerateResourceHandlerTests
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Enemy", // Required prop
+            TargetRuleId = "T_Enemy",
             EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Shadow, Amount = 1 }
             }
         };
 
-        var caster = new Combatant { Id = 10, OwnerId = 1, Name = "Warlock", BaseStats = new BaseStats() };
-        var enemyTarget = new Combatant { Id = 20, OwnerId = 2, Name = "Paladin", BaseStats = new BaseStats() };
+        var caster = new Combatant 
+        { 
+            Id = 10,
+            OwnerId = 1,
+            Name = "Warlock",
+            BaseStats = new BaseStats() 
+        };
+
+        var enemyTarget = new Combatant 
+        {
+            Id = 20,
+            OwnerId = 2,
+            Name = "Paladin",
+            BaseStats = new BaseStats() 
+        };
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effect, caster, enemyTarget, _gameState);
+        _handler.Apply(effect, caster, enemyTarget, _gameState, actionResult);
 
         // ASSERT
         // O Player 2 (dono do alvo) deve receber a essence
@@ -116,6 +139,8 @@ public class GenerateResourceHandlerTests
             EssenceType.Shadow,
             1
         );
+
+        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("Paladin gained 1 Shadow Essence"));
     }
 
     [Fact]
@@ -126,7 +151,7 @@ public class GenerateResourceHandlerTests
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Self", // Required prop
+            TargetRuleId = "T_Self",
             EssenceManipulations = new List<EssenceAmount>
             {
                 new EssenceAmount { Type = EssenceType.Mind, Amount = 1 },
@@ -134,14 +159,30 @@ public class GenerateResourceHandlerTests
             }
         };
 
-        var caster = new Combatant { Id = 10, OwnerId = 1, Name = "Psylian", BaseStats = new BaseStats() };
+        var caster = new Combatant 
+        { 
+            Id = 10,
+            OwnerId = 1,
+            Name = "Psylian",
+            BaseStats = new BaseStats() 
+        };
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effect, caster, caster, _gameState);
+        _handler.Apply(effect, caster, caster, _gameState, actionResult);
 
         // ASSERT
-        _essenceServiceMock.Received(1).AddEssence(Arg.Any<CombatPlayer>(), EssenceType.Mind, 1);
-        _essenceServiceMock.Received(1).AddEssence(Arg.Any<CombatPlayer>(), EssenceType.Neutral, 1);
+        _essenceServiceMock.Received(1).AddEssence(
+            Arg.Any<CombatPlayer>(),
+            EssenceType.Mind,
+            1);
+        _essenceServiceMock.Received(1).AddEssence(
+            Arg.Any<CombatPlayer>(),
+            EssenceType.Neutral,
+            1);
+
+        // Verifica se gerou dois logs
+        actionResult.BattleLogEntries.Count.ShouldBe(2);
     }
 
     [Fact]
@@ -151,17 +192,22 @@ public class GenerateResourceHandlerTests
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Self", // Required prop
+            TargetRuleId = "T_Self",
             EssenceManipulations = new List<EssenceAmount>() // Lista vazia
         };
         var caster = new Combatant { Id = 1, OwnerId = 1, Name = "Caster", BaseStats = new() };
+        var actionResult = new CombatActionResult();
 
         // ACT
-        _handler.Apply(effect, caster, caster, _gameState);
+        _handler.Apply(effect, caster, caster, _gameState, actionResult);
 
         // ASSERT
-        _essenceServiceMock.DidNotReceive().AddEssence(Arg.Any<CombatPlayer>(), Arg.Any<EssenceType>(), Arg.Any<int>());
+        _essenceServiceMock.DidNotReceive().AddEssence(
+            Arg.Any<CombatPlayer>(),
+            Arg.Any<EssenceType>(),
+            Arg.Any<int>());
 
+        // Log interno de warning
         _loggerMock.Received(1).Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
@@ -169,6 +215,9 @@ public class GenerateResourceHandlerTests
             null,
             Arg.Any<Func<object, Exception?, string>>()
         );
+
+        // Log de Batalha deve estar vazio (falha técnica não deve ser mostrada ao jogador desta forma)
+        actionResult.BattleLogEntries.ShouldBeEmpty();
     }
 
     [Fact]
@@ -179,20 +228,24 @@ public class GenerateResourceHandlerTests
         var effect = new EffectDefinition
         {
             Type = EffectType.MANIPULATE_ESSENCE,
-            TargetRuleId = "T_Mob", // Required prop
+            TargetRuleId = "T_Mob",
             EssenceManipulations = new List<EssenceAmount> { new EssenceAmount { Amount = 1 } }
         };
 
         var caster = new Combatant { Id = 1, OwnerId = 1, Name = "Caster", BaseStats = new() };
         var neutralMob = new Combatant { Id = 99, OwnerId = 0, Name = "Neutral Creep", BaseStats = new() };
+        var actionResult = new CombatActionResult();
 
         // O GameState só tem Player 1 e 2.
 
         // ACT
-        _handler.Apply(effect, caster, neutralMob, _gameState);
+        _handler.Apply(effect, caster, neutralMob, _gameState, actionResult);
 
         // ASSERT
-        _essenceServiceMock.DidNotReceive().AddEssence(Arg.Any<CombatPlayer>(), Arg.Any<EssenceType>(), Arg.Any<int>());
+        _essenceServiceMock.DidNotReceive().AddEssence(
+            Arg.Any<CombatPlayer>(),
+            Arg.Any<EssenceType>(),
+            Arg.Any<int>());
 
         _loggerMock.Received(1).Log(
             LogLevel.Warning,
