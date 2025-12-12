@@ -1,53 +1,45 @@
 # GuildArena
 
-A turn-based, tactical, browser-based strategy game focused on guild management and deep combat.
+**GuildArena** is a browser-based tactical strategy game focused on deep combat (PvP & PvE), resource management, and hero collection.
 
-## About The Project
+Inspired by the tactical depth of *Naruto Arena* and *Magic: The Gathering*, it is built on a scalable, 100% .NET 9 architecture using Clean Architecture principles.
 
-GuildArena is a web-based game inspired by turn-based tactical RPGs (like *Naruto Arena*), but with additional layers of strategic depth. Players will manage a guild, recruit a roster of characters, explore a world, venture into dungeons, and engage in complex tactical combat.
+## Tech Stack
 
-The goal is to create a robust "web-native" gaming experience with deep gameplay mechanics, built on a modern, scalable, and 100% .NET software architecture.
+* **Frontend:** Blazor WebAssembly (Wasm)
+* **Backend:** ASP.NET Core Web API (CQRS + MediatR)
+* **Real-time:** SignalR (WebSockets)
+* **Data:** Redis (Volatile Combat State), PostgreSQL (Persistence), JSON (Static Definitions)
 
-## Core Features (Vision)
+## Architecture
 
-* **Tactical Turn-Based Combat:** Arena battles (PvP and PvE) where tactics, summons, and team synergies are key.
-* **Deep Gameplay System:** A data-driven combat system with stats (Attack, Defense, Magic...), modifiers, buffs/debuffs, and hundreds of unique abilities.
-* **Guild Management:** Recruit, train, and evolve a roster of characters.
-* **Risk and Reward:** Characters can evolve but also face the risk of permadeath, making every decision meaningful.
-* **World Exploration:** A "Points of Interest" (POI) style interactive world map.
-* **Dynamic Dungeons:** "Choose Your Own Adventure" style dungeon exploration, complete with events, combat, and treasure.
-* **Economy & Shop:** A gold and shop system for purchasing items or unlocking new characters.
+The solution enforces strict separation of concerns to ensure testability and maintainability.
 
-## Architecture and Technology
+| Project | Responsibility |
+| :--- | :--- |
+| **GuildArena.Web** | Pure UI "Thin Client". Handles Input and Rendering. |
+| **GuildArena.Shared** | Shared DTOs (Contracts) and Enums between Client and API. |
+| **GuildArena.Api** | Authoritative Server. Orchestrates requests via CQRS. |
+| **GuildArena.Core** | **Pure Game Logic.** Isolated from I/O. Contains the Combat Engine. |
+| **GuildArena.Domain** | Entities, ValueObjects, and Business Rules. |
+| **GuildArena.Infrastructure** | Implementation of Repositories (Redis, SQL, Files). |
 
-This project is being built with a primary focus on maintainability, testability, and scalability, adhering to Clean Architecture principles.
+> **For deep technical details on the Action Queue system, execution pipeline, and data strategy, please refer to [DESIGN.md](./DESIGN.md).**
 
-* **Frontend: Blazor WebAssembly (Wasm)**
-    * A pure "thin client" responsible only for the UI and sending user intentions.
-    * Communicates with the backend via HTTP (REST) and WebSockets (SignalR).
+## Key Features
 
-* **Backend: ASP.NET Core Web API (.NET 8+)**
-    * Acts as an Authoritative Server (Anti-Cheat) and game "Arbiter".
-    * Exposes REST endpoints and a SignalR Hub (for PvP combat).
+### Combat Mechanics (Core)
+* **Action Queue System:** A deterministic engine that processes actions, reactions, and triggers sequentially, enabling complex interactions without recursion issues.
+* **Essence Economy:** A "colored" resource system (Vigor, Mind, Shadow, etc.) requiring strategic hand management and trade-offs.
+* **Dynamic Modifiers:** Robust system for Buffs, Debuffs, Shields (with scaling), and Status Effects (Stun, Silence, etc.).
+* **Data-Driven:** Heroes, Abilities, and Races are defined in JSON, allowing for balancing updates without recompilation.
 
-* **Architecture Pattern: CQRS (Command Query Responsibility Segregation)**
-    * API logic is orchestrated using the MediatR pattern.
-    * Clear separation of "Reads" (Queries) and "Writes" (Commands).
+### Roadmap
+* [ ] Guild Management & Recruitment.
+* [ ] World Map Exploration (POI System).
+* [ ] Dynamic Dungeons.
+* [ ] Shop & Gold Economy.
 
-* **Game Logic: Data-Driven (Decoupled from the API)**
-    * Pure business logic (e.g., `CombatEngine`, `DungeonService`) lives in a separate `Core` layer.
-    * Abilities and characters are defined as data (e.g., JSON) and interpreted by Handlers (Strategy Pattern), allowing for easy balancing and expansion.
+## Testing
 
-* **Persistence: SQL (PostgreSQL / MySQL)**
-    * Managed via Entity Framework Core.
-    * Handles all transactional data (players, guilds, inventory).
-
-## Project Status
-
-**Initial Development Phase**
-
-This project is in its initial setup phase. The solution structure and architectural foundations are currently being defined.
-
-## Getting Started (WIP)
-
-Instructions on how to set up the development environment, launch the API (`GuildArena.Api`), and run the Blazor client (`GuildArena.Web`) will be added here.
+The solution maintains a comprehensive test suite covering Unit Tests (Core & Application Logic) and Data Integration Tests.

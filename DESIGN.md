@@ -1,113 +1,133 @@
-Peço desculpa pela mudança repentina para Inglês na resposta anterior, foi um lapso no "context switching".
-
-Aqui tens o **DESIGN.md** totalmente atualizado e em Português.
-Incluí todas as alterações arquiteturais que fizemos (Factory, Raças, Action Points, Evasão, Triggers) e garanti que o `DamageResolutionService` está devidamente referenciado com a nova lógica de `DamageCategory`.
-
-Podes substituir o conteúdo do teu ficheiro atual por este:
-
----
-
 # [GuildArena] Documento de Design de Arquitetura
 
-Este documento descreve a arquitetura de software de alto nível do projeto GuildArena, com foco na lógica de combate, persistência de estado e na estrutura do `Domain`.
+Este documento descreve a arquitetura de software, os padrões de design e as regras de negócio fundamentais do projeto GuildArena. O objetivo é manter um registo vivo de como o sistema funciona, facilitando a manutenção e a integração de novas funcionalidades.
 
-## 1. Visão Geral da Arquitetura
+## 1. Visão Geral do Produto
 
-O projeto segue os princípios da **Clean Architecture** com uma separação clara entre Frontend (Cliente) e Backend (Servidor).
+**GuildArena** é um jogo de estratégia tática por turnos, focado em combate competitivo (PvP) e cooperativo (PvE), inspirado em mecânicas de TCG (Magic: The Gathering) e jogos táticos de browser como *Naruto Arena*.
 
-* **Frontend (`GuildArena.Web`):** Um cliente **Blazor WebAssembly (Wasm)**. É responsável apenas pela UI. É "burro" e não contém lógica de jogo.
-* **Backend (`GuildArena.Api`):** Um servidor **ASP.NET Core Web API**. Atua como **Servidor Autoritário** (defesa anti-cheat) e "Árbitro" do jogo. Processa todas as ações.
-* **Padrão de Lógica:** **CQRS (com MediatR)**. A API recebe "Comandos" (intenções de escrita, ex: `EndTurnCommand`) e "Queries" (pedidos de leitura, ex: `GetCombatStateQuery`) da UI.
-
----
-
-## 2. Estratégia de Dados (SQL + JSON + Redis)
-
-A persistência é dividida em três tipos de dados, otimizados para diferentes necessidades:
-
-### 2.1. Dados Dinâmicos (Estado do Jogador)
-* **O que são:** O progresso persistente do jogador (Nível, XP, Ouro, Heróis desbloqueados).
-* **Tecnologia:** **Base de Dados SQL (Postgres/MySQL)**.
-* **Porquê:** Necessidade de transações ACID e relacionamentos fortes.
-* **Entidades Principais:** `HeroCharacter`, `Player`, `Guild`.
-
-### 2.2. Dados Estáticos (Regras do Jogo)
-* **O que são:** Os "moldes" (blueprints) do jogo definidos pelo developer.
-* **Tecnologia:** **Ficheiros JSON** (carregados via `IOptions` e Repositórios na Infrastructure).
-* **Implementação:** Lidos no arranque (`Warmup` no Program.cs) para uma **Cache Singleton (Dicionário O(1))**.
-* **Definições Principais:**
-    * `CharacterDefinition`: Stats base, crescimento, referência à Raça.
-    * `RaceDefinition`: Bónus de stats e Traits raciais (modificadores).
-    * `AbilityDefinition`: Regras de habilidades (Custos, Efeitos).
-    * `ModifierDefinition`: Regras de buffs/curses (Stats, Triggers).
-
-### 2.3. Dados Voláteis (Estado do Combate Ativo)
-* **O que são:** O estado em tempo real de um combate a decorrer (`GameState`).
-* **Tecnologia:** **Redis (Chave-Valor)**.
-* **Porquê:** Performance extrema (leitura/escrita em milissegundos) e suporte para reconexão (o estado vive no servidor).
-* **Interface:** `ICombatStateRepository` (Implementação: `RedisCombatStateRepository`).
+### Conceito Principal: "Hero Collection & Tactics"
+* **Heróis Pré-definidos:** O jogador coleciona e desbloqueia **Heróis** cujas regras e definições base encontram-se em ficheiros JSON.
+* **Definição vs. Instância:**
+    * As regras do herói (Skills, Stats Base) são imutáveis.
+    * A instância do jogador (`HeroCharacter`) guarda o progresso dinâmico (Nível, XP).
+* **Loadouts e Customização:** À medida que evoluem, os heróis desbloqueiam slots de modificadores (o **Loadout**). Isto permite ao jogador equipar "Runas" ou "Traits" extra para especializar a build da personagem (ex: tank, glass cannon), até um limite definido pelo nível.
+* **Gestão de Guild:** O jogador gere uma "roster" de combatentes e escolhe uma equipa ("Team") para levar para cada batalha.
 
 ---
 
-## 3. Arquitetura do Motor de Combate (Core)
+## 2. Arquitetura Técnica
 
-A lógica de combate segue o **Padrão Strategy** (Especialistas) e o **Padrão Orchestrator** (Orquestrador). O `CombatEngine` coordena serviços especializados.
+O projeto segue estritamente os princípios da **Clean Architecture** e **Domain-Driven Design (DDD)**, utilizando .NET 9.
 
-### 3.1. Os Participantes (O "Quem")
-* **`Combatant`:** A unidade no tabuleiro.
-    * **Stats:** `BaseStats` unificados (incluindo `MaxHP` e `MaxActions`).
-    * **Estado:** `CurrentHP`, `ActionsTakenThisTurn`.
-    * **Slots:** `BasicAttack`, `GuardAbility`, `FocusAbility` e lista de `Abilities`.
-    * **Modifiers:** Lista de `ActiveModifier` (que contêm `ActiveStatusEffects` em cache).
-* **`CombatPlayer`:** Representa o controlador. Gere a `EssencePool` e Modifiers globais.
+### 2.1. Camadas
+1.  **Apresentação (`GuildArena.Web`):**
+    * Cliente **Blazor WebAssembly**.
+    * Responsabilidade: Apenas UI e Input. Não contém lógica de jogo.
+    * Comunicação: HTTP (REST) para comandos e SignalR (WebSockets) para atualizações de combate em tempo real.
+2.  **Contratos Partilhados (`GuildArena.Shared`):**
+    * Biblioteca de classes partilhada entre Cliente e Servidor.
+    * Responsabilidade: Contém apenas DTOs (Requests/Responses) e Enums de transporte para garantir tipagem forte na comunicação API.
+3.  **API & Aplicação (`GuildArena.Api` / `GuildArena.Application`):**
+    * Atua como "Servidor Autoritário" (Anti-Cheat).
+    * Padrão **CQRS** (Command Query Responsibility Segregation) com **MediatR**.
+    * Orquestra o fluxo, mas delega a lógica de combate para o Core.
+4.  **Core do Jogo (`GuildArena.Core`):**
+    * Contém o "Cérebro" do combate (`CombatEngine`, Services, Actions).
+    * Totalmente isolado de I/O (Bases de dados, HTTP).
+5.  **Domínio (`GuildArena.Domain`):**
+    * Entidades, ValueObjects, Enums e Interfaces (Contratos).
+    * Não tem dependências de outros projetos.
+6.  **Infraestrutura (`GuildArena.Infrastructure`):**
+    * Implementação de Repositórios (SQL, Redis, JSON File System).
 
-### 3.2. Instanciação (`ICombatantFactory`)
-Responsável por converter dados persistentes em combatentes de batalha.
-* **Localização:** `GuildArena.Core.Combat.Factories`.
-* **Fluxo de Criação:**
-    1.  Carrega `CharacterDefinition` e `RaceDefinition`.
-    2.  **Cálculo de Stats:** Soma Base + Raça + (Crescimento * Nível).
-    3.  **Snapshot de HP:** Calcula o `MaxHP` inicial baseado na Defesa Total (fórmula de constituição) e congela o valor.
-    4.  **Skills e Traits:** Resolve IDs de habilidades e aplica modificadores passivos (Raciais e Perks).
+### 2.2. Estratégia de Dados
 
-### 3.3. Sistema de Controlo e Validação (`IStatusConditionService`)
-Valida se um combatente pode agir antes de processar custos.
-* **Lógica:** Baseada no enum `ActionStatusResult` (Allowed, Stunned, Silenced, Disarmed).
-* **Regras Partilhadas (`StatusEffectRules`):** Extension methods no Domain que definem o comportamento de cada `StatusEffectType` (ex: Stun bloqueia tudo, Silence bloqueia Skills). Usado tanto pelo Backend (validação) como pelo Frontend (UI).
-* **Economia de Ações:** O `CombatEngine` valida e consome `ActionPointCost` contra o stat `MaxActions`.
-
-### 3.4. Sistema de Dano e Precisão
-Substitui a lógica simples por um pipeline de combate tático.
-
-* **Precisão (`IHitChanceService`):**
-    * Calcula a probabilidade de acerto (0% a 100%) antes de aplicar efeitos.
-    * **Fórmula:** Base + (Ataque/Magia do Caster) - (Agilidade/MDef do Alvo) + Delta de Nível.
-    * **Cache de Evasão:** O `CombatEngine` garante que o teste de evasão é feito apenas uma vez por alvo por habilidade (consistência entre múltiplos efeitos).
-* **Mitigação e Resolução (`IDamageResolutionService`):**
-    * Recebe o dano bruto se o ataque acertar.
-    * **Categorias (`DamageCategory`):** Physical (mitigado por Defense), Magical (mitigado por MagicDefense) e True (ignora defesa).
-    * **Interações:** Aplica modificadores percentuais/flat e resolve absorção de Barreiras baseada em Tags.
-
-### 3.5. Sistema de Recursos e Custos
-* **`EssenceAmount`:** ValueObject que define par Tipo/Quantidade (usado para custos e ganhos).
-* **`ICostCalculationService`:** Calcula a "Fatura Final" (Custo Base - Descontos + Taxas de Wards).
-* **`IEssenceService`:** Gere a pool do jogador. Suporta `AddEssence` com lógica de tipos aleatórios (`EssenceType.Random`) e caps máximos.
-* **Manipulação (`ManipulateEssenceHandler`):** Handler de efeito para gerar recursos (Channeling) ou destruir recursos (Manaburn).
-
-### 3.6. Sistema de Eventos (`ITriggerProcessor`)
-Permite reações automáticas a eventos de combate.
-* **Funcionamento:** O `TriggerProcessor` itera sobre os modificadores ativos para encontrar gatilhos correspondentes (ex: `ON_RECEIVE_DAMAGE`, `ON_ABILITY_CAST`).
-* **Snapshot:** Usa um `TriggerContext` imutável para capturar o estado do evento.
-* **Integração:** Injetado nos pontos críticos (`TurnManager`, `CombatEngine`, `DamageEffectHandler`) para disparar habilidades internas (ex: Thorns, DoTs).
+| Tipo de Dados | Tecnologia | Descrição |
+| :--- | :--- | :--- |
+| **Estático (Blueprints)** | **JSON** | Definições de Heróis, Habilidades, Raças e Modificadores. Carregados para memória (Cache Singleton) no arranque. |
+| **Persistente (Meta)** | **PostgreSQL** | Contas de jogadores, inventários, progresso de heróis (XP, Loadouts), guildas. |
+| **Volátil (Combate)** | **Redis** | O estado de uma batalha ativa (`GameState`). Otimizado para leitura/escrita rápida. |
 
 ---
 
-## 4. Gestão de Turnos (`ITurnManagerService`)
+## 3. O Motor de Combate (Core Mechanics)
 
-Serviço responsável pela transição de estado temporal.
-1.  **Fim de Turno:** Dispara triggers `ON_TURN_END`, reduz cooldowns e durações de modifiers.
-2.  **Rotação:** Identifica o próximo jogador.
-3.  **Início de Turno:**
-    * Reseta `ActionsTakenThisTurn` a 0.
-    * Gera Essence para o novo jogador.
-    * Dispara triggers `ON_TURN_START`.
+O combate opera num padrão de **Action Queue (Fila de Ações)**, o que elimina a recursividade e garante um fluxo de eventos claro e sequencial.
+
+### 3.1. Fluxo de Execução ("The Pipeline")
+A execução ocorre por agendamento e processamento linear:
+
+1.  **Intenção:** A API recebe um Request, converte num Comando e chama `CombatEngine.ExecuteAbility`.
+2.  **Queueing:** O Engine cria uma `ExecuteAbilityAction` (a raiz) e coloca-a na `IActionQueue`.
+3.  **Processamento (Loop):**
+    * O Engine retira a próxima ação da fila.
+    * A ação é executada (Validação -> Custos -> Efeitos).
+    * **Triggers:** Se a ação gerar eventos (ex: Dano), o `TriggerProcessor` cria *novas* ações (ex: "Thorns Damage") e coloca-as no fim da fila para execução subsequente.
+4.  **Resultado:** O Engine retorna uma lista de `CombatActionResult`, contendo o histórico narrativo de tudo o que aconteceu em cadeia.
+
+### 3.2. Battle Logs e Feedback
+Cada ação processada gera um `CombatActionResult` que contém:
+* `IsSuccess`: Se a ação ocorreu ou falhou.
+* `BattleLogEntries`: Uma lista de strings formatadas para o jogador.
+* `Tags`: Metadados para a UI disparar animações (ex: "Critical", "Miss").
+
+### 3.3. Entidades e Serviços Chave
+* **`ExecuteAbilityAction`:** Encapsula toda a lógica de uma habilidade (Validação de Status, Pagamento de Essence/HP, Cooldowns, Hit Chance).
+* **`IEffectHandler`:** Implementações especializadas para cada tipo de efeito (Dano, Cura, Buffs).
+* **`TriggerProcessor`:** Ouve eventos e agenda reações. Filtra eventos globais usando `ValidateCondition` (ex: garantir que só reajo se for eu a levar dano).
+
+---
+
+## 4. Economia de Essence (Mana System)
+
+O sistema de recursos é inspirado em *Magic: The Gathering*, exigindo gestão estratégica de "cores" de mana.
+
+### 4.1. Tipos de Essence
+Existem 5 tipos principais (`Vigor`, `Mind`, `Light`, `Shadow`, `Flux`) e um tipo genérico (`Neutral`).
+
+### 4.2. Pagamento e Validação
+* **Custos Híbridos:** Uma habilidade pode custar "2 Vigor + 2 Neutral".
+* **Decisão do Jogador:** O Backend não adivinha. O Cliente envia a alocação exata (ex: *"Pago 2 Vigor e 2 Mind"*).
+* **Validação:** O `CostCalculationService` verifica se o pagamento cobre a fatura. Essences coloridas podem pagar custos Neutros, mas não o inverso.
+
+### 4.3. Mecânica de "Transmutação" (Troca)
+* O jogador pode, durante o seu turno, trocar recursos para corrigir uma mão má.
+* **Taxa:** 2 Essences quaisquer por 1 Essence à escolha.
+
+### 4.4. Geração e Ritmo (Handicap)
+Para equilibrar a vantagem do "Primeiro a Jogar" (First Turn Advantage):
+* **Turno 1 (Player 1):** Recebe apenas **2 Essence** (Aleatórias).
+* **Turno 1 (Player 2) e seguintes:** Recebem **4 Essence** por turno.
+* Modifiers (ex: "Mana Spring") podem alterar estes valores via `GenerateResourceHandler`.
+
+---
+
+## 5. Targeting e Visão Futura
+
+O sistema de seleção de alvos (`ITargetResolutionService`) resolve quem vai sofrer os efeitos.
+
+### 5.1. Estado Atual
+Suporta regras baseadas em:
+* **Relação:** Self, Ally, Enemy.
+* **Quantidade:** Single Target, Multi-Target, AoE (All).
+* **Estratégia Auto:** Random, LowestHP, HighestHP (para AI ou Triggers).
+
+### 5.2. Visão Futura (Race & Traits)
+Planeia-se expandir o sistema de filtros para permitir sinergias raciais e temáticas.
+* *Exemplo:* "Curar todos os Aliados que sejam `Human`."
+* *Exemplo:* "Causar dano extra a `Undead`."
+Isto será feito através de tags e propriedades na `TargetingRule`.
+
+---
+
+## 6. Modificadores e Status (Buffs/Debuffs)
+
+O sistema de Modifiers é a espinha dorsal da complexidade do jogo.
+* **Stacking:** Modifiers podem acumular ou fazer refresh de duração.
+* **Barreiras (Shields):** Suportam scaling (ex: 50% de Magic) e podem bloquear tipos específicos de dano (ex: "Fire Shield").
+* **Status Effects (CC):**
+    * `Stun`: Bloqueia tudo.
+    * `Silence`: Bloqueia Skills (permite Basic Attack).
+    * `Disarm`: Bloqueia Basic Attack (permite Skills).
+    * `Invulnerable` / `Untargetable`: Regras defensivas absolutas.
