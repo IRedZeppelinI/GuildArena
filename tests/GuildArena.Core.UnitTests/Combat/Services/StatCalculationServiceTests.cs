@@ -21,7 +21,6 @@ public class StatCalculationServiceTests
 
     public StatCalculationServiceTests()
     {
-        // ARRANGE Global
         _attackBuff = new ModifierDefinition
         {
             Id = "MOD_ATTACK_UP",
@@ -64,18 +63,35 @@ public class StatCalculationServiceTests
     [Fact]
     public void GetStatValue_WithNoModifiers_ShouldReturnBaseStat()
     {
-        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Attack = 10 } };
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Test",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new BaseStats { Attack = 10 }
+        };
+
         var result = _service.GetStatValue(combatant, StatType.Attack);
+
         result.ShouldBe(10);
     }
 
     [Fact]
     public void GetStatValue_WithOneFlatModifier_ShouldReturnBasePlusFlat()
     {
-        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Attack = 10 } };
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Test",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new BaseStats { Attack = 10 }
+        };
         combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_ATTACK_UP" });
 
         var result = _service.GetStatValue(combatant, StatType.Attack);
+
         // 10 + 10 = 20
         result.ShouldBe(20);
     }
@@ -83,10 +99,18 @@ public class StatCalculationServiceTests
     [Fact]
     public void GetStatValue_WithOnePercentageModifier_ShouldReturnBaseTimesPercent()
     {
-        var combatant = new Combatant { Id = 1, Name = "Test", BaseStats = new BaseStats { Defense = 50 } };
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Test",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new BaseStats { Defense = 50 }
+        };
         combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_DEFENSE_PERCENT" });
 
         var result = _service.GetStatValue(combatant, StatType.Defense);
+
         // 50 * 1.20 = 60
         result.ShouldBe(60);
     }
@@ -94,11 +118,12 @@ public class StatCalculationServiceTests
     [Fact]
     public void GetStatValue_MaxHP_ShouldIncludeModifiers()
     {
-        // Este teste valida se o MaxHP está a ser tratado como um stat real
         var combatant = new Combatant
         {
             Id = 1,
             Name = "Tank",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
             BaseStats = new BaseStats { MaxHP = 100 }
         };
 
@@ -113,7 +138,6 @@ public class StatCalculationServiceTests
     [Fact]
     public void GetStatValue_MaxHP_ShouldNeverBeLessThanOne()
     {
-        // Cenário: Debuff massivo de MaxHP (ex: -200 HP)
         var curseMod = new ModifierDefinition
         {
             Id = "MOD_CURSE",
@@ -132,13 +156,18 @@ public class StatCalculationServiceTests
             { "MOD_CURSE", curseMod }
         });
 
-        
         var localService = new StatCalculationService(_modifierRepoMock);
 
-        var combatant = new Combatant { Id = 1, Name = "Victim", BaseStats = new BaseStats { MaxHP = 100 } };
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Victim",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new BaseStats { MaxHP = 100 }
+        };
         combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_CURSE" });
 
-        
         var result = localService.GetStatValue(combatant, StatType.MaxHP);
 
         // Deve ser clampado a 1, não 0 ou negativo

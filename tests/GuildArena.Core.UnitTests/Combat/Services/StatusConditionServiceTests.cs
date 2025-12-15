@@ -22,7 +22,14 @@ public class StatusConditionServiceTests
     [Fact]
     public void CheckStatus_NoEffects_ShouldReturnAllowed()
     {
-        var source = new Combatant { Id = 1, Name = "Clean", BaseStats = new() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Clean",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
         var ability = new AbilityDefinition { Id = "A1", Name = "Test" };
 
         var result = _service.CheckStatusConditions(source, ability);
@@ -33,7 +40,14 @@ public class StatusConditionServiceTests
     [Fact]
     public void CheckStatus_WithStun_ShouldReturnStunned()
     {
-        var source = new Combatant { Id = 1, Name = "Stunned", BaseStats = new() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Stunned",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
         AddStatus(source, StatusEffectType.Stun);
 
         var ability = new AbilityDefinition { Id = "A1", Name = "Test" };
@@ -53,8 +67,10 @@ public class StatusConditionServiceTests
         {
             Id = 1,
             Name = "Silenced",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
             BaseStats = new(),
-            BasicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Punch" } // Configurar Basic Attack
+            BasicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Punch" }
         };
         AddStatus(source, StatusEffectType.Silence);
 
@@ -76,8 +92,10 @@ public class StatusConditionServiceTests
         {
             Id = 1,
             Name = "Silenced",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
             BaseStats = new(),
-            BasicAttack = basicAttack // O Básico é o mesmo que vamos usar
+            BasicAttack = basicAttack
         };
         AddStatus(source, StatusEffectType.Silence);
 
@@ -97,6 +115,8 @@ public class StatusConditionServiceTests
         {
             Id = 1,
             Name = "Disarmed",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
             BaseStats = new(),
             BasicAttack = basicAttack
         };
@@ -117,6 +137,8 @@ public class StatusConditionServiceTests
         {
             Id = 1,
             Name = "Disarmed",
+            RaceId = "RACE_TEST",
+            CurrentHP = 100,
             BaseStats = new(),
             BasicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Slash" }
         };
@@ -127,7 +149,7 @@ public class StatusConditionServiceTests
         result.ShouldBe(ActionStatusResult.Allowed);
     }
 
-    // Helper para adicionar status facilmente
+    // Helper
     private void AddStatus(Combatant combatant, StatusEffectType status)
     {
         combatant.ActiveModifiers.Add(new ActiveModifier
