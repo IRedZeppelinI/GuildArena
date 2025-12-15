@@ -20,6 +20,12 @@ public class CostModification
     public string? RequiredAbilityTag { get; set; }
 
     /// <summary>
+    /// If populated, this modification only applies if the ability 
+    /// targets a unit of this specific Race ID.
+    /// </summary>
+    public string? TargetRaceId { get; set; }
+
+    /// <summary>
     /// The value to add (positive) or subtract (negative) from the cost.
     /// </summary>
     public int Value { get; set; }

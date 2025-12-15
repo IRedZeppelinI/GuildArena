@@ -10,6 +10,13 @@ public class Combatant
     public required string Name { get; set; }
 
     /// <summary>
+    /// The Race ID of this combatant (e.g. "RACE_HUMAN").
+    /// Cached here for quick lookup during targeting and damage calculations.
+    /// </summary>
+    public required string RaceId { get; set; }
+
+
+    /// <summary>
     /// The current level of the combatant. Used for hit chance calculations and scaling.
     /// </summary>
     public int Level { get; set; } = 1;

@@ -55,6 +55,7 @@ public class CombatantFactory : ICombatantFactory
             Id = hero.Id,
             OwnerId = ownerId,
             Name = charDef.Name,
+            RaceId = charDef.RaceId,
             Level = hero.CurrentLevel,
             BaseStats = finalStats,
             MaxHP = maxHp,
