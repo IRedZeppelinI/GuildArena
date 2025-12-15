@@ -8,9 +8,7 @@ using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Core.Combat.Services;
 
-/// <summary>
-/// Implements the logic for calculating final ability costs, covering Essence, HP, Modifiers, and Wards.
-/// </summary>
+/// <inheritdoc />
 public class CostCalculationService : ICostCalculationService
 {
     private readonly IModifierDefinitionRepository _modifierRepo;
@@ -20,40 +18,35 @@ public class CostCalculationService : ICostCalculationService
         _modifierRepo = modifierRepo;
     }
 
-    /// <summary>
-    /// Calculates the final essence and HP costs (the "Invoice") to execute an ability against specific targets.
-    /// </summary>
+    /// <inheritdoc />
     public FinalAbilityCosts CalculateFinalCosts(
         CombatPlayer caster,
         AbilityDefinition ability,
-        List<Combatant> targets)
+        List<Combatant> resolvedTargets,
+        AbilityTargets userSelections) 
     {
         var definitions = _modifierRepo.GetAllDefinitions();
 
-        
-        // Copiar custos base da habilidade para não alterar obj original da cache        
+        // Copiar custos base
         var finalEssenceCosts = ability.Costs
             .Select(c => new EssenceAmount { Type = c.Type, Amount = c.Amount })
             .ToList();
 
         int finalHPCost = ability.HPCost;
 
-        //  MODIFIERS DO CASTER 
+        // 1. MODIFIERS DO CASTER (Descontos/Taxas próprias)        
         foreach (var mod in caster.ActiveModifiers)
         {
             if (!definitions.TryGetValue(mod.DefinitionId, out var def)) continue;
 
-            // essence Modifiers
             foreach (var costMod in def.EssenceCostModifications)
             {
-                // Verifica mod por tag para essence
                 if (costMod.RequiredAbilityTag != null && !ability.Tags.Contains(costMod.RequiredAbilityTag))
                     continue;
 
                 ApplyEssenceModification(finalEssenceCosts, costMod);
             }
 
-            // Verifica mod por tag para hpCost
             foreach (var hpMod in def.HPCostModifications)
             {
                 if (hpMod.RequiredAbilityTag != null && !ability.Tags.Contains(hpMod.RequiredAbilityTag))
@@ -63,24 +56,29 @@ public class CostCalculationService : ICostCalculationService
             }
         }
 
-        // WARDS DOS ALVOS 
-        foreach (var target in targets)
+        // 2. WARDS DOS ALVOS (Targeting Tax)
+        foreach (var target in resolvedTargets)
         {
-            
-            // ward só funciona contra oponentes
+            // Ward só funciona contra oponentes
             if (target.OwnerId == caster.PlayerId) continue;
+
+            //Apenas aplicável a manual target, AoE ignora wards
+            if (!IsManuallyTargeted(target.Id, userSelections))
+            {
+                continue;
+            }           
 
             foreach (var mod in target.ActiveModifiers)
             {
                 if (!definitions.TryGetValue(mod.DefinitionId, out var def)) continue;
 
-                //  Essence Ward 
+                // Essence Ward 
                 foreach (var wardCost in def.TargetingEssenceCosts)
                 {
                     AddEssenceCost(finalEssenceCosts, wardCost);
                 }
 
-                //  HP Ward 
+                // HP Ward 
                 if (def.TargetingHPCost > 0)
                 {
                     finalHPCost += def.TargetingHPCost;
@@ -88,32 +86,36 @@ public class CostCalculationService : ICostCalculationService
             }
         }
 
-        
-        // Garantir que não devolve custos negativos de HP
         if (finalHPCost < 0) finalHPCost = 0;
 
         return new FinalAbilityCosts
         {
-            // Filtra essences a 0 ou negativas (caso descontos tenham eliminado o custo)
             EssenceCosts = finalEssenceCosts.Where(c => c.Amount > 0).ToList(),
             HPCost = finalHPCost
         };
     }
 
-    //  Helpers 
+    // --- Helper para verificar se foi alvo manual ---
+    private bool IsManuallyTargeted(int targetId, AbilityTargets selections)
+    {        
+        foreach (var list in selections.SelectedTargets.Values)
+        {
+            if (list.Contains(targetId)) return true;
+        }
+        return false;
+    }
 
+    
     private void ApplyEssenceModification(List<EssenceAmount> costs, CostModification mod)
     {
-        // Se TargetEssenceType for null, assumimos que reduz o custo Neutral primeiro
         var targetType = mod.TargetEssenceType ?? EssenceType.Neutral;
-
         var existingCost = costs.FirstOrDefault(c => c.Type == targetType);
 
         if (existingCost != null)
         {
             existingCost.Amount += mod.Value;
         }
-        else if (mod.Value > 0) // Só adiciona se for debuff (aumento de custo)
+        else if (mod.Value > 0)
         {
             costs.Add(new EssenceAmount { Type = targetType, Amount = mod.Value });
         }

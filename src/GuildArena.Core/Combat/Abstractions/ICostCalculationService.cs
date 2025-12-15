@@ -1,6 +1,7 @@
 ﻿using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
+using GuildArena.Domain.ValueObjects;
 
 namespace GuildArena.Core.Combat.Abstractions;
 
@@ -11,10 +12,16 @@ public interface ICostCalculationService
 {
     /// <summary>
     /// Calculates the final essence and HP costs (the "Invoice") to execute an ability against specific targets.
-    /// This includes applying caster discounts (CostModifications) and target taxes (Ward).
+    /// This includes applying caster discounts, racial bonuses, and target taxes (Ward).
     /// </summary>
+    /// <param name="caster">The player casting the ability.</param>
+    /// <param name="ability">The ability definition.</param>
+    /// <param name="resolvedTargets">The actual list of combatants that will be affected.</param>
+    /// <param name="userSelections">The raw targeting choices made by the player (used to validate Wards only on manual targets).</param>
+    /// <returns>A breakdown of Essence and HP required.</returns>
     FinalAbilityCosts CalculateFinalCosts(
         CombatPlayer caster,
         AbilityDefinition ability,
-        List<Combatant> targets);
+        List<Combatant> targets,
+        AbilityTargets userSelections);
 }

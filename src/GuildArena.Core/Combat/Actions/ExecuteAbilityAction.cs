@@ -143,7 +143,11 @@ public class ExecuteAbilityAction : ICombatAction
 
         // Cálculo e Validação de Custos (Essence/HP)
         var player = state.Players.First(p => p.PlayerId == Source.OwnerId);
-        calculatedCost = engine.CostService.CalculateFinalCosts(player, _ability, targets);
+        calculatedCost = engine.CostService.CalculateFinalCosts(
+            player,
+            _ability,
+            targets,
+            _userSelectedTargets);
 
         if (calculatedCost.HPCost > 0 && Source.CurrentHP <= calculatedCost.HPCost) return false;
         if (!engine.EssenceService.HasEnoughEssence(player, calculatedCost.EssenceCosts)) return false;
