@@ -20,8 +20,11 @@ public class DamageResolutionServiceTests
 
     private readonly ModifierDefinition _fireBuff;
     private readonly ModifierDefinition _physicalResist;
+    private readonly ModifierDefinition _slayerMod;
+    private readonly ModifierDefinition _orcShieldMod;
     private readonly ModifierDefinition _genericBarrier;
     private readonly ModifierDefinition _fireBarrier;
+    private readonly ModifierDefinition _mysticBarrierDef;
 
     public DamageResolutionServiceTests()
     {
@@ -34,7 +37,8 @@ public class DamageResolutionServiceTests
             Id = "BUFF_FIRE",
             Name = "Fire Up",
             Type = ModifierType.Bless,
-            DamageModifications = new() {
+            DamageModifications = new()
+            {
                 new() { RequiredTag = "Fire", Type = ModificationType.FLAT, Value = 2 }
             }
         };
@@ -44,8 +48,43 @@ public class DamageResolutionServiceTests
             Id = "RESIST_PHYS",
             Name = "Iron Skin",
             Type = ModifierType.Bless,
-            DamageModifications = new() {
+            DamageModifications = new()
+            {
                 new() { RequiredTag = "Physical", Type = ModificationType.PERCENTAGE, Value = -0.5f }
+            }
+        };
+
+        _slayerMod = new ModifierDefinition
+        {
+            Id = "MOD_SLAYER",
+            Name = "Valdrin Slayer",
+            Type = ModifierType.Bless,
+            DamageModifications = new()
+            {
+                new()
+                {
+                    RequiredTag = "Melee",
+                    TargetRaceId = "RACE_VALDRIN",
+                    Type = ModificationType.FLAT,
+                    Value = 10
+                }
+            }
+        };
+
+        _orcShieldMod = new ModifierDefinition
+        {
+            Id = "MOD_ORC_SHIELD",
+            Name = "Hates Humans",
+            Type = ModifierType.Bless,
+            DamageModifications = new()
+            {
+                new()
+                {
+                    RequiredTag = "Melee",
+                    TargetRaceId = "RACE_HUMAN",
+                    Type = ModificationType.FLAT,
+                    Value = -5
+                }
             }
         };
 
@@ -65,12 +104,23 @@ public class DamageResolutionServiceTests
             Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Fire" } }
         };
 
+        _mysticBarrierDef = new ModifierDefinition
+        {
+            Id = "BARRIER_MAGIC",
+            Name = "Anti-Magic Shell",
+            Type = ModifierType.Bless,
+            Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Magical" } }
+        };
+
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
             { _fireBuff.Id, _fireBuff },
             { _physicalResist.Id, _physicalResist },
+            { _slayerMod.Id, _slayerMod },
+            { _orcShieldMod.Id, _orcShieldMod },
             { _genericBarrier.Id, _genericBarrier },
-            { _fireBarrier.Id, _fireBarrier }
+            { _fireBarrier.Id, _fireBarrier },
+            { _mysticBarrierDef.Id, _mysticBarrierDef }
         });
     }
 
@@ -325,19 +375,6 @@ public class DamageResolutionServiceTests
     public void ResolveDamage_DamageCategoryAsTag_ShouldTriggerBarrier()
     {
         // Arrange
-        var mysticBarrierDef = new ModifierDefinition
-        {
-            Id = "BARRIER_MAGIC",
-            Name = "Anti-Magic Shell",
-            Type = ModifierType.Bless,
-            Barrier = new BarrierProperties { BaseAmount = 50, BlockedTags = new() { "Magical" } }
-        };
-
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
-        {
-            { "BARRIER_MAGIC", mysticBarrierDef }
-        });
-
         var effect = new EffectDefinition
         {
             Tags = new(),
@@ -362,7 +399,11 @@ public class DamageResolutionServiceTests
             BaseStats = new()
         };
 
-        var barrierMod = new ActiveModifier { DefinitionId = "BARRIER_MAGIC", CurrentBarrierValue = 50 };
+        var barrierMod = new ActiveModifier
+        {
+            DefinitionId = "BARRIER_MAGIC",
+            CurrentBarrierValue = 50
+        };
         target.ActiveModifiers.Add(barrierMod);
 
         // Act
@@ -438,7 +479,11 @@ public class DamageResolutionServiceTests
             CurrentHP = 100,
             BaseStats = new()
         };
-        target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "BARRIER_GENERIC", CurrentBarrierValue = 100 });
+        target.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "BARRIER_GENERIC",
+            CurrentBarrierValue = 100
+        });
 
         // Act
         var result = _service.ResolveDamage(50f, effect, source, target);
@@ -446,5 +491,124 @@ public class DamageResolutionServiceTests
         // Assert
         result.FinalDamageToApply.ShouldBe(50f);
         result.AbsorbedDamage.ShouldBe(0f);
+    }
+
+    // --- TESTES DE RAÇA NOVOS ---
+
+    [Fact]
+    public void ResolveDamage_WithRacialSlayer_ShouldIncreaseDamage_IfRaceMatches()
+    {
+        // Arrange
+        var effect = new EffectDefinition
+        {
+            Tags = new() { "Melee" },
+            DamageCategory = DamageCategory.Physical,
+            TargetRuleId = "T1"
+        };
+
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Hero",
+            RaceId = "RACE_HUMAN",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+        source.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_SLAYER" }); // +10 vs Valdrin
+
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Enemy",
+            RaceId = "RACE_VALDRIN",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+
+        // Act
+        var result = _service.ResolveDamage(10f, effect, source, target);
+
+        // Assert
+        // 10 Base + 10 Slayer = 20
+        result.FinalDamageToApply.ShouldBe(20f);
+    }
+
+    [Fact]
+    public void ResolveDamage_WithRacialSlayer_ShouldIgnore_IfRaceMismatch()
+    {
+        // Arrange
+        var effect = new EffectDefinition
+        {
+            Tags = new() { "Melee" },
+            DamageCategory = DamageCategory.Physical,
+            TargetRuleId = "T1"
+        };
+
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Hero",
+            RaceId = "RACE_HUMAN",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+        source.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_SLAYER" });
+
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Enemy",
+            RaceId = "RACE_HUMAN", // Não é Valdrin
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+
+        // Act
+        var result = _service.ResolveDamage(10f, effect, source, target);
+
+        // Assert
+        // Bónus ignorado
+        result.FinalDamageToApply.ShouldBe(10f);
+    }
+
+    [Fact]
+    public void ResolveDamage_WithRacialResist_ShouldReduceDamage_IfAttackerRaceMatches()
+    {
+        // Arrange
+        var effect = new EffectDefinition
+        {
+            Tags = new() { "Melee" },
+            DamageCategory = DamageCategory.Physical,
+            TargetRuleId = "T1"
+        };
+
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Human Attacker",
+            RaceId = "RACE_HUMAN",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Orc Defender",
+            RaceId = "RACE_ORC",
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+        target.ActiveModifiers.Add(new ActiveModifier 
+        { 
+            DefinitionId = "MOD_ORC_SHIELD" 
+        }); // -5 se atacante for Humano
+
+        // Act
+        var result = _service.ResolveDamage(10f, effect, source, target);
+
+        // Assert
+        // 10 - 5 = 5
+        result.FinalDamageToApply.ShouldBe(5f);
     }
 }

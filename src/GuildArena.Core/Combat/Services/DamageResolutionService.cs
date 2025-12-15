@@ -4,13 +4,12 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
+using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Services;
 
-/// <summary>
-/// Implements the logic for damage resolution, including tag-based modifiers and barrier absorption.
-/// </summary>
+/// <inheritdoc />
 public class DamageResolutionService : IDamageResolutionService
 {
     private readonly IModifierDefinitionRepository _modifierRepo;
@@ -38,6 +37,7 @@ public class DamageResolutionService : IDamageResolutionService
 
         float modifiedDamage = ApplyModifiers(baseDamage, allAttackTags, source, target, isTrueDamage);
 
+        // Barreiras são ignoradas por True Damage
         if (modifiedDamage > 0 && !isTrueDamage)
         {
             ApplyBarriers(target, ref modifiedDamage, allAttackTags, result);
@@ -50,7 +50,7 @@ public class DamageResolutionService : IDamageResolutionService
     private HashSet<string> BuildAggregatedTags(EffectDefinition effect)
     {
         var tags = new HashSet<string>(effect.Tags, StringComparer.OrdinalIgnoreCase);
-        tags.Add(effect.DamageCategory.ToString()); //adicionar physical, ou magic, i.e. barrier todas as magic
+        tags.Add(effect.DamageCategory.ToString());
         return tags;
     }
 
@@ -68,25 +68,42 @@ public class DamageResolutionService : IDamageResolutionService
 
         var definitions = _modifierRepo.GetAllDefinitions();
 
-        // Processar Bónus do Atacante
+        // -------------------------------------------------------------
+        // 1. PROCESSAR BÓNUS DO ATACANTE (SOURCE)
+        // Lógica: Bónus de Dano (Slayer, Buffs) aplicam-se SEMPRE,
+        // mesmo que o dano base seja True Damage.
+        // -------------------------------------------------------------
         foreach (var mod in source.ActiveModifiers)
         {
             if (definitions.TryGetValue(mod.DefinitionId, out var def))
             {
                 foreach (var dmgMod in def.DamageModifications)
                 {
-                    if (dmgMod.Value > 0 && tags.Contains(dmgMod.RequiredTag))
+                    // Filtramos apenas Bónus (Valores Positivos) vindos do atacante
+                    if (dmgMod.Value <= 0) continue;
+
+                    // Regra de Tag
+                    if (!tags.Contains(dmgMod.RequiredTag)) continue;
+
+                    // Regra Racial (Slayer): Verifica se o ALVO corresponde à raça pedida
+                    if (!string.IsNullOrEmpty(dmgMod.TargetRaceId))
                     {
-                        if (dmgMod.Type == ModificationType.FLAT)
-                            flatBonus += dmgMod.Value;
-                        else
-                            percentBonus += dmgMod.Value;
+                        if (target.RaceId != dmgMod.TargetRaceId) continue;
                     }
+
+                    if (dmgMod.Type == ModificationType.FLAT)
+                        flatBonus += dmgMod.Value;
+                    else
+                        percentBonus += dmgMod.Value;
                 }
             }
         }
 
-        // Processar Resistências do Alvo
+        // -------------------------------------------------------------
+        // 2. PROCESSAR RESISTÊNCIAS DO ALVO (TARGET)
+        // Lógica: Resistências só se aplicam se NÃO for True Damage.
+        // True Damage ignora toda a mitigação do alvo.
+        // -------------------------------------------------------------
         if (!isTrueDamage)
         {
             foreach (var mod in target.ActiveModifiers)
@@ -95,19 +112,32 @@ public class DamageResolutionService : IDamageResolutionService
                 {
                     foreach (var dmgMod in def.DamageModifications)
                     {
-                        if (dmgMod.Value < 0 && tags.Contains(dmgMod.RequiredTag))
+                        // Filtramos apenas Reduções (Valores Negativos) vindos do defensor
+                        if (dmgMod.Value >= 0) continue;
+
+                        // Regra de Tag
+                        if (!tags.Contains(dmgMod.RequiredTag)) continue;
+
+                        // Regra Racial: Verifica se o ATACANTE corresponde à raça pedida
+                        // (Ex: Armadura que só protege contra Orcs)
+                        if (!string.IsNullOrEmpty(dmgMod.TargetRaceId))
                         {
-                            if (dmgMod.Type == ModificationType.FLAT)
-                                flatReduction += dmgMod.Value;
-                            else
-                                percentReduction += dmgMod.Value;
+                            if (source.RaceId != dmgMod.TargetRaceId) continue;
                         }
+
+                        if (dmgMod.Type == ModificationType.FLAT)
+                            flatReduction += dmgMod.Value;
+                        else
+                            percentReduction += dmgMod.Value;
                     }
                 }
             }
         }
 
+        // Cálculo Final: (Base + Bónus - Redução) * (1 + %Bónus - %Redução)
+        // Nota: Somamos tudo porque as reduções já vêm como valores negativos
         float finalValue = (damage + flatBonus + flatReduction) * (1 + percentBonus + percentReduction);
+
         return Math.Max(0, finalValue);
     }
 

@@ -13,6 +13,11 @@ public class DamageModification
     /// </small>
     public required string RequiredTag { get; set; }
 
+    /// <summary>
+    /// If populated, this modification only applies if the target belongs to this specific Race ID.
+    /// </summary>
+    public string? TargetRaceId { get; set; }
+
     public ModificationType Type { get; set; } // FLAT ou PERCENTAGE
     public float Value { get; set; }
 }
