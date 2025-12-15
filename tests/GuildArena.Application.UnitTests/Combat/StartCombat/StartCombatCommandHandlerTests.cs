@@ -48,11 +48,12 @@ public class StartCombatCommandHandlerTests
             .Returns(callInfo =>
             {
                 var ownerId = callInfo.Arg<int>();
-                return new Combatant 
-                { 
+                return new Combatant
+                {
                     Id = 100 + ownerId,
                     OwnerId = ownerId,
                     Name = "MockHero",
+                    RaceId = "RACE_HUMAN", 
                     BaseStats = new(),
                     MaxHP = 100,
                     CurrentHP = 100
