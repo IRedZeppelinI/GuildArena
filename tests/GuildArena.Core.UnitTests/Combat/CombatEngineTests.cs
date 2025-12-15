@@ -56,7 +56,16 @@ public class CombatEngineTests
         _realQueue.HasNext().ShouldBeTrue();
 
         var ability = new AbilityDefinition { Id = "Test", Name = "Test" };
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new() };
+
+        
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_HUMAN",
+            BaseStats = new()
+        };
+
         var state = new GameState { Players = new() { new CombatPlayer { PlayerId = 0 } } };
 
         // ACT
@@ -80,13 +89,17 @@ public class CombatEngineTests
         // ARRANGE
         var engine = CreateEngine();
 
-        // Vamos criar um cenário onde adicionamos 100 ações à "má fila" manualmente
-        // Nota: Como o ExecuteAbility limpa a fila, este teste é difícil de simular sem expor a queue,
-        // mas serve para garantir que o loop while tem limites.
-
-        // (Simplificação: Este teste garante apenas que o método retorna e não bloqueia eternamente)
         var ability = new AbilityDefinition { Id = "Test", Name = "Test" };
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new() };
+
+        
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_HUMAN",
+            BaseStats = new(),
+            CurrentHP = 50
+        };
 
         // ACT
         var results = engine.ExecuteAbility(
