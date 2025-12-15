@@ -41,6 +41,8 @@ public class TargetResolutionService : ITargetResolutionService
             potentialTargets = potentialTargets.Where(c => !IsCombatantUntargetable(c)).ToList();
         }
 
+        potentialTargets = FilterByRace(potentialTargets, rule);
+
         // 4. Seleção Final (Manual vs Automática)
         return ApplySelectionStrategy(rule, potentialTargets, playerInput);
     }
@@ -80,6 +82,38 @@ public class TargetResolutionService : ITargetResolutionService
             _ => new List<Combatant>()
         };
     }
+
+    private List<Combatant> FilterByRace(List<Combatant> candidates, TargetingRule rule)
+    {
+        // Se não houver restrições, devolve a lista original
+        if ((rule.RequiredRaceIds == null || rule.RequiredRaceIds.Count == 0) &&
+            (rule.ExcludedRaceIds == null || rule.ExcludedRaceIds.Count == 0))
+        {
+            return candidates;
+        }
+
+        return candidates.Where(c =>
+        {
+            // 1. Verificação de Inclusão (Whitelist)
+            // Se a lista existir, o alvo TEM de estar nela.
+            if (rule.RequiredRaceIds != null && rule.RequiredRaceIds.Count > 0)
+            {
+                if (!rule.RequiredRaceIds.Contains(c.RaceId))
+                    return false;
+            }
+
+            // 2. Verificação de Exclusão (Blacklist)
+            // Se a lista existir, o alvo NÃO PODE estar nela.
+            if (rule.ExcludedRaceIds != null && rule.ExcludedRaceIds.Count > 0)
+            {
+                if (rule.ExcludedRaceIds.Contains(c.RaceId))
+                    return false;
+            }
+
+            return true;
+        }).ToList();
+    }
+
 
     private List<Combatant> ApplySelectionStrategy(
         TargetingRule rule,
