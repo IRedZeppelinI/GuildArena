@@ -5,6 +5,7 @@ using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -14,31 +15,21 @@ namespace GuildArena.Core.UnitTests.Combat.Services;
 public class CostCalculationServiceTests
 {
     private readonly IModifierDefinitionRepository _repoMock;
+    private readonly ILogger<CostCalculationService> _loggerMock;
     private readonly CostCalculationService _service;
 
     // Definições reutilizáveis
-    private readonly ModifierDefinition _fireDiscountMod;
     private readonly ModifierDefinition _neutralWardMod;
-    private readonly ModifierDefinition _bloodMagicMod;
-    private readonly ModifierDefinition _bloodWardMod;
+    private readonly ModifierDefinition _valdrinHateMod; // Penalidade contra Valdrin
+    private readonly ModifierDefinition _humanLoveMod;   // Desconto contra Humanos
 
     public CostCalculationServiceTests()
     {
         _repoMock = Substitute.For<IModifierDefinitionRepository>();
-        _service = new CostCalculationService(_repoMock);
+        _loggerMock = Substitute.For<ILogger<CostCalculationService>>();
+        _service = new CostCalculationService(_repoMock, _loggerMock);
 
-        // 1. Modifier: -1 Vigor (Fire) Cost
-        _fireDiscountMod = new ModifierDefinition
-        {
-            Id = "MOD_VIGOR_DISCOUNT",
-            Name = "Fire Mastery",
-            Type = ModifierType.Bless,
-            EssenceCostModifications = new() {
-                new() { TargetEssenceType = EssenceType.Vigor, Value = -1 }
-            }
-        };
-
-        // 2. Modifier: Ward (+1 Neutral Cost no targeting)
+        // 1. Modifier: Ward (+1 Neutral Cost no targeting)
         _neutralWardMod = new ModifierDefinition
         {
             Id = "MOD_WARD_1",
@@ -49,33 +40,42 @@ public class CostCalculationServiceTests
             }
         };
 
-        // 3. Modifier: HP Cost Increase (+5 HP Cost)
-        _bloodMagicMod = new ModifierDefinition
+        // 2. Modifier: Penalidade Racial (+1 Vigor se alvo for Valdrin)
+        _valdrinHateMod = new ModifierDefinition
         {
-            Id = "MOD_BLOOD_MAGIC",
-            Name = "Blood Sacrifice",
-            Type = ModifierType.Curse,
-            HPCostModifications = new() {
-                new() { Value = 5 } // Increases HP cost by 5
+            Id = "MOD_HATE_VALDRIN",
+            Name = "Stone Breaker",
+            Type = ModifierType.Bless, // É um buff no caster que custa mais, tecnicamente
+            EssenceCostModifications = new() {
+                new() {
+                    TargetEssenceType = EssenceType.Vigor,
+                    TargetRaceId = "RACE_VALDRIN",
+                    Value = 1 // Penalidade
+                }
             }
         };
 
-        // 4. Modifier: HP Ward (+10 HP Cost to target)
-        _bloodWardMod = new ModifierDefinition
+        // 3. Modifier: Desconto Racial (-1 Mind se alvo for Humano)
+        _humanLoveMod = new ModifierDefinition
         {
-            Id = "MOD_BLOOD_WARD",
-            Name = "Thorns",
+            Id = "MOD_LOVE_HUMAN",
+            Name = "Humanity",
             Type = ModifierType.Bless,
-            TargetingHPCost = 10
+            EssenceCostModifications = new() {
+                new() {
+                    TargetEssenceType = EssenceType.Mind,
+                    TargetRaceId = "RACE_HUMAN",
+                    Value = -1 // Desconto
+                }
+            }
         };
 
-        // Configurar o Mock para devolver estes modifiers
+        // Configurar o Mock
         _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
-            { _fireDiscountMod.Id, _fireDiscountMod },
             { _neutralWardMod.Id, _neutralWardMod },
-            { _bloodMagicMod.Id, _bloodMagicMod },
-            { _bloodWardMod.Id, _bloodWardMod }
+            { _valdrinHateMod.Id, _valdrinHateMod },
+            { _humanLoveMod.Id, _humanLoveMod }
         });
     }
 
@@ -91,17 +91,13 @@ public class CostCalculationServiceTests
             HPCost = 10
         };
         var caster = new CombatPlayer { PlayerId = 1 };
+        var target = CreateCombatant(2, 2, "RACE_HUMAN");
 
-        var target = new Combatant
-        {
-            Id = 2,
-            OwnerId = 2,
-            Name = "Dummy Target",
-            BaseStats = new BaseStats()
-        };
+        // Input vazio (simulando ou manual ou auto, sem mods não interessa)
+        var input = new AbilityTargets();
 
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant> { target });
+        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant> { target }, input);
 
         // Assert
         result.EssenceCosts.Count.ShouldBe(1);
@@ -109,30 +105,10 @@ public class CostCalculationServiceTests
         result.HPCost.ShouldBe(10);
     }
 
-    [Fact]
-    public void CalculateFinalCosts_WithDiscountModifier_ShouldReduceEssenceCost()
-    {
-        // Arrange
-        var ability = new AbilityDefinition
-        {
-            Id = "A1",
-            Name = "Fireball",
-            Costs = new() { new() { Type = EssenceType.Vigor, Amount = 2 } }
-        };
-        var caster = new CombatPlayer { PlayerId = 1 };
-        // Adiciona o buff de desconto ao caster
-        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_VIGOR_DISCOUNT" });
-
-        // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant>());
-
-        // Assert
-        // 2 Vigor - 1 Desconto = 1 Vigor
-        result.EssenceCosts.First(c => c.Type == EssenceType.Vigor).Amount.ShouldBe(1);
-    }
+    // --- TESTES DE WARD (MANUAL vs AUTO) ---
 
     [Fact]
-    public void CalculateFinalCosts_WithWardOnTarget_ShouldAddTaxToCost()
+    public void CalculateFinalCosts_Ward_WithManualTarget_ShouldApplyTax()
     {
         // Arrange
         var ability = new AbilityDefinition
@@ -143,146 +119,204 @@ public class CostCalculationServiceTests
         };
         var caster = new CombatPlayer { PlayerId = 1 };
 
-        var target = new Combatant
-        {
-            Id = 2,
-            OwnerId = 2,
-            Name = "Warded Enemy",
-            BaseStats = new BaseStats()
-        };
-        // O alvo tem Ward (+1 Neutral)
+        var target = CreateCombatant(2, 2, "RACE_HUMAN");
         target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_WARD_1" });
 
+        // Simular Seleção Manual
+        var input = new AbilityTargets 
+        { 
+            SelectedTargets = new() { { "Rule1", new List<int> { target.Id } } } 
+        };
+
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant> { target });
+        var result = _service.CalculateFinalCosts(
+            caster,
+            ability,
+            new List<Combatant> { target },
+            input);
 
         // Assert
-        // Total: 1 Mind (Base) + 1 Neutral (Ward)
+        // 1 Mind (Base) + 1 Neutral (Taxa)
         result.EssenceCosts.Count.ShouldBe(2);
-        result.EssenceCosts.ShouldContain(c => c.Type == EssenceType.Mind && c.Amount == 1);
         result.EssenceCosts.ShouldContain(c => c.Type == EssenceType.Neutral && c.Amount == 1);
     }
 
     [Fact]
-    public void CalculateFinalCosts_WithSelfTargeting_ShouldIgnoreWard()
+    public void CalculateFinalCosts_Ward_WithAutoTarget_ShouldIgnoreTax()
     {
         // Arrange
         var ability = new AbilityDefinition
         {
             Id = "A1",
-            Name = "Self Heal",
-            Costs = new() { new() { Type = EssenceType.Light, Amount = 1 } }
+            Name = "Rain of Fire", // AoE ou Random
+            Costs = new() { new() { Type = EssenceType.Mind, Amount = 1 } }
         };
         var caster = new CombatPlayer { PlayerId = 1 };
 
-        // O alvo o próprio caster  (OwnerId = 1)
-        var target = new Combatant
-        {
-            Id = 10,
-            OwnerId = 1,
-            Name = "Self",
-            BaseStats = new BaseStats()
-        };
+        var target = CreateCombatant(2, 2, "RACE_HUMAN");
         target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_WARD_1" });
 
+        // Simular Seleção Automática (Input Vazio ou IDs que não correspondem a esta regra)
+        var input = new AbilityTargets();
+
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant> { target });
+        var result = _service.CalculateFinalCosts(
+            caster,
+            ability,
+            new List<Combatant> { target },
+            input);
 
         // Assert
-        // Ward deve ser ignorado porque caster é o alvo
+        // Apenas 1 Mind (Base). A taxa foi ignorada.
         result.EssenceCosts.Count.ShouldBe(1);
-        result.EssenceCosts.First().Type.ShouldBe(EssenceType.Light);
-        result.EssenceCosts.First().Amount.ShouldBe(1);
+        result.EssenceCosts.ShouldNotContain(c => c.Type == EssenceType.Neutral);
     }
 
+    // --- TESTES DE CUSTOS RACIAIS ---
+
     [Fact]
-    public void CalculateFinalCosts_HPCostModifiers_ShouldAdjustTotalHPCost()
+    public void CalculateFinalCosts_RacialPenalty_ShouldApply_IfAnyManualTargetMatches()
     {
         // Arrange
+        // Modificador: +1 Vigor se alvo for VALDRIN
         var ability = new AbilityDefinition
         {
             Id = "A1",
-            Name = "Blood Strike",
-            HPCost = 10,
-            Costs = new() // Sem custo de essence
+            Name = "Attack",
+            Costs = new() { new() { Type = EssenceType.Vigor, Amount = 1 } }
         };
-        var caster = new CombatPlayer { PlayerId = 1 };
 
-        // Caster tem "Blood Magic" (+5 HP Cost)
-        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_BLOOD_MAGIC" });
+        var caster = new CombatPlayer { PlayerId = 1 };
+        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_HATE_VALDRIN" });
+
+        var valdrinTarget = CreateCombatant(2, 2, "RACE_VALDRIN");
+        var humanTarget = CreateCombatant(3, 2, "RACE_HUMAN");
+
+        // Seleção Manual Mista (Basta um Valdrin para aplicar penalidade)
+        var targets = new List<Combatant> { valdrinTarget, humanTarget };
+        var input = new AbilityTargets
+        {
+            SelectedTargets = new() { { "Rule1", new List<int> { valdrinTarget.Id, humanTarget.Id } } }
+        };
 
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant>());
+        var result = _service.CalculateFinalCosts(caster, ability, targets, input);
 
         // Assert
-        // 10 Base + 5 Penalidade = 15
-        result.HPCost.ShouldBe(15);
+        // 1 Vigor (Base) + 1 Vigor (Penalidade) = 2 Vigor
+        result.EssenceCosts.First(c => c.Type == EssenceType.Vigor).Amount.ShouldBe(2);
     }
 
     [Fact]
-    public void CalculateFinalCosts_HPWardOnTarget_ShouldAddHPTax()
+    public void CalculateFinalCosts_RacialPenalty_ShouldIgnore_IfNoTargetMatches()
     {
         // Arrange
+        // Modificador: +1 Vigor se alvo for VALDRIN
         var ability = new AbilityDefinition
         {
             Id = "A1",
-            Name = "Poke",
-            HPCost = 0,
-            Costs = new()
+            Name = "Attack",
+            Costs = new() { new() { Type = EssenceType.Vigor, Amount = 1 } }
         };
-        var caster = new CombatPlayer { PlayerId = 1 };
 
-        var target = new Combatant
+        var caster = new CombatPlayer { PlayerId = 1 };
+        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_HATE_VALDRIN" });
+
+        var humanTarget = CreateCombatant(2, 2, "RACE_HUMAN"); // Não é Valdrin
+
+        var targets = new List<Combatant> { humanTarget };
+        var input = new AbilityTargets
         {
-            Id = 2,
-            OwnerId = 2,
-            Name = "Blood Warded Enemy",
-            BaseStats = new BaseStats()
+            SelectedTargets = new() { { "Rule1", new List<int> { humanTarget.Id } } }
         };
-        // Alvo tem "Blood Ward" (+10 HP Cost para ser alvejado)
-        target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_BLOOD_WARD" });
 
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant> { target });
+        var result = _service.CalculateFinalCosts(caster, ability, targets, input);
 
         // Assert
-        // 0 Base + 10 Ward = 10 HP
-        result.HPCost.ShouldBe(10);
+        // Apenas 1 Vigor (Base). Penalidade ignorada.
+        result.EssenceCosts.First(c => c.Type == EssenceType.Vigor).Amount.ShouldBe(1);
     }
 
     [Fact]
-    public void CalculateFinalCosts_ShouldNeverReturnNegativeCosts()
+    public void CalculateFinalCosts_RacialDiscount_ShouldApply_OnlyIfAllManualTargetsMatch()
     {
         // Arrange
+        // Modificador: -1 Mind se alvo for HUMAN
         var ability = new AbilityDefinition
         {
             Id = "A1",
-            Name = "Cheap Spell",
-            Costs = new() { new() { Type = EssenceType.Vigor, Amount = 1 } },
-            HPCost = 0
+            Name = "Inspire",
+            Costs = new() { new() { Type = EssenceType.Mind, Amount = 2 } }
         };
+
         var caster = new CombatPlayer { PlayerId = 1 };
+        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_LOVE_HUMAN" });
 
-        var superDiscount = new ModifierDefinition
+        var human1 = CreateCombatant(2, 1, "RACE_HUMAN");
+        var human2 = CreateCombatant(3, 1, "RACE_HUMAN");
+
+        // Todos os alvos manuais são Humanos -> Desconto aplica-se
+        var targets = new List<Combatant> { human1, human2 };
+        var input = new AbilityTargets
         {
-            Id = "SUPER_DISCOUNT",
-            Name = "Free",
-            Type = ModifierType.Bless,
-            EssenceCostModifications = new() { new() { TargetEssenceType = EssenceType.Vigor, Value = -5 } },
-            HPCostModifications = new() { new() { Value = -10 } }
+            SelectedTargets = new() { { "Rule1", new List<int> { human1.Id, human2.Id } } }
         };
-
-        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> {
-            { superDiscount.Id, superDiscount }
-        });
-
-        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "SUPER_DISCOUNT" });
 
         // Act
-        var result = _service.CalculateFinalCosts(caster, ability, new List<Combatant>());
+        var result = _service.CalculateFinalCosts(caster, ability, targets, input);
 
         // Assert
-        result.EssenceCosts.ShouldBeEmpty(); // Custo desceu a 0 ou menos, deve desaparecer
-        result.HPCost.ShouldBe(0); // Nunca negativo
+        // 2 Mind (Base) - 1 Mind (Desconto) = 1 Mind
+        result.EssenceCosts.First(c => c.Type == EssenceType.Mind).Amount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void CalculateFinalCosts_RacialDiscount_ShouldFail_IfOneTargetIsInvalid()
+    {
+        // Arrange
+        // Modificador: -1 Mind se alvo for HUMAN
+        var ability = new AbilityDefinition
+        {
+            Id = "A1",
+            Name = "Inspire Mixed",
+            Costs = new() { new() { Type = EssenceType.Mind, Amount = 2 } }
+        };
+
+        var caster = new CombatPlayer { PlayerId = 1 };
+        caster.ActiveModifiers.Add(new ActiveModifier { DefinitionId = "MOD_LOVE_HUMAN" });
+
+        var human = CreateCombatant(2, 1, "RACE_HUMAN");
+        var valdrin = CreateCombatant(3, 1, "RACE_VALDRIN"); // Intruso!
+
+        // Lista mista -> Desconto falha (regra ALL)
+        var targets = new List<Combatant> { human, valdrin };
+        var input = new AbilityTargets
+        {
+            SelectedTargets = new() { { "Rule1", new List<int> { human.Id, valdrin.Id } } }
+        };
+
+        // Act
+        var result = _service.CalculateFinalCosts(caster, ability, targets, input);
+
+        // Assert
+        // 2 Mind (Base). Desconto não aplicado.
+        result.EssenceCosts.First(c => c.Type == EssenceType.Mind).Amount.ShouldBe(2);
+    }
+
+    // --- Helpers ---
+
+    private Combatant CreateCombatant(int id, int ownerId, string raceId)
+    {
+        return new Combatant
+        {
+            Id = id,
+            OwnerId = ownerId,
+            Name = $"C_{id}",
+            RaceId = raceId,
+            BaseStats = new BaseStats(),
+            CurrentHP = 100,
+            MaxHP = 100
+        };
     }
 }

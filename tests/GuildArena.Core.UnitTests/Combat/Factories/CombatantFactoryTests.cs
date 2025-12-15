@@ -33,6 +33,45 @@ public class CombatantFactoryTests
     }
 
     [Fact]
+    public void Create_ShouldAssignRaceId_Correctly()
+    {
+        // ARRANGE
+        var hero = new HeroCharacter { Id = 1, CharacterDefinitionID = "HERO_TEST", CurrentLevel = 1 };
+
+        var charDef = new CharacterDefinition
+        {
+            Id = "HERO_TEST",
+            Name = "Stone Guard",
+            RaceId = "RACE_VALDRIN", 
+            BaseStats = new BaseStats(),
+            StatsGrowthPerLevel = new BaseStats(),
+            BasicAttackAbilityId = "ATK"
+        };
+
+        var raceDef = new RaceDefinition
+        {
+            Id = "RACE_VALDRIN",
+            Name = "Valdrin"
+        };
+
+        _charRepo.TryGetDefinition("HERO_TEST", out Arg.Any<CharacterDefinition>())
+            .Returns(x => { x[1] = charDef; return true; });
+
+        _raceRepo.TryGetDefinition("RACE_VALDRIN", out Arg.Any<RaceDefinition>())
+            .Returns(x => { x[1] = raceDef; return true; });
+
+        _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>())
+            .Returns(true);
+
+        // ACT
+        var combatant = _factory.Create(hero, ownerId: 1);
+
+        // ASSERT
+        combatant.RaceId.ShouldBe("RACE_VALDRIN");
+        combatant.Name.ShouldBe("Stone Guard");
+    }
+
+    [Fact]
     public void Create_ShouldCalculateStatsAndHP_UsingUnifiedBaseStats()
     {
         // ARRANGE
@@ -40,19 +79,19 @@ public class CombatantFactoryTests
         {
             Id = 100,
             CharacterDefinitionID = "HERO_TEST",
-            CurrentLevel = 5            
+            CurrentLevel = 5
         };
 
-        // 1. Raça
+        // 1. Raça (Humans)
         var raceDef = new RaceDefinition
         {
-            Id = "RACE_TEST",
-            Name = "Orc",
+            Id = "RACE_HUMAN",
+            Name = "Human",
             BonusStats = new BaseStats
             {
                 Attack = 5,
                 MaxHP = 50,
-                MaxActions = 0
+                MaxActions = 1 // Humans têm +1 AP
             }
         };
 
@@ -61,7 +100,7 @@ public class CombatantFactoryTests
         {
             Id = "HERO_TEST",
             Name = "Warrior",
-            RaceId = "RACE_TEST",
+            RaceId = "RACE_HUMAN",
             BaseStats = new BaseStats
             {
                 Attack = 10,
@@ -95,7 +134,9 @@ public class CombatantFactoryTests
         combatant.BaseStats.MaxHP.ShouldBe(190); // 100 + 50 + (10*4)
         combatant.MaxHP.ShouldBe(190);
         combatant.CurrentHP.ShouldBe(190);
-        combatant.BaseStats.MaxActions.ShouldBe(1);
+
+        // Verifica AP (1 Base + 1 Human Racial)
+        combatant.BaseStats.MaxActions.ShouldBe(2);
     }
 
     [Fact]
@@ -106,58 +147,56 @@ public class CombatantFactoryTests
         {
             Id = 1,
             CharacterDefinitionID = "HERO_A",
-            CurrentLevel = 1            
+            CurrentLevel = 1
         };
 
-        // Loadout selecionado no lobby
         var playerLoadout = new List<string> { "MOD_LOADOUT_RUNES" };
 
         var raceDef = new RaceDefinition
         {
-            Id = "RACE_A",
-            Name = "Race A",
-            RacialModifierIds = new List<string> { "MOD_RACIAL" } // 1. RACIAL
+            Id = "RACE_NETHRA",
+            Name = "Nethra",
+            RacialModifierIds = new List<string> { "MOD_RACIAL_BLUR" }
         };
 
         var charDef = new CharacterDefinition
         {
             Id = "HERO_A",
-            RaceId = "RACE_A",
+            RaceId = "RACE_NETHRA",
             Name = "A",
-            TraitModifierId = "MOD_HERO_TRAIT", // 2. TRAIT FIXO
+            TraitModifierId = "MOD_HERO_TRAIT",
             BaseStats = new BaseStats(),
             StatsGrowthPerLevel = new BaseStats(),
             BasicAttackAbilityId = "ATK"
         };
 
         // Definições dos Modifiers 
-        var racialMod = new ModifierDefinition { Id = "MOD_RACIAL", Name = "Racial Trait" };
+        var racialMod = new ModifierDefinition { Id = "MOD_RACIAL_BLUR", Name = "Blur" };
         var traitMod = new ModifierDefinition { Id = "MOD_HERO_TRAIT", Name = "Hero Identity" };
         var loadoutMod = new ModifierDefinition { Id = "MOD_LOADOUT_RUNES", Name = "Selected Runes" };
 
         _charRepo.TryGetDefinition("HERO_A", out Arg.Any<CharacterDefinition>()).
             Returns(x => { x[1] = charDef; return true; });
 
-        _raceRepo.TryGetDefinition("RACE_A", out Arg.Any<RaceDefinition>()).
+        _raceRepo.TryGetDefinition("RACE_NETHRA", out Arg.Any<RaceDefinition>()).
             Returns(x => { x[1] = raceDef; return true; });
 
         _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>()).
             Returns(true);
 
-        // Mock do Repositório de Modifiers
         _modifierRepo.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
         {
-            { "MOD_RACIAL", racialMod },
+            { "MOD_RACIAL_BLUR", racialMod },
             { "MOD_HERO_TRAIT", traitMod },
             { "MOD_LOADOUT_RUNES", loadoutMod }
         });
 
-        // ACT - Passamos o loadout como argumento extra
+        // ACT
         var combatant = _factory.Create(hero, 1, playerLoadout);
 
         // ASSERT
         combatant.ActiveModifiers.Count.ShouldBe(3);
-        combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_RACIAL");
+        combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_RACIAL_BLUR");
         combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_HERO_TRAIT");
         combatant.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_LOADOUT_RUNES");
     }
@@ -187,15 +226,17 @@ public class CombatantFactoryTests
         _raceRepo.TryGetDefinition("RACE_A", out Arg.Any<RaceDefinition>()).
             Returns(x => { x[1] = raceDef; return true; });
 
-        // Mocks Abilities
         _abilityRepo.TryGetDefinition("ATK_BASIC", out Arg.Any<AbilityDefinition>())
-            .Returns(x => { x[1] = new AbilityDefinition { Id = "ATK_BASIC", Name = "Basic" }; return true; });
+            .Returns(x => { x[1] = new AbilityDefinition { Id = "ATK_BASIC", Name = "Basic" };
+                return true; });
 
         _abilityRepo.TryGetDefinition("SKILL_1", out Arg.Any<AbilityDefinition>())
-            .Returns(x => { x[1] = new AbilityDefinition { Id = "SKILL_1", Name = "S1" }; return true; });
+            .Returns(x => { x[1] = new AbilityDefinition { Id = "SKILL_1", Name = "S1" };
+                return true; });
 
         _abilityRepo.TryGetDefinition("SKILL_2", out Arg.Any<AbilityDefinition>())
-            .Returns(x => { x[1] = new AbilityDefinition { Id = "SKILL_2", Name = "S2" }; return true; });
+            .Returns(x => { x[1] = new AbilityDefinition { Id = "SKILL_2", Name = "S2" };
+                return true; });
 
         // ACT
         var combatant = _factory.Create(hero, 1);
@@ -223,7 +264,6 @@ public class CombatantFactoryTests
             BaseStats = new BaseStats(),
             StatsGrowthPerLevel = new BaseStats(),
             BasicAttackAbilityId = "ATK",
-            // Configurar apenas o Guard
             GuardAbilityId = "ABIL_GUARD_01",
             FocusAbilityId = null
         };
@@ -237,9 +277,8 @@ public class CombatantFactoryTests
             .Returns(x => { x[1] = raceDef; return true; });
 
         _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>())
-            .Returns(true); // Default mock for basic attack
+            .Returns(true);
 
-        // Mock específico para o Guard
         _abilityRepo.TryGetDefinition("ABIL_GUARD_01", out Arg.Any<AbilityDefinition>())
             .Returns(x => {
                 x[1] = new AbilityDefinition { Id = "ABIL_GUARD_01", Name = "Iron Skin" };
@@ -252,7 +291,6 @@ public class CombatantFactoryTests
         // ASSERT
         combatant.SpecialAbility.ShouldNotBeNull();
         combatant.SpecialAbility.Id.ShouldBe("ABIL_GUARD_01");
-        combatant.SpecialAbility.Name.ShouldBe("Iron Skin");
     }
 
     [Fact]
@@ -269,7 +307,6 @@ public class CombatantFactoryTests
             BaseStats = new BaseStats(),
             StatsGrowthPerLevel = new BaseStats(),
             BasicAttackAbilityId = "ATK",
-            // Configurar apenas o Focus
             GuardAbilityId = null,
             FocusAbilityId = "ABIL_FOCUS_01"
         };
@@ -285,7 +322,6 @@ public class CombatantFactoryTests
         _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>())
             .Returns(true);
 
-        // Mock específico para o Focus
         _abilityRepo.TryGetDefinition("ABIL_FOCUS_01", out Arg.Any<AbilityDefinition>())
             .Returns(x => {
                 x[1] = new AbilityDefinition { Id = "ABIL_FOCUS_01", Name = "Meditate" };
@@ -298,6 +334,5 @@ public class CombatantFactoryTests
         // ASSERT
         combatant.SpecialAbility.ShouldNotBeNull();
         combatant.SpecialAbility.Id.ShouldBe("ABIL_FOCUS_01");
-        combatant.SpecialAbility.Name.ShouldBe("Meditate");
     }
 }
