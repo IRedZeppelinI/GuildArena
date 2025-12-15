@@ -1,5 +1,5 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Core.Combat.Actions; // Necessário para CombatActionResult
+using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
@@ -54,8 +54,22 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget"
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 50, BaseStats = new BaseStats() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_A",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Target",
+            RaceId = "RACE_B",
+            CurrentHP = 50,
+            BaseStats = new BaseStats()
+        };
         var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, sourceStat)
@@ -63,7 +77,6 @@ public class DamageEffectHandlerTests
         _statCalculationServiceMock.GetStatValue(target, targetStat)
             .Returns(targetStatValue);
 
-        // Mock Resolution Service
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(call => new DamageResolutionResult
             {
@@ -71,17 +84,13 @@ public class DamageEffectHandlerTests
                 AbsorbedDamage = 0
             });
 
-        // Create Result Container
         var actionResult = new CombatActionResult();
 
         // 2. ACT
         _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        // Check HP reduction
         target.CurrentHP.ShouldBe(50 - expectedDamage);
-
-        // Check Battle Log
         actionResult.BattleLogEntries.ShouldContain(s => s.Contains($"took {expectedDamage} damage"));
     }
 
@@ -99,13 +108,25 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget"
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_A",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Target",
+            RaceId = "RACE_B",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
         var gameState = new GameState();
 
-        // Attack: 10
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        // Defense: 999 (Would block everything if not True Damage)
         _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(999f);
 
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
@@ -120,7 +141,7 @@ public class DamageEffectHandlerTests
         _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        target.CurrentHP.ShouldBe(90); // 100 - 10
+        target.CurrentHP.ShouldBe(90);
         actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 10 damage"));
     }
 
@@ -136,8 +157,22 @@ public class DamageEffectHandlerTests
             DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f
         };
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_A",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Target",
+            RaceId = "RACE_B",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
         var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
@@ -145,7 +180,7 @@ public class DamageEffectHandlerTests
 
         var simulatedResult = new DamageResolutionResult
         {
-            FinalDamageToApply = 5, // Only 5 gets through
+            FinalDamageToApply = 5,
             AbsorbedDamage = 5
         };
 
@@ -158,14 +193,9 @@ public class DamageEffectHandlerTests
         _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-        target.CurrentHP.ShouldBe(95); // 100 - 5
-
-        // Log should reflect actual damage taken, not raw
+        target.CurrentHP.ShouldBe(95);
         actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 5 damage"));
-
-        // Verification of service call
-        _resolutionServiceMock.Received(1)
-            .ResolveDamage(10f, effectDef, source, target);
+        _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
     }
 
     [Fact]
@@ -181,8 +211,22 @@ public class DamageEffectHandlerTests
             TargetRuleId = "T_TestTarget"
         };
 
-        var source = new Combatant { Id = 1, Name = "Source", BaseStats = new BaseStats() };
-        var target = new Combatant { Id = 2, Name = "Target", CurrentHP = 100, BaseStats = new BaseStats() };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Source",
+            RaceId = "RACE_A",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Target",
+            RaceId = "RACE_B",
+            CurrentHP = 100,
+            BaseStats = new BaseStats()
+        };
         var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
@@ -197,8 +241,6 @@ public class DamageEffectHandlerTests
         _handler.Apply(effectDef, source, target, gameState, actionResult);
 
         // 3. ASSERT
-
-        // A. Verify Generic Triggers
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
@@ -207,12 +249,10 @@ public class DamageEffectHandlerTests
             ModifierTrigger.ON_RECEIVE_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
 
-        // B. Verify Delivery Triggers (Melee)
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_MELEE_ATTACK,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
 
-        // C. Verify Category Triggers (Physical) -> NOVO
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
