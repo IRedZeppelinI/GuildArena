@@ -79,7 +79,15 @@ public class ExecuteAbilityActionTests
         var state = new GameState { Players = new() { player } };
 
         var costs = new FinalAbilityCosts { HPCost = 10, EssenceCosts = new() };
-        _costMock.CalculateFinalCosts(player, ability, Arg.Any<List<Combatant>>()).Returns(costs);
+
+        
+        _costMock.CalculateFinalCosts(
+            player,
+            ability,
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>())
+            .Returns(costs);
+
         _essenceMock.HasEnoughEssence(player, costs.EssenceCosts).Returns(true);
 
         var action = new ExecuteAbilityAction(
@@ -117,10 +125,13 @@ public class ExecuteAbilityActionTests
 
         // ASSERT
         result.IsSuccess.ShouldBeFalse();
+
+        
         _costMock.DidNotReceive().CalculateFinalCosts(
             Arg.Any<CombatPlayer>(),
             Arg.Any<AbilityDefinition>(),
-            Arg.Any<List<Combatant>>());
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>());
     }
 
     [Fact]
@@ -134,7 +145,14 @@ public class ExecuteAbilityActionTests
         var player = new CombatPlayer { PlayerId = 1 };
 
         var costs = new FinalAbilityCosts { HPCost = 10 };
-        _costMock.CalculateFinalCosts(player, ability, Arg.Any<List<Combatant>>()).Returns(costs);
+
+        
+        _costMock.CalculateFinalCosts(
+            player,
+            ability,
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>())
+            .Returns(costs);
 
         var action = new ExecuteAbilityAction(ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
 
@@ -168,10 +186,12 @@ public class ExecuteAbilityActionTests
 
         // ASSERT
         result.IsSuccess.ShouldBeFalse();
+        
         _costMock.DidNotReceive().CalculateFinalCosts(
             Arg.Any<CombatPlayer>(),
             Arg.Any<AbilityDefinition>(),
-            Arg.Any<List<Combatant>>());
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>());
     }
 
     [Fact]
@@ -201,10 +221,10 @@ public class ExecuteAbilityActionTests
         // ARRANGE
         var source = CreateCombatant(1, 1);
         var target = CreateCombatant(2, 2);
-        var state = new GameState 
-        { 
+        var state = new GameState
+        {
             Combatants = new() { source, target },
-            Players = new() { new CombatPlayer { PlayerId = 1 } } 
+            Players = new() { new CombatPlayer { PlayerId = 1 } }
         };
 
         var effectDef = new EffectDefinition
@@ -222,11 +242,14 @@ public class ExecuteAbilityActionTests
         _targetMock.ResolveTargets(Arg.Any<TargetingRule>(), source, state, Arg.Any<AbilityTargets>())
             .Returns(new List<Combatant> { target });
 
-        // Mocks para passar validações
+        // Mocks para passar validações       
         _costMock.CalculateFinalCosts(
             Arg.Any<CombatPlayer>(),
-            ability, Arg.Any<List<Combatant>>())
+            ability,
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>())
             .Returns(new FinalAbilityCosts());
+
         _essenceMock.HasEnoughEssence(
             Arg.Any<CombatPlayer>(),
             Arg.Any<List<EssenceAmount>>())
@@ -270,10 +293,10 @@ public class ExecuteAbilityActionTests
             ActiveStatusEffects = new() { StatusEffectType.Invulnerable }
         });
 
-        var state = new GameState 
-        { 
+        var state = new GameState
+        {
             Combatants = new() { source, target },
-            Players = new() { new CombatPlayer { PlayerId = 1 } } 
+            Players = new() { new CombatPlayer { PlayerId = 1 } }
         };
 
         var effectDef = new EffectDefinition { Type = EffectType.DAMAGE, TargetRuleId = "T1" };
@@ -284,10 +307,12 @@ public class ExecuteAbilityActionTests
         _targetMock.ResolveTargets(Arg.Any<TargetingRule>(), source, state, Arg.Any<AbilityTargets>())
             .Returns(new List<Combatant> { target });
 
+        
         _costMock.CalculateFinalCosts(
             Arg.Any<CombatPlayer>(),
             ability,
-            Arg.Any<List<Combatant>>())
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>())
             .Returns(new FinalAbilityCosts());
 
         _essenceMock.HasEnoughEssence(
@@ -322,9 +347,10 @@ public class ExecuteAbilityActionTests
             Id = id,
             OwnerId = ownerId,
             Name = $"C{id}",
+            RaceId = "RACE_DEFAULT", // Campo Obrigatório adicionado
             CurrentHP = 100,
             MaxHP = 100,
-            BaseStats = new BaseStats() 
+            BaseStats = new BaseStats()
         };
     }
 
