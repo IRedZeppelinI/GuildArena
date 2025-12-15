@@ -2,12 +2,10 @@
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Stats;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Factories;
 

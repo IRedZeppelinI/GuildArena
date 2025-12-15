@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
 
-namespace GuildArena.Domain.ValueObjects;
+namespace GuildArena.Domain.ValueObjects.Modifiers;
 
 /// <summary>
 /// Defines a modification to the passive essence generation at the start of a turn.

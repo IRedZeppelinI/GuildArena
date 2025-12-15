@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
 
-namespace GuildArena.Domain.ValueObjects;
+namespace GuildArena.Domain.ValueObjects.Modifiers;
 
 // Isto descreve UMA modificação de stat (ex: +10 Attack)
 public class StatModification

@@ -2,7 +2,9 @@
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Targeting;
+using GuildArena.Domain.ValueObjects.Stats;
+using GuildArena.Domain.ValueObjects.State;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;

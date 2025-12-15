@@ -1,5 +1,5 @@
 ﻿using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.State;
 
 namespace GuildArena.Domain.Entities;
 

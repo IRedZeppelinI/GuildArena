@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.ValueObjects;
+﻿namespace GuildArena.Domain.ValueObjects.Modifiers;
 
 /// <summary>
 /// Defines a modification to the HP cost of abilities.

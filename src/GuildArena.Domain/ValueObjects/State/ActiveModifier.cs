@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
 
-namespace GuildArena.Domain.ValueObjects;
+namespace GuildArena.Domain.ValueObjects.State;
 
 public class ActiveModifier
 {

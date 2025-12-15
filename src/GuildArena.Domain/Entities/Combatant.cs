@@ -1,5 +1,6 @@
 ﻿using GuildArena.Domain.Definitions;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.State;
+using GuildArena.Domain.ValueObjects.Stats;
 
 namespace GuildArena.Domain.Entities;
 

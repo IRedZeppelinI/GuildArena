@@ -1,12 +1,10 @@
-﻿using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Core.Combat.Enums;
+﻿using GuildArena.Core.Combat.Enums;
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.State;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 

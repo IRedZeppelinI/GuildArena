@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
 
-namespace GuildArena.Domain.ValueObjects;
+namespace GuildArena.Domain.ValueObjects.Modifiers;
 
 /// <summary>
 /// Defines a rule for modifying the essence cost of abilities based on tags or essence types.

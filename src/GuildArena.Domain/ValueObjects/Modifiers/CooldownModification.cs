@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
 
-namespace GuildArena.Domain.ValueObjects;
+namespace GuildArena.Domain.ValueObjects.Modifiers;
 
 /// <summary>
 /// Describes a rule for modifying the base cooldown of an ability,

@@ -1,5 +1,5 @@
 ﻿using GuildArena.Domain.Entities;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Targeting;
 
 namespace GuildArena.Core.Combat.Abstractions;
 

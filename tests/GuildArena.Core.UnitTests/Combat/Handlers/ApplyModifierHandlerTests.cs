@@ -5,7 +5,9 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.State;
+using GuildArena.Domain.ValueObjects.Stats;
+using GuildArena.Domain.ValueObjects.Modifiers;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -298,7 +300,13 @@ public class ApplyModifierHandlerTests
             BaseStats = new BaseStats(),
             CurrentHP = 50
         };
-        var target = new Combatant { Id = 2, Name = "Target", RaceId = "RACE_TEST", BaseStats = new BaseStats() };
+        var target = new Combatant 
+        { 
+            Id = 2,
+            Name = "Target",
+            RaceId = "RACE_TEST",
+            BaseStats = new BaseStats() 
+        };
 
         var actionResult = new CombatActionResult();
 

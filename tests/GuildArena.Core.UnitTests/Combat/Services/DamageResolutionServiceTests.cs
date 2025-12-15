@@ -1,14 +1,13 @@
 ﻿using GuildArena.Core.Combat.Services;
-using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.State;
+using GuildArena.Domain.ValueObjects.Modifiers;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 

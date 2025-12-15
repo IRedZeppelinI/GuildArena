@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.ValueObjects;
+﻿using GuildArena.Domain.ValueObjects.Resources;
 
 namespace GuildArena.Core.Combat.ValueObjects;
 

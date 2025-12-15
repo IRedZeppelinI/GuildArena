@@ -1,4 +1,5 @@
-﻿using GuildArena.Domain.ValueObjects;
+﻿using GuildArena.Domain.ValueObjects.Resources;
+using GuildArena.Domain.ValueObjects.Targeting;
 
 namespace GuildArena.Domain.Definitions;
 

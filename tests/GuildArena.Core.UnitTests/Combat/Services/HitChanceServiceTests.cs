@@ -3,7 +3,7 @@ using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Stats;
 using NSubstitute;
 using Shouldly;
 using Xunit;

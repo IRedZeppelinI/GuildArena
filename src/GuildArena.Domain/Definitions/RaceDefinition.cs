@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.ValueObjects;
+﻿using GuildArena.Domain.ValueObjects.Stats;
 
 namespace GuildArena.Domain.Definitions;
 

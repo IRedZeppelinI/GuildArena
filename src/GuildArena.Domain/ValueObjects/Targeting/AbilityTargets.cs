@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.ValueObjects;
+﻿namespace GuildArena.Domain.ValueObjects.Targeting;
 
 /// <summary>
 /// A data object that holds the targets selected by the UI,

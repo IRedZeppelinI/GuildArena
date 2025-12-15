@@ -1,5 +1,6 @@
 ﻿using GuildArena.Domain.Enums;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Modifiers;
+using GuildArena.Domain.ValueObjects.Resources;
 
 namespace GuildArena.Domain.Definitions;
 

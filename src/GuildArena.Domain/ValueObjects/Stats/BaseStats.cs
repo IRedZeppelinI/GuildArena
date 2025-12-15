@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.ValueObjects;
+﻿namespace GuildArena.Domain.ValueObjects.Stats;
 
 public class BaseStats
 {
