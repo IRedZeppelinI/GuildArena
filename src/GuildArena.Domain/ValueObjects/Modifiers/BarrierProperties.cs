@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Enums;
+﻿using GuildArena.Domain.Enums.Stats;
 
 namespace GuildArena.Domain.ValueObjects.Modifiers;
 

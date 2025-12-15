@@ -1,6 +1,6 @@
 ﻿using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Infrastructure.Options;
 using GuildArena.Infrastructure.Persistence.Json;
 using Microsoft.Extensions.Logging.Abstractions; // NullLogger

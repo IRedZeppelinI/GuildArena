@@ -4,7 +4,6 @@ using GuildArena.Core.Combat.Enums;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects.Resources;
 using GuildArena.Domain.ValueObjects.Targeting;
 using GuildArena.Domain.ValueObjects.State;
@@ -13,6 +12,11 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Xunit;
+using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Enums.Targeting;
+using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Enums.Stats;
 
 namespace GuildArena.Core.UnitTests.Combat.Actions;
 

@@ -2,7 +2,7 @@
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.ValueObjects.State;
 using MediatR;
 using Microsoft.Extensions.Logging;

@@ -4,7 +4,7 @@ using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;

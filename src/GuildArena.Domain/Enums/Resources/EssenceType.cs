@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.Enums;
+﻿namespace GuildArena.Domain.Enums.Resources;
 
 /// <summary>
 /// Defines the types of magical essence available in the game to pay for abilities.

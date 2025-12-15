@@ -1,4 +1,5 @@
-﻿using GuildArena.Domain.Enums;
+﻿using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Resources;
 
 namespace GuildArena.Domain.Definitions;

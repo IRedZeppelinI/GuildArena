@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.Enums;
+﻿namespace GuildArena.Domain.Enums.Modifiers;
 
 public enum ModifierTrigger
 {

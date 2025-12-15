@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Enums;
+﻿using GuildArena.Domain.Enums.Targeting;
 
 namespace GuildArena.Domain.ValueObjects.Targeting;
 

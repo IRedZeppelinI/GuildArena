@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.Enums;
+﻿namespace GuildArena.Domain.Enums.Combat;
 
 /// <summary>
 /// Defines the type of controller for a combat participant.

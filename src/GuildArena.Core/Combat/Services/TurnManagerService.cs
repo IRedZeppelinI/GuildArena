@@ -1,7 +1,7 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Modifiers;
 using Microsoft.Extensions.Logging;
 using System;
 

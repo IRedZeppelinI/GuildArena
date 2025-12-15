@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.Enums;
+﻿namespace GuildArena.Domain.Enums.Combat;
 
 ///// <summary>
 ///// Defines the classification of damage, which determines the defense stat used for mitigation.

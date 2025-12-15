@@ -3,7 +3,9 @@ using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Enums.Stats;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Handlers;

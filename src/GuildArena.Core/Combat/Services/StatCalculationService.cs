@@ -2,7 +2,8 @@
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Stats;
 using System.Collections.Generic;
 

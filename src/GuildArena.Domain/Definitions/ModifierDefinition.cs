@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Enums;
+﻿using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.ValueObjects.Modifiers;
 using GuildArena.Domain.ValueObjects.Resources;
 

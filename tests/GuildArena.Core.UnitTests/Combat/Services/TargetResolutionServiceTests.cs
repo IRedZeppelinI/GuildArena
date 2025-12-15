@@ -1,7 +1,6 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
 using GuildArena.Domain.ValueObjects.Targeting;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.State;
@@ -9,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Xunit;
+using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Enums.Targeting;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 

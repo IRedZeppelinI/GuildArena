@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Enums;
+﻿using GuildArena.Domain.Enums.Combat;
 using MediatR;
 
 namespace GuildArena.Application.Combat.StartCombat;

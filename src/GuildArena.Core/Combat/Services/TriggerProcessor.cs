@@ -4,7 +4,9 @@ using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Enums.Targeting;
 using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 

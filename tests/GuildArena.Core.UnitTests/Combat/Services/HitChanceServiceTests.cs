@@ -2,7 +2,8 @@
 using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Stats;
 using NSubstitute;
 using Shouldly;

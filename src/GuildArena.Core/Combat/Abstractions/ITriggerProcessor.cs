@@ -1,5 +1,5 @@
 ﻿using GuildArena.Core.Combat.ValueObjects;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Modifiers;
 
 namespace GuildArena.Core.Combat.Abstractions;
 

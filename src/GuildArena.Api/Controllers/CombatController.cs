@@ -1,6 +1,6 @@
 ﻿using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Application.Combat.StartCombat;
-using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Shared.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
