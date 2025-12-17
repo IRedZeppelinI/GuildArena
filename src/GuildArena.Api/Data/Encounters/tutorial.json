@@ -1,0 +1,21 @@
+[
+  {
+    "Id": "ENC_TUTORIAL_01",
+    "Name": "Bandit Ambush",
+    "Description": "A group of bandits jumps from the bushes!",
+    "DifficultyRating": 1,
+    "BackgroundId": "BG_FOREST",
+    "Enemies": [
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 1
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 2
+      }
+    ]
+  }
+]

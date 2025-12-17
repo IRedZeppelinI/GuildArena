@@ -12,4 +12,5 @@ public class GameDataOptions
     public string ModifiersFolder { get; set; } = "Modifiers";
     public string CharactersFolder { get; set; } = "Characters";
     public string AbilitiesFolder { get; set; } = "Abilities";
+    public string EncountersFolder { get; set; } = "Encounters";
 }

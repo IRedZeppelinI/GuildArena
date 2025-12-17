@@ -1,7 +1,9 @@
 ﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Infrastructure.Persistence.Json;
 using GuildArena.Infrastructure.Persistence.Redis;
+using GuildArena.Infrastructure.Persistence.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -38,7 +40,12 @@ public static class DependencyInjection
         services.AddSingleton<IModifierDefinitionRepository, JsonModifierDefinitionRepository>();
         services.AddSingleton<IAbilityDefinitionRepository, JsonAbilityDefinitionRepository>();
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
-        services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>(); 
+        services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
+        services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
+
+        //SQL
+        services.AddScoped<IPlayerRepository, PlayerRepository>();
+        
 
 
         return services;

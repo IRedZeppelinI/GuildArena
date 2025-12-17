@@ -1,4 +1,6 @@
+using GuildArena.Api.Services;
 using GuildArena.Application;
+using GuildArena.Application.Abstractions;
 using GuildArena.Core;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Infrastructure;
@@ -23,6 +25,10 @@ builder.Services.PostConfigure<GameDataOptions>(options =>
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddCoreServices();
+
+//API services 
+builder.Services.AddHttpContextAccessor(); 
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

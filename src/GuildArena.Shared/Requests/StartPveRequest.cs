@@ -1,18 +1,17 @@
 ﻿namespace GuildArena.Shared.Requests;
 
 /// <summary>
-/// Data contract for initiating a PvE combat session.
+/// Data contract for initiating a PvE combat session against a specific encounter.
 /// </summary>
 public class StartPveRequest
 {
     /// <summary>
-    /// The ID of the player starting the combat.
+    /// The unique ID of the encounter configuration (e.g. "ENC_TUTORIAL_01").
     /// </summary>
-    public int PlayerId { get; set; }
+    public required string EncounterId { get; set; }
 
     /// <summary>
-    /// The list of Hero Definition IDs to bring to battle (e.g. ["HERO_GARRET", "HERO_MAGE"]).
-    /// If empty, the server may provide a default team for testing.
+    /// The unique IDs (Database IDs) of the specific hero instances the player wants to use.    
     /// </summary>
-    public List<string> HeroIds { get; set; } = new();
+    public List<int> HeroInstanceIds { get; set; } = new();
 }
