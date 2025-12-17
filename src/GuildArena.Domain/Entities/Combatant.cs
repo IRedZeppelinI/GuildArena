@@ -57,6 +57,12 @@ public class Combatant
     /// </summary>
     public int ActionsTakenThisTurn { get; set; }
 
+    /// <summary>
+    /// Visual position on the battlefield (e.g., 0, 1, 2...).
+    /// Assigned by the combat handler during setup.
+    /// </summary>
+    public int Position { get; set; }
+
     public List<ActiveCooldown> ActiveCooldowns { get; set; } = new();
     public List<ActiveModifier> ActiveModifiers { get; set; } = new();
 }

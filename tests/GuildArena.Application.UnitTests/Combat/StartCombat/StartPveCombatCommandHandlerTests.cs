@@ -79,7 +79,8 @@ public class StartPveCombatCommandHandlerTests
             Name = "Test Encounter",
             Enemies = new List<EncounterDefinition.EncounterEnemy>
             {
-                new() { CharacterDefinitionId = "MOB_A", Position = 1 }
+                // Definimos uma posição específica (ex: 5) para verificar se é mapeada
+                new() { CharacterDefinitionId = "MOB_A", Position = 5 }
             }
         };
         _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())
@@ -91,12 +92,13 @@ public class StartPveCombatCommandHandlerTests
 
         // 4. Mock Factory (Devolve um combatente genérico para não rebentar)
         _factoryMock.Create(Arg.Any<HeroCharacter>(), Arg.Any<int>())
-            .Returns(new Combatant
+            .Returns(info => new Combatant
             {
-                Id = 1,
+                // Usar o ID do HeroCharacter passado para garantir unicidade no teste
+                Id = info.Arg<HeroCharacter>().Id,
                 Name = "Mock",
                 RaceId = "RACE_MOCK",
-                OwnerId = playerId,
+                OwnerId = info.Arg<int>(), // Usa o ownerId passado no Create
                 BaseStats = new(),
                 CurrentHP = 10
             });
@@ -120,15 +122,25 @@ public class StartPveCombatCommandHandlerTests
         // Deve ter guardado no Redis
         await _combatStateRepoMock.Received(1).SaveAsync(result, Arg.Any<GameState>());
 
-        // Deve ter verificado o estado:
-        // 2 Jogadores (Player + AI)
-        // 3 Combatentes (2 Heróis + 1 Mob)
+        // Verificação detalhada do GameState guardado
         await _combatStateRepoMock.Received(1).SaveAsync(
             Arg.Any<string>(),
             Arg.Is<GameState>(gs =>
                 gs.Players.Count == 2 &&
                 gs.Combatants.Count == 3 &&
-                gs.CurrentPlayerId == playerId)
+                gs.CurrentPlayerId == playerId &&
+
+                // --- NOVAS VERIFICAÇÕES DE POSIÇÃO ---
+                // O Player pediu 2 heróis. Como decidimos 0-based:
+                // Heroi 1 (ID 10) -> Position 0
+                gs.Combatants.Any(c => c.Id == 10 && c.OwnerId == playerId && c.Position == 0) &&
+
+                // Heroi 2 (ID 11) -> Position 1
+                gs.Combatants.Any(c => c.Id == 11 && c.OwnerId == playerId && c.Position == 1) &&
+
+                // Mob (ID < 0) -> Position 5 (conforme definido no encounterDef acima)
+                gs.Combatants.Any(c => c.OwnerId == 0 && c.Position == 5)
+            )
         );
     }
 

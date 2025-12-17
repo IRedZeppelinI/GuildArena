@@ -102,9 +102,11 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         gameState.Players.Add(humanPlayer);
 
         // Converter Entidades de Persistência em Combatentes de Jogo (Factory)
+        int playerPosIndex = 0;
         foreach (var heroEntity in playerTeamEntities)
         {
             var combatant = _combatantFactory.Create(heroEntity, humanPlayer.PlayerId);
+            combatant.Position = playerPosIndex++;
             gameState.Combatants.Add(combatant);
         }
 
@@ -130,7 +132,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
             var mobEntity = new HeroCharacter
             {
                 Id = mobIdCounter--,
-                GuildId = 0,
+                GuildId = -1,
                 CharacterDefinitionID = enemyDef.CharacterDefinitionId,
                 CurrentLevel = enemyDef.Level,
                 CurrentXP = 0
@@ -138,8 +140,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
             var mobCombatant = _combatantFactory.Create(mobEntity, aiPlayerId);
 
-            // Opcional: Aqui poderíamos injetar modifiers especiais de Boss ou Posicionamento
-            // baseado no enemyDef.Position, se o sistema de combate o suportasse.
+            mobCombatant.Position = enemyDef.Position;
 
             gameState.Combatants.Add(mobCombatant);
         }
