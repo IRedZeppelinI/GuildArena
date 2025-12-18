@@ -20,12 +20,14 @@ public class ManipulateEssenceHandlerTests
     private readonly ILogger<ManipulateEssenceHandler> _loggerMock;
     private readonly ManipulateEssenceHandler _handler;
     private readonly GameState _gameState;
+    private readonly IBattleLogService _battleLogService;
 
     public ManipulateEssenceHandlerTests()
     {
         _essenceServiceMock = Substitute.For<IEssenceService>();
         _loggerMock = Substitute.For<ILogger<ManipulateEssenceHandler>>();
-        _handler = new ManipulateEssenceHandler(_essenceServiceMock, _loggerMock);
+        _battleLogService = Substitute.For<IBattleLogService>();
+        _handler = new ManipulateEssenceHandler(_essenceServiceMock, _loggerMock, _battleLogService);
 
         var p1 = new CombatPlayer { PlayerId = 1 };
         var p2 = new CombatPlayer { PlayerId = 2 };
@@ -66,7 +68,8 @@ public class ManipulateEssenceHandlerTests
             EssenceType.Mind,
             1
         );
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("gained 1 Mind Essence"));
+        _battleLogService.
+            Received(1).Log(Arg.Is<string>(s => s.Contains("gained 1 Mind Essence")));
     }
 
     [Fact]
@@ -112,7 +115,9 @@ public class ManipulateEssenceHandlerTests
             EssenceType.Vigor,
             2
         );
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("Warrior gained 2 Vigor Essence"));
+        _battleLogService
+            .Received(1)
+            .Log(Arg.Is<string>(s => s.Contains("Warrior gained 2 Vigor Essence")));
     }
 
     [Fact]
@@ -159,7 +164,9 @@ public class ManipulateEssenceHandlerTests
             EssenceType.Shadow,
             1
         );
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("Paladin gained 1 Shadow Essence"));
+        _battleLogService
+            .Received(1)
+            .Log(Arg.Is<string>(s => s.Contains("Paladin gained 1 Shadow Essence")));
     }
 
     [Fact]
@@ -196,7 +203,7 @@ public class ManipulateEssenceHandlerTests
             Received(1).AddEssence(Arg.Any<CombatPlayer>(), EssenceType.Mind, 1);
         _essenceServiceMock.
             Received(1).AddEssence(Arg.Any<CombatPlayer>(), EssenceType.Neutral, 1);
-        actionResult.BattleLogEntries.Count.ShouldBe(2);
+        _battleLogService.Received(2).Log(Arg.Any<string>());
     }
 
     [Fact]
@@ -236,7 +243,7 @@ public class ManipulateEssenceHandlerTests
             null,
             Arg.Any<Func<object, Exception?, string>>()
         );
-        actionResult.BattleLogEntries.ShouldBeEmpty();
+        _battleLogService.Received(0).Log(Arg.Any<string>());
     }
 
     [Fact]

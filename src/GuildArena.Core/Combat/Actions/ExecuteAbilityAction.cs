@@ -22,7 +22,7 @@ public class ExecuteAbilityAction : ICombatAction
     // Dados imutáveis da intenção original
     private readonly AbilityDefinition _ability;
     private readonly AbilityTargets _userSelectedTargets;
-    private readonly Dictionary<EssenceType, int> _payment;
+    private readonly Dictionary<EssenceType, int> _payment;    
 
     private bool _isTriggeredAction;
 
@@ -33,14 +33,14 @@ public class ExecuteAbilityAction : ICombatAction
         AbilityDefinition ability,
         Combatant source,
         AbilityTargets userSelectedTargets,
-        Dictionary<EssenceType, int> payment,
+        Dictionary<EssenceType, int> payment,        
         bool isTriggeredAction = false)
     {
         _ability = ability;
         Source = source;
         _userSelectedTargets = userSelectedTargets;
         _payment = payment;
-        _isTriggeredAction = isTriggeredAction;
+        _isTriggeredAction = isTriggeredAction;        
     }
 
     public CombatActionResult Execute(ICombatEngine engine, GameState gameState)
@@ -65,7 +65,7 @@ public class ExecuteAbilityAction : ICombatAction
         PayCosts(engine, gameState, calculatedCost);
 
         // --- BATTLE LOG (Para o Cliente) ---        
-        result.AddBattleLog($"{Source.Name} used {_ability.Name}!");
+        engine.BattleLog.Log($"{Source.Name} used {_ability.Name}!");
 
         // 5. Trigger: ON_ABILITY_CAST        
         var castContext = new TriggerContext
@@ -119,7 +119,7 @@ public class ExecuteAbilityAction : ICombatAction
         {
             engine.AppLogger.LogWarning(
                 "{Source} failed status check: {Reason}", Source.Name, statusResult);
-            result.AddBattleLog($"{Source.Name} tries to act but is {statusResult}!");
+            engine.BattleLog.Log($"{Source.Name} tries to act but is {statusResult}!");
             return false;
         }
 
@@ -218,7 +218,7 @@ public class ExecuteAbilityAction : ICombatAction
             {
                 if (IsInvulnerable(target))
                 {
-                    result.AddBattleLog($"{target.Name} is invulnerable!");
+                    engine.BattleLog.Log($"{target.Name} is invulnerable!");
                     continue;
                 }
 
@@ -232,7 +232,7 @@ public class ExecuteAbilityAction : ICombatAction
 
                         if (!hit)
                         {
-                            result.AddBattleLog($"{Source.Name} missed {target.Name}!");
+                            engine.BattleLog.Log($"{Source.Name} missed {target.Name}!");
                             result.ResultTags.Add("Miss");
                         }
                     }

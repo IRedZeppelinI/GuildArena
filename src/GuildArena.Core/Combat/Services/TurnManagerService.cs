@@ -12,15 +12,18 @@ public class TurnManagerService : ITurnManagerService
     private readonly ILogger<TurnManagerService> _logger;
     private readonly IEssenceService _essenceService;
     private readonly ITriggerProcessor _triggerProcessor;
+    private readonly IBattleLogService _battleLog;
 
     public TurnManagerService(
         ILogger<TurnManagerService> logger,
         IEssenceService essenceService,
-        ITriggerProcessor triggerProcessor)
+        ITriggerProcessor triggerProcessor,
+        IBattleLogService battleLog)
     {
         _logger = logger;
         _essenceService = essenceService;
         _triggerProcessor = triggerProcessor;
+        _battleLog = battleLog;
     }
 
     /// <summary>
@@ -66,13 +69,15 @@ public class TurnManagerService : ITurnManagerService
 
         // 3. Mudar o estado para o PRÓXIMO jogador
         gameState.CurrentPlayerId = nextPlayerId;
+        _battleLog.Log($"Turn ended. It is now Player {nextPlayerId}'s turn.");
 
         // 4. Processar o INÍCIO do turno para o novo jogador
 
         if (nextIndex == 0)
         {
             gameState.CurrentTurnNumber++;
-            _logger.LogInformation("--- New Round Started: {Turn} ---", gameState.CurrentTurnNumber);
+            _battleLog.Log($"--- Round {gameState.CurrentTurnNumber} Started ---");
+            //_logger.LogInformation("--- New Round Started: {Turn} ---", gameState.CurrentTurnNumber);
         }
 
         var newPlayer = gameState.Players.First(p => p.PlayerId == nextPlayerId);

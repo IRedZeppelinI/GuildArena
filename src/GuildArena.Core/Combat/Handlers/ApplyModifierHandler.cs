@@ -16,15 +16,18 @@ public class ApplyModifierHandler : IEffectHandler
     private readonly ILogger<ApplyModifierHandler> _logger;
     private readonly IModifierDefinitionRepository _modifierRepo;
     private readonly IStatCalculationService _statService;
+    private readonly IBattleLogService _battleLog;
 
     public ApplyModifierHandler(
         ILogger<ApplyModifierHandler> logger,
         IModifierDefinitionRepository modifierRepo,
-        IStatCalculationService statService)
+        IStatCalculationService statService,
+        IBattleLogService battleLog)
     {
         _logger = logger;
         _modifierRepo = modifierRepo;
         _statService = statService;
+        _battleLog = battleLog;
     }
 
     public EffectType SupportedType => EffectType.APPLY_MODIFIER;
@@ -65,13 +68,13 @@ public class ApplyModifierHandler : IEffectHandler
             {
                 existingModifier.CurrentBarrierValue = initialBarrierValue;
                 // --- BATTLE LOG ---
-                actionResult.AddBattleLog
+                _battleLog.Log
                     ($"{target.Name}'s {modDef.Name} was refreshed (Barrier: {initialBarrierValue}).");
             }
             else
             {
                 // --- BATTLE LOG ---
-                actionResult.AddBattleLog($"{target.Name}'s {modDef.Name} was refreshed.");
+                _battleLog.Log($"{target.Name}'s {modDef.Name} was refreshed.");
             }
 
             existingModifier.ActiveStatusEffects = modDef.GrantedStatusEffects.ToList();
@@ -93,9 +96,9 @@ public class ApplyModifierHandler : IEffectHandler
             // --- BATTLE LOG ---
             // Distinção simples de texto baseada no tipo (Buff/Curse)
             if (modDef.Type == ModifierType.Bless) // Assumindo Bless como Buff positivo
-                actionResult.AddBattleLog($"{target.Name} gained {modDef.Name}.");
+                _battleLog.Log($"{target.Name} gained {modDef.Name}.");
             else
-                actionResult.AddBattleLog($"{target.Name} is afflicted by {modDef.Name}!");
+                _battleLog.Log($"{target.Name} is afflicted by {modDef.Name}!");
         }
     }
 

@@ -34,6 +34,7 @@ public class ExecuteAbilityActionTests
     private readonly IHitChanceService _hitChanceMock;
     private readonly IEffectHandler _handlerMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
+    private readonly IBattleLogService _battleLogService;
 
     public ExecuteAbilityActionTests()
     {
@@ -48,6 +49,7 @@ public class ExecuteAbilityActionTests
         _hitChanceMock = Substitute.For<IHitChanceService>();
         _handlerMock = Substitute.For<IEffectHandler>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
+        _battleLogService = Substitute.For<IBattleLogService>();
 
         // Ligar mocks ao Engine
         _engineMock.CostService.Returns(_costMock);
@@ -61,6 +63,7 @@ public class ExecuteAbilityActionTests
         _engineMock.AppLogger.Returns(Substitute.For<ILogger<ICombatEngine>>());
         _engineMock.GetEffectHandler(Arg.Any<EffectType>()).Returns(_handlerMock);
         _engineMock.Random.Returns(Substitute.For<IRandomProvider>());
+        _engineMock.BattleLog.Returns(_battleLogService);
 
         // Defaults para passar nas validações básicas
         _statMock.GetStatValue(Arg.Any<Combatant>(), StatType.MaxActions).Returns(1);
@@ -109,7 +112,9 @@ public class ExecuteAbilityActionTests
         // ASSERT
         result.IsSuccess.ShouldBeTrue();
         source.CurrentHP.ShouldBe(90);
-        result.BattleLogEntries.ShouldContain(s => s.Contains("used Fireball"));
+        _battleLogService.Received(1)
+            .Log(Arg.Is<string>(s => s.Contains("used Fireball")));
+        
     }
 
     [Fact]
@@ -161,7 +166,11 @@ public class ExecuteAbilityActionTests
             Arg.Any<AbilityTargets>())
             .Returns(costs);
 
-        var action = new ExecuteAbilityAction(ability, source, new AbilityTargets(), new Dictionary<EssenceType, int>());
+        var action = new ExecuteAbilityAction(
+            ability,
+            source,
+            new AbilityTargets(),
+            new Dictionary<EssenceType, int>());
 
         // ACT
         var result = action.Execute(_engineMock, new GameState { Players = new() { player } });
@@ -337,7 +346,8 @@ public class ExecuteAbilityActionTests
         var result = action.Execute(_engineMock, state);
 
         // ASSERT
-        result.BattleLogEntries.ShouldContain(s => s.Contains("is invulnerable"));
+        _battleLogService.Received(1)
+            .Log(Arg.Is<string>(s => s.Contains("is invulnerable")));
         _handlerMock.DidNotReceive().Apply(
             Arg.Any<EffectDefinition>(),
             Arg.Any<Combatant>(),

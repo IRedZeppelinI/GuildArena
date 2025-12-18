@@ -30,6 +30,7 @@ public class CombatEngine : ICombatEngine
     public IRandomProvider Random { get; }
     public IStatCalculationService StatService { get; }
     public ITriggerProcessor TriggerProcessor { get; }
+    public IBattleLogService BattleLog { get; }
 
     public CombatEngine(
         IEnumerable<IEffectHandler> handlers,
@@ -43,7 +44,8 @@ public class CombatEngine : ICombatEngine
         IRandomProvider random,
         IStatCalculationService statService,
         ITriggerProcessor triggerProcessor,
-        IActionQueue actionQueue)
+        IActionQueue actionQueue,
+        IBattleLogService battleLog)
     {
         _handlers = handlers.ToDictionary(h => h.SupportedType, h => h);
         AppLogger = logger;
@@ -57,6 +59,7 @@ public class CombatEngine : ICombatEngine
         StatService = statService;
         TriggerProcessor = triggerProcessor;
         _actionQueue = actionQueue;
+        BattleLog = battleLog;
     }
 
     /// <inheritdoc />

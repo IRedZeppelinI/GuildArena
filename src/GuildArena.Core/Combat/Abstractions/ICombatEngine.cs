@@ -23,6 +23,7 @@ public interface ICombatEngine
     IRandomProvider Random { get; }
     IStatCalculationService StatService { get; }
     ITriggerProcessor TriggerProcessor { get; }
+    IBattleLogService BattleLog { get; }
 
     /// <summary>
     /// Retrieves the specific handler for a given effect type.

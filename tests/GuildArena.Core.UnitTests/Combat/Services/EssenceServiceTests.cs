@@ -20,6 +20,7 @@ public class EssenceServiceTests
     private readonly ILogger<EssenceService> _loggerMock;
     private readonly IRandomProvider _randomMock;
     private readonly EssenceService _service;
+    private readonly IBattleLogService _battleLogService;
 
     // Definitions for testing generation
     private readonly ModifierDefinition _manaSpringMod;
@@ -31,11 +32,12 @@ public class EssenceServiceTests
         _repoMock = Substitute.For<IModifierDefinitionRepository>();
         _loggerMock = Substitute.For<ILogger<EssenceService>>();
         _randomMock = Substitute.For<IRandomProvider>();
+        _battleLogService = Substitute.For<IBattleLogService>();
 
         // Mock Random: Devolve sempre 0 para determinismo nos testes
         _randomMock.Next(Arg.Any<int>()).Returns(0);
 
-        _service = new EssenceService(_repoMock, _loggerMock, _randomMock);
+        _service = new EssenceService(_repoMock, _loggerMock, _randomMock, _battleLogService);
 
         // 1. Fixed Generation (+1 Mind)
         _manaSpringMod = new ModifierDefinition

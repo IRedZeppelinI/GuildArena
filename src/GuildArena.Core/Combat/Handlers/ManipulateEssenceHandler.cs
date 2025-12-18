@@ -11,13 +11,16 @@ public class ManipulateEssenceHandler : IEffectHandler
 {
     private readonly IEssenceService _essenceService;
     private readonly ILogger<ManipulateEssenceHandler> _logger;
+    private readonly IBattleLogService _battleLog;
 
     public ManipulateEssenceHandler(
         IEssenceService essenceService,
-        ILogger<ManipulateEssenceHandler> logger)
+        ILogger<ManipulateEssenceHandler> logger,
+        IBattleLogService battleLog)
     {
         _essenceService = essenceService;
         _logger = logger;
+        _battleLog = battleLog;
     }
 
     public EffectType SupportedType => EffectType.MANIPULATE_ESSENCE;
@@ -51,12 +54,12 @@ public class ManipulateEssenceHandler : IEffectHandler
             // --- BATTLE LOG ---
             if (manipulation.Amount > 0)
             {
-                actionResult.AddBattleLog(
+                _battleLog.Log(
                     $"{target.Name} gained {manipulation.Amount} {manipulation.Type} Essence.");
             }
             else
             {
-                actionResult.AddBattleLog(
+                _battleLog.Log(
                     $"{target.Name} lost {Math.Abs(manipulation.Amount)} {manipulation.Type} Essence.");
             }
 

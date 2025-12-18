@@ -41,7 +41,8 @@ public class CombatEngineTests
             Substitute.For<IRandomProvider>(),
             Substitute.For<IStatCalculationService>(),
             Substitute.For<ITriggerProcessor>(),
-            _realQueue
+            _realQueue,
+            Substitute.For<IBattleLogService>()
         );
     }
 

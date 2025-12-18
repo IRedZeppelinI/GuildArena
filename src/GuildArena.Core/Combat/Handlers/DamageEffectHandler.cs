@@ -16,17 +16,20 @@ public class DamageEffectHandler : IEffectHandler
     private readonly ILogger<DamageEffectHandler> _logger;
     private readonly IDamageResolutionService _resolutionService;
     private readonly ITriggerProcessor _triggerProcessor;
+    private readonly IBattleLogService _battleLog;
 
     public DamageEffectHandler(
         IStatCalculationService statService,
         ILogger<DamageEffectHandler> logger,
         IDamageResolutionService resolutionService,
-        ITriggerProcessor triggerProcessor)
+        ITriggerProcessor triggerProcessor,
+        IBattleLogService battleLog)
     {
         _statService = statService;
         _logger = logger;
         _resolutionService = resolutionService;
         _triggerProcessor = triggerProcessor;
+        _battleLog = battleLog;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
@@ -51,7 +54,7 @@ public class DamageEffectHandler : IEffectHandler
             target.CurrentHP -= damageInt;
 
             // --- BATTLE LOG (Para o Cliente) ---
-            actionResult.AddBattleLog($"{target.Name} took {damageInt} damage.");
+            _battleLog.Log($"{target.Name} took {damageInt} damage.");
 
             // App Log (Para nós/Debug)
             _logger.LogInformation(
@@ -65,7 +68,7 @@ public class DamageEffectHandler : IEffectHandler
         else
         {
             // Dano totalmente absorvido ou mitigado
-            actionResult.AddBattleLog($"{target.Name} took no damage (Absorbed).");
+            _battleLog.Log($"{target.Name} took no damage (Absorbed).");
 
             _logger.LogInformation("{Target} took no damage (Absorbed: {Absorbed}).",
                 target.Name, resolution.AbsorbedDamage);

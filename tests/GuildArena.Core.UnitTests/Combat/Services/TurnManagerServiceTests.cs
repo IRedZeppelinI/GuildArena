@@ -19,6 +19,7 @@ public class TurnManagerServiceTests
     private readonly IEssenceService _essenceServiceMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly ITurnManagerService _service;
+    private readonly IBattleLogService _battleLogService;
     private GameState _gameState;
 
     public TurnManagerServiceTests()
@@ -26,8 +27,13 @@ public class TurnManagerServiceTests
         _loggerMock = Substitute.For<ILogger<TurnManagerService>>();
         _essenceServiceMock = Substitute.For<IEssenceService>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
+        _battleLogService = Substitute.For<IBattleLogService>();
 
-        _service = new TurnManagerService(_loggerMock, _essenceServiceMock, _triggerProcessorMock);
+        _service = new TurnManagerService(
+            _loggerMock,
+            _essenceServiceMock,
+            _triggerProcessorMock,
+            _battleLogService);
 
         var player1 = new CombatPlayer { PlayerId = 1, Type = CombatPlayerType.Human };
         var player2 = new CombatPlayer { PlayerId = 0, Type = CombatPlayerType.AI };

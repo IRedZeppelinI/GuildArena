@@ -22,6 +22,7 @@ public class ApplyModifierHandlerTests
     private readonly IModifierDefinitionRepository _repoMock;
     private readonly IStatCalculationService _statServiceMock;
     private readonly ApplyModifierHandler _handler;
+    private readonly IBattleLogService _battleLogService;
 
     private readonly GameState _dummyGameState;
 
@@ -30,11 +31,13 @@ public class ApplyModifierHandlerTests
         _loggerMock = Substitute.For<ILogger<ApplyModifierHandler>>();
         _repoMock = Substitute.For<IModifierDefinitionRepository>();
         _statServiceMock = Substitute.For<IStatCalculationService>();
+        _battleLogService = Substitute.For<IBattleLogService>();
 
         _handler = new ApplyModifierHandler(
             _loggerMock,
             _repoMock,
-            _statServiceMock);
+            _statServiceMock,
+            _battleLogService);
 
         _dummyGameState = new GameState();
     }
@@ -96,7 +99,8 @@ public class ApplyModifierHandlerTests
         appliedMod.TurnsRemaining.ShouldBe(3);
         appliedMod.CasterId.ShouldBe(source.Id);
 
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("gained Bless"));
+        _battleLogService.
+            Received(1).Log(Arg.Is<string>(s => s.Contains("gained Bless")));
     }
 
     [Fact]
@@ -278,8 +282,9 @@ public class ApplyModifierHandlerTests
 
         refreshedMod.TurnsRemaining.ShouldBe(5);
         refreshedMod.CurrentBarrierValue.ShouldBe(50f);
-
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("was refreshed"));
+        
+        _battleLogService.
+            Received(1).Log(Arg.Is<string>(s => s.Contains("was refreshed")));
     }
 
     [Fact]

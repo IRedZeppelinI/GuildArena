@@ -22,6 +22,7 @@ public class DamageEffectHandlerTests
     private readonly IDamageResolutionService _resolutionServiceMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly DamageEffectHandler _handler;
+    private readonly IBattleLogService _battleLogService;
 
     public DamageEffectHandlerTests()
     {
@@ -29,12 +30,14 @@ public class DamageEffectHandlerTests
         _loggerMock = Substitute.For<ILogger<DamageEffectHandler>>();
         _resolutionServiceMock = Substitute.For<IDamageResolutionService>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
+        _battleLogService = Substitute.For<IBattleLogService>();
 
         _handler = new DamageEffectHandler(
             _statCalculationServiceMock,
             _loggerMock,
             _resolutionServiceMock,
-            _triggerProcessorMock);
+            _triggerProcessorMock,
+            _battleLogService);
     }
 
     [Theory]
@@ -93,7 +96,9 @@ public class DamageEffectHandlerTests
 
         // 3. ASSERT
         target.CurrentHP.ShouldBe(50 - expectedDamage);
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains($"took {expectedDamage} damage"));
+        _battleLogService.
+            Received(1).Log(
+            Arg.Is<string>(s => s.Contains($"took {expectedDamage} damage")));
     }
 
     [Fact]
@@ -144,7 +149,8 @@ public class DamageEffectHandlerTests
 
         // 3. ASSERT
         target.CurrentHP.ShouldBe(90);
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 10 damage"));
+        _battleLogService.
+            Received(1).Log(Arg.Is<string>(s => s.Contains("took 10 damage")));
     }
 
     [Fact]
@@ -196,7 +202,8 @@ public class DamageEffectHandlerTests
 
         // 3. ASSERT
         target.CurrentHP.ShouldBe(95);
-        actionResult.BattleLogEntries.ShouldContain(s => s.Contains("took 5 damage"));
+        _battleLogService.
+            Received(1).Log(Arg.Is<string>(s => s.Contains("took 5 damage")));
         _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
     }
 

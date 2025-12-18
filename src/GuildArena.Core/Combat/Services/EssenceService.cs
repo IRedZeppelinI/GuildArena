@@ -15,15 +15,18 @@ public class EssenceService : IEssenceService
     private readonly IModifierDefinitionRepository _modifierRepository;
     private readonly ILogger<EssenceService> _logger;
     private readonly IRandomProvider _random;
+    private readonly IBattleLogService _battleLog;
 
     public EssenceService(
         IModifierDefinitionRepository modifierRepository,
         ILogger<EssenceService> logger,
-        IRandomProvider random)
+        IRandomProvider random,
+        IBattleLogService battleLog)
     {
         _modifierRepository = modifierRepository;
         _logger = logger;
         _random = random;
+        _battleLog = battleLog;
     }
 
 
@@ -81,6 +84,15 @@ public class EssenceService : IEssenceService
         // Clamp a zero (para não ter essence negativa)
         if (player.EssencePool[type] < 0)
             player.EssencePool[type] = 0;
+
+        if (amount > 0)
+        {
+            _battleLog.Log($"Player {player.PlayerId} gained {amount} {type} Essence.");
+        }
+        else if (amount < 0)
+        {
+            _battleLog.Log($"Player {player.PlayerId} lost {Math.Abs(amount)} {type} Essence.");
+        }
 
         if (amount != 0)
         {
