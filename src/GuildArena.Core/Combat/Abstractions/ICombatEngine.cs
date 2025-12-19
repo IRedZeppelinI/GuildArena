@@ -3,7 +3,9 @@ using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Abstractions; 
@@ -29,6 +31,18 @@ public interface ICombatEngine
     /// Retrieves the specific handler for a given effect type.
     /// </summary>
     IEffectHandler GetEffectHandler(EffectType type);
+
+
+    /// <summary>
+    /// Executes a player's ability by scheduling the intention and processing the resulting action queue.
+    /// </summary>
+    List<CombatActionResult> ExecuteAbility(
+        GameState state,
+        AbilityDefinition ability,
+        Combatant source,
+        AbilityTargets targets,
+        Dictionary<EssenceType, int> payment);
+
 
     // --- Queue Management ---
     void EnqueueAction(ICombatAction action);
