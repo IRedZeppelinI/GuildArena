@@ -1,11 +1,13 @@
-﻿using GuildArena.Application; 
+﻿using GuildArena.Application;
 using GuildArena.Application.Abstractions;
-using GuildArena.Core;       
-using GuildArena.Infrastructure; 
+using GuildArena.Application.Abstractions.Repositories;
+using GuildArena.Core;
+using GuildArena.Domain.Abstractions.Repositories; // Necessário para as interfaces
 using GuildArena.Infrastructure.Options;
+using GuildArena.Infrastructure.Persistence.Json; // Necessário para os repos JSON
 using GuildArena.IntegrationTests.TestInfrastructure;
-using Microsoft.Extensions.DependencyInjection; 
-using Microsoft.Extensions.Logging; 
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 
 namespace GuildArena.IntegrationTests.Setup;
@@ -38,22 +40,25 @@ public abstract class IntegrationTestBase
             builder.SetMinimumLevel(LogLevel.Warning);
         });
 
-        // 3. REGISTAR SERVIÇOS REAIS
-        // Estes métodos de extensão vêm dos namespaces GuildArena.Core e GuildArena.Application
+        // 3. REGISTAR SERVIÇOS DO CORE E APPLICATION
         services.AddCoreServices();
         services.AddApplicationServices();
-        services.AddInfrastructureServices(null!);
 
-        // 4. SUBSTITUIÇÃO (MOCKS & FAKES)
+        // 4. REGISTAR INFRAESTRUTURA 
 
-        // Remover Redis real
-        var redisDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(ICombatStateRepository));
-        if (redisDescriptor != null) services.Remove(redisDescriptor);
+        services.AddSingleton<IModifierDefinitionRepository, JsonModifierDefinitionRepository>();
+        services.AddSingleton<IAbilityDefinitionRepository, JsonAbilityDefinitionRepository>();
+        services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
+        services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
+        services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
+        
+        var playerRepoMock = Substitute.For<IPlayerRepository>();
+        services.AddSingleton(playerRepoMock);
 
-        // Adicionar Fake em memória
+        // 5. REGISTAR O FAKE REDIS        
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
 
-        // Simular User
+        // 6. SIMULAR UTILIZADOR (Player 1)
         services.AddScoped<ICurrentUserService>(sp =>
         {
             var mock = Substitute.For<ICurrentUserService>();
@@ -61,8 +66,7 @@ public abstract class IntegrationTestBase
             return mock;
         });
 
-
-        // 5. CONSTRUIR
+        // 7. CONSTRUIR
         Provider = services.BuildServiceProvider();
     }
 

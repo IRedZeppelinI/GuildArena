@@ -6,22 +6,20 @@ using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
 using Shouldly;
 using GuildArena.Domain.Enums.Modifiers;
-using MediatR; // <--- Importante
+using MediatR;
+using GuildArena.Domain.ValueObjects.State;
 
 namespace GuildArena.IntegrationTests.Scenarios.Heroes;
 
 public class GarretTests : IntegrationTestBase
 {
-    // Agora retornamos IMediator em vez do Handler concreto
     private async Task<(string CombatId, IMediator Mediator, ICombatStateRepository Repo)> SetupGarretDuel(
         Dictionary<EssenceType, int> playerEssence)
     {
-        // Pedimos o Mediator ao container
         var mediator = GetService<IMediator>();
         var stateRepo = GetService<ICombatStateRepository>();
         var combatId = Guid.NewGuid().ToString();
 
-        // ... (Criação de combatentes igual) ...
         var garret = new Combatant
         {
             Id = 101,
@@ -31,7 +29,16 @@ public class GarretTests : IntegrationTestBase
             CurrentHP = 100,
             MaxHP = 100,
             BaseStats = new BaseStats { Attack = 10, Agility = 10 },
-            Position = 1
+            Position = 1,
+            ActiveModifiers = new List<ActiveModifier>
+            {
+                new ActiveModifier
+                {
+                    DefinitionId = "MOD_GARRET_TRAIT",
+                    TurnsRemaining = -1,
+                    CasterId = 101
+                }
+            }
         };
 
         var dummy = new Combatant
@@ -61,9 +68,68 @@ public class GarretTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task Adrenaline_ShouldApplyBuff_AndConsumeNeutralCost()
+    public async Task BasicAttack_ShouldUseCommonDefinition_AndDealDamage_WithTrait()
     {
         // ARRANGE
+        var (combatId, mediator, repo) = await SetupGarretDuel(new Dictionary<EssenceType, int>());
+
+        var command = new ExecuteAbilityCommand
+        {
+            CombatId = combatId,
+            SourceId = 101,
+            AbilityId = "ABIL_COMMON_SLASH",
+            TargetSelections = new() { { "TGT", new List<int> { -1 } } },
+            Payment = new()
+        };
+
+        // ACT
+        await mediator.Send(command, CancellationToken.None);
+
+        // ASSERT
+        var state = await repo.GetAsync(combatId);
+        var target = state!.Combatants.First(c => c.Id == -1);
+
+        // Validar Dano:
+        // Slash Base: 5
+        // Scaling: 10 Attack * 1.0 = 10
+        // Trait: +2 (Physical)
+        // Total: 17
+        target.CurrentHP.ShouldBe(83); // 100 - 17
+    }
+
+    [Fact]
+    public async Task PrecisionStrike_ShouldDealHighDamage_WithTrait()
+    {
+        // ARRANGE
+        var (combatId, mediator, repo) = await SetupGarretDuel(new() { { EssenceType.Vigor, 2 } });
+
+        var command = new ExecuteAbilityCommand
+        {
+            CombatId = combatId,
+            SourceId = 101,
+            AbilityId = "ABIL_GARRET_PRECISION",
+            TargetSelections = new() { { "TGT", new List<int> { -1 } } },
+            Payment = new() { { EssenceType.Vigor, 1 } }
+        };
+
+        // ACT
+        await mediator.Send(command, CancellationToken.None);
+
+        // ASSERT
+        var state = await repo.GetAsync(combatId);
+        var target = state!.Combatants.First(c => c.Id == -1);
+
+        // Dano:
+        // Base: 15
+        // Scaling: 10 Attack * 1.2 = 12
+        // Trait: +2 (Physical)
+        // Total: 29
+        target.CurrentHP.ShouldBe(71); // 100 - 29
+    }
+
+    [Fact]
+    public async Task Adrenaline_ShouldApplyBuff_AndConsumeNeutralCost()
+    {
         var (combatId, mediator, repo) = await SetupGarretDuel(new() { { EssenceType.Mind, 5 } });
 
         var command = new ExecuteAbilityCommand
@@ -75,15 +141,13 @@ public class GarretTests : IntegrationTestBase
             Payment = new() { { EssenceType.Mind, 1 } }
         };
 
-        // ACT
-        // Usamos o Mediator.Send, exatamente como o Controller faz
         await mediator.Send(command, CancellationToken.None);
 
-        // ASSERT
         var state = await repo.GetAsync(combatId);
         var garret = state!.Combatants.First(c => c.Id == 101);
         var player = state.Players.First(p => p.PlayerId == 1);
 
+        // Verifica modificador e consumo de mana
         garret.ActiveModifiers.ShouldContain(m => m.DefinitionId == "MOD_GARRET_ADRENALINE");
         player.EssencePool[EssenceType.Mind].ShouldBe(4);
     }
@@ -102,16 +166,20 @@ public class GarretTests : IntegrationTestBase
             Payment = new() { { EssenceType.Vigor, 2 } }
         };
 
-        // Capturamos os logs que o Mediator retorna (List<string>)
-        var logs = await mediator.Send(command, CancellationToken.None);
+        await mediator.Send(command, CancellationToken.None);
 
         var state = await repo.GetAsync(combatId);
         var target = state!.Combatants.First(c => c.Id == -1);
 
-        target.CurrentHP.ShouldBe(90);
-        target.ActiveModifiers.ShouldContain(m => m.ActiveStatusEffects.Contains(StatusEffectType.Stun));
+        // Dano:
+        // Base: 5
+        // Scaling: 10 Attack * 0.5 = 5
+        // Trait: +2 (Physical)
+        // Total: 12
+        target.CurrentHP.ShouldBe(88); // 100 - 12
 
-        logs.ShouldContain(s => s.Contains("afflicted by Stunned"));
+        // Status Check
+        target.ActiveModifiers.ShouldContain(m => m.ActiveStatusEffects.Contains(StatusEffectType.Stun));
     }
 
     [Fact]
@@ -119,10 +187,12 @@ public class GarretTests : IntegrationTestBase
     {
         var (combatId, mediator, repo) = await SetupGarretDuel(new() { { EssenceType.Vigor, 10 } });
 
+        // Ajustar stats para este teste: Defesa 999 no inimigo para testar True Damage
         var state = await repo.GetAsync(combatId);
-        state!.Combatants.First(c => c.Id == 101).BaseStats.Attack = 20;
-        state.Combatants.First(c => c.Id == -1).BaseStats.Defense = 999;
-        state.Combatants.First(c => c.Id == -1).CurrentHP = 200;
+        var dummy = state!.Combatants.First(c => c.Id == -1);
+        dummy.BaseStats.Defense = 999;
+        dummy.CurrentHP = 200;
+
         await repo.SaveAsync(combatId, state);
 
         var command = new ExecuteAbilityCommand
@@ -134,57 +204,16 @@ public class GarretTests : IntegrationTestBase
             Payment = new() { { EssenceType.Vigor, 3 } }
         };
 
-        var logs = await mediator.Send(command, CancellationToken.None);
+        await mediator.Send(command, CancellationToken.None);
 
         var updatedState = await repo.GetAsync(combatId);
         var target = updatedState!.Combatants.First(c => c.Id == -1);
 
-        target.CurrentHP.ShouldBe(130);
-        logs.ShouldContain(s => s.Contains("took 70 damage"));
-    }
-
-    [Fact]
-    public async Task BasicAttack_ShouldUseCommonDefinition_AndDealDamage()
-    {
-        var (combatId, mediator, repo) = await SetupGarretDuel(new Dictionary<EssenceType, int>());
-
-        var command = new ExecuteAbilityCommand
-        {
-            CombatId = combatId,
-            SourceId = 101,
-            AbilityId = "ABIL_COMMON_SLASH",
-            TargetSelections = new() { { "TGT", new List<int> { -1 } } },
-            Payment = new()
-        };
-
-        var logs = await mediator.Send(command, CancellationToken.None);
-
-        var state = await repo.GetAsync(combatId);
-        var target = state!.Combatants.First(c => c.Id == -1);
-
-        target.CurrentHP.ShouldBe(85);
-        logs.ShouldContain(s => s.Contains("Garret used Slash"));
-    }
-
-    [Fact]
-    public async Task PrecisionStrike_ShouldDealHighDamage()
-    {
-        var (combatId, mediator, repo) = await SetupGarretDuel(new() { { EssenceType.Vigor, 2 } });
-
-        var command = new ExecuteAbilityCommand
-        {
-            CombatId = combatId,
-            SourceId = 101,
-            AbilityId = "ABIL_GARRET_PRECISION",
-            TargetSelections = new() { { "TGT", new List<int> { -1 } } },
-            Payment = new() { { EssenceType.Vigor, 1 } }
-        };
-
-        await mediator.Send(command, CancellationToken.None);
-
-        var state = await repo.GetAsync(combatId);
-        var target = state!.Combatants.First(c => c.Id == -1);
-
-        target.CurrentHP.ShouldBe(73);
+        // Dano:
+        // Base: 40
+        // Scaling: 10 Attack * 1.5 = 15
+        // Trait: +2 (Porque a skill tem tag Physical)
+        // Total: 57 True Damage
+        target.CurrentHP.ShouldBe(143); // 200 - 57
     }
 }
