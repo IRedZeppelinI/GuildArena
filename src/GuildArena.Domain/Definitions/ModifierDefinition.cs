@@ -69,10 +69,18 @@ public class ModifierDefinition
     /// </summary>
     public List<BarrierModification> BarrierModifications { get; set; } = new();
 
+    /// <summary>
+    /// If true, this modifier is automatically removed from the target 
+    /// if the caster (originator) dies.
+    /// Useful for channeled spells, links, or taunts.
+    /// Default: false.
+    /// </summary>
+    public bool RemoveOnCasterDeath { get; set; } = false;
+
 
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
-    public string? TriggeredAbilityId { get; set; } // Ex: "INTERNAL_POISON_TICK"
+    public string? TriggeredAbilityId { get; set; }
 }
 
 
