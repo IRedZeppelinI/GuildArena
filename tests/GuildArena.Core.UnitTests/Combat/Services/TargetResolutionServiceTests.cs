@@ -382,4 +382,87 @@ public class TargetResolutionServiceTests
         // Assert
         result.Single().Id.ShouldBe(2);
     }
+
+    // Taunt   
+
+    [Fact]
+    public void ResolveTargets_SourceIsTaunted_ShouldFilterTargetsToTheCasterOnly()
+    {
+        // ARRANGE
+        // A Source (Garret, ID 1) tem o debuff Taunted.
+        // Quem lançou foi o Enemy1 (Kymera A, ID 3).
+        _source.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_TAUNTED",
+            CasterId = 3, // O ID do inimigo que provocou
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Taunted }
+        });
+
+        // O jogador tenta selecionar o Enemy2 (ID 4) - ILEGAL
+        var rule = new TargetingRule
+        {
+            RuleId = "T1",
+            Type = TargetType.Enemy,
+            Strategy = TargetSelectionStrategy.Manual,
+            Count = 1
+        };
+        var input = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 4 } } } };
+
+        // ACT
+        var result = _service.ResolveTargets(rule, _source, _gameState, input);
+
+        // ASSERT
+        // Deve ser vazio, porque o único alvo válido era o ID 3, mas o input pediu o ID 4.
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ResolveTargets_SourceIsTaunted_SelectingTheTaunter_ShouldSucceed()
+    {
+        // ARRANGE
+        // Source provocada pelo ID 3
+        _source.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_TAUNTED",
+            CasterId = 3,
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Taunted }
+        });
+
+        // O jogador obedece e seleciona o ID 3 - LEGAL
+        var rule = new TargetingRule
+        {
+            RuleId = "T1",
+            Type = TargetType.Enemy,
+            Strategy = TargetSelectionStrategy.Manual,
+            Count = 1
+        };
+        var input = new AbilityTargets { SelectedTargets = new() { { "T1", new List<int> { 3 } } } };
+
+        // ACT
+        var result = _service.ResolveTargets(rule, _source, _gameState, input);
+
+        // ASSERT
+        result.Single().Id.ShouldBe(3);
+    }
+
+    [Fact]
+    public void ResolveTargets_SourceIsTaunted_ButUsesAoE_ShouldHitEveryone()
+    {
+        // ARRANGE
+        _source.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_TAUNTED",
+            CasterId = 3,
+            ActiveStatusEffects = new List<StatusEffectType> { StatusEffectType.Taunted }
+        });
+
+        // Regra AoE (AllEnemies) - Ignora Taunt
+        var rule = new TargetingRule { RuleId = "T1", Type = TargetType.AllEnemies, Count = 99 };
+
+        // ACT
+        var result = _service.ResolveTargets(rule, _source, _gameState, new AbilityTargets());
+
+        // ASSERT
+        result.Count.ShouldBe(2); // ID 3 e ID 4
+    }
 }

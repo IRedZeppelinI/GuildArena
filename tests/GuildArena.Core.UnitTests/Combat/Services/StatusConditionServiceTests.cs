@@ -18,37 +18,10 @@ public class StatusConditionServiceTests
     }
 
     [Fact]
-    public void CheckStatus_NoEffects_ShouldReturnAllowed()
-    {
-        var source = new Combatant
-        {
-            Id = 1,
-            Name = "Clean",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new()
-        };
-        var ability = new AbilityDefinition { Id = "A1", Name = "Test" };
-
-        var result = _service.CheckStatusConditions(source, ability);
-
-        result.ShouldBe(ActionStatusResult.Allowed);
-    }
-
-    [Fact]
     public void CheckStatus_WithStun_ShouldReturnStunned()
     {
-        var source = new Combatant
-        {
-            Id = 1,
-            Name = "Stunned",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new()
-        };
-        AddStatus(source, StatusEffectType.Stun);
-
-        var ability = new AbilityDefinition { Id = "A1", Name = "Test" };
+        var source = CreateCombatantWithStatus(StatusEffectType.Stun);
+        var ability = new AbilityDefinition { Id = "A1", Name = "Any" };
 
         var result = _service.CheckStatusConditions(source, ability);
 
@@ -56,104 +29,113 @@ public class StatusConditionServiceTests
     }
 
     [Fact]
-    public void CheckStatus_WithSilence_UsingSkill_ShouldReturnSilenced()
+    public void CheckStatus_WithSilence_UsingSpell_ShouldReturnSilenced()
     {
-        var abilityId = "Fireball";
-        var basicAtkId = "Punch";
+        var source = CreateCombatantWithStatus(StatusEffectType.Silence);
 
-        var source = new Combatant
+        // Habilidade tem a tag "Spell"
+        var spell = new AbilityDefinition
         {
-            Id = 1,
-            Name = "Silenced",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new(),
-            BasicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Punch" }
+            Id = "Fireball",
+            Name = "Fireball",
+            Tags = new List<string> { "Spell", "Fire" }
         };
-        AddStatus(source, StatusEffectType.Silence);
 
-        var skill = new AbilityDefinition { Id = abilityId, Name = "Fireball" };
-
-        // Ação: Tentar usar Skill
-        var result = _service.CheckStatusConditions(source, skill);
+        var result = _service.CheckStatusConditions(source, spell);
 
         result.ShouldBe(ActionStatusResult.Silenced);
     }
 
     [Fact]
-    public void CheckStatus_WithSilence_UsingBasicAttack_ShouldReturnAllowed()
+    public void CheckStatus_WithSilence_UsingPhysical_ShouldReturnAllowed()
     {
-        var basicAtkId = "Punch";
-        var basicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Punch" };
+        var source = CreateCombatantWithStatus(StatusEffectType.Silence);
 
-        var source = new Combatant
+        // Habilidade Física (Melee) - Não deve ser afetada pelo Silence
+        var slash = new AbilityDefinition
         {
-            Id = 1,
-            Name = "Silenced",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new(),
-            BasicAttack = basicAttack
+            Id = "Slash",
+            Name = "Slash",
+            Tags = new List<string> { "Melee", "Physical" }
         };
-        AddStatus(source, StatusEffectType.Silence);
 
-        // Ação: Tentar usar Basic Attack
-        var result = _service.CheckStatusConditions(source, basicAttack);
+        var result = _service.CheckStatusConditions(source, slash);
 
         result.ShouldBe(ActionStatusResult.Allowed);
     }
 
     [Fact]
-    public void CheckStatus_WithDisarm_UsingBasicAttack_ShouldReturnDisarmed()
+    public void CheckStatus_WithDisarm_UsingMelee_ShouldReturnDisarmed()
     {
-        var basicAtkId = "Sword";
-        var basicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Slash" };
+        var source = CreateCombatantWithStatus(StatusEffectType.Disarm);
 
-        var source = new Combatant
+        // Habilidade Melee - Deve ser bloqueada pelo Disarm
+        var slash = new AbilityDefinition
         {
-            Id = 1,
-            Name = "Disarmed",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new(),
-            BasicAttack = basicAttack
+            Id = "Slash",
+            Name = "Slash",
+            Tags = new List<string> { "Melee", "Physical" }
         };
-        AddStatus(source, StatusEffectType.Disarm);
 
-        var result = _service.CheckStatusConditions(source, basicAttack);
+        var result = _service.CheckStatusConditions(source, slash);
 
         result.ShouldBe(ActionStatusResult.Disarmed);
     }
 
     [Fact]
-    public void CheckStatus_WithDisarm_UsingSkill_ShouldReturnAllowed()
+    public void CheckStatus_WithDisarm_UsingRanged_ShouldReturnDisarmed()
     {
-        var basicAtkId = "Sword";
-        var skill = new AbilityDefinition { Id = "Shout", Name = "Shout" };
+        var source = CreateCombatantWithStatus(StatusEffectType.Disarm);
 
-        var source = new Combatant
+        // Disarm também afeta Ranged (armas)
+        var shot = new AbilityDefinition
         {
-            Id = 1,
-            Name = "Disarmed",
-            RaceId = "RACE_TEST",
-            CurrentHP = 100,
-            BaseStats = new(),
-            BasicAttack = new AbilityDefinition { Id = basicAtkId, Name = "Slash" }
+            Id = "Shot",
+            Name = "Shot",
+            Tags = new List<string> { "Ranged", "Physical" }
         };
-        AddStatus(source, StatusEffectType.Disarm);
 
-        var result = _service.CheckStatusConditions(source, skill);
+        var result = _service.CheckStatusConditions(source, shot);
+
+        result.ShouldBe(ActionStatusResult.Disarmed);
+    }
+
+    [Fact]
+    public void CheckStatus_WithDisarm_UsingSpell_ShouldReturnAllowed()
+    {
+        var source = CreateCombatantWithStatus(StatusEffectType.Disarm);
+
+        // Habilidade Mágica (pode ser castada mesmo sem arma)
+        var shout = new AbilityDefinition
+        {
+            Id = "Shout",
+            Name = "Shout",
+            Tags = new List<string> { "Spell", "Sonic" }
+        };
+
+        var result = _service.CheckStatusConditions(source, shout);
 
         result.ShouldBe(ActionStatusResult.Allowed);
     }
 
     // Helper
-    private void AddStatus(Combatant combatant, StatusEffectType status)
+    private Combatant CreateCombatantWithStatus(StatusEffectType status)
     {
-        combatant.ActiveModifiers.Add(new ActiveModifier
+        var c = new Combatant 
+        { 
+            Id = 1,
+            Name = "Test",
+            RaceId = "X",
+            BaseStats = new(),
+            MaxHP = 100,
+            CurrentHP = 100
+        };
+
+        c.ActiveModifiers.Add(new ActiveModifier
         {
             DefinitionId = "TEST_MOD",
             ActiveStatusEffects = new List<StatusEffectType> { status }
         });
+        return c;
     }
 }

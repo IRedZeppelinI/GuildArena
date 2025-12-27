@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Services;
 
+/// <inheritdoc />
 public class TargetResolutionService : ITargetResolutionService
 {
     private readonly ILogger<TargetResolutionService> _logger;
@@ -15,17 +16,18 @@ public class TargetResolutionService : ITargetResolutionService
 
     public TargetResolutionService(ILogger<TargetResolutionService> logger, IRandomProvider random)
     {
-        _logger = logger;   
+        _logger = logger;
         _random = random;
     }
 
+    /// <inheritdoc />
     public List<Combatant> ResolveTargets(
         TargetingRule rule,
         Combatant source,
         GameState gameState,
         AbilityTargets playerInput)
     {
-        // 1. Obter o universo de candidatos válidos (Filtragem Base)
+        // 1. Obter universo de candidatos válidos (Filtragem Base)
         var potentialTargets = GetPotentialTargets(rule, source, gameState);
 
         // 2. Filtrar por Estado de Vida (Vivo/Morto)
@@ -34,17 +36,45 @@ public class TargetResolutionService : ITargetResolutionService
         else
             potentialTargets = potentialTargets.Where(c => c.IsAlive).ToList();
 
-        // Filtrar Untargetable
-        //  AoE ignora
+        // 3. Filtrar Untargetable        
         if (rule.Type == TargetType.Enemy)
         {
-            // Remove quem tem IsUntargetable
             potentialTargets = potentialTargets.Where(c => !IsCombatantUntargetable(c)).ToList();
         }
 
+        // 4. Filtrar por Raça
         potentialTargets = FilterByRace(potentialTargets, rule);
 
-        // 4. Seleção Final (Manual vs Automática)
+        // --- 5. LÓGICA DE TAUNTED ---        
+        if (rule.Type == TargetType.Enemy)
+        {
+            var tauntDebuff = source.ActiveModifiers
+                .FirstOrDefault(m => m.ActiveStatusEffects.Contains(StatusEffectType.Taunted));
+
+            if (tauntDebuff != null)
+            {
+                var forcedTargetId = tauntDebuff.CasterId;
+
+                // Procurar quem fez o taunt)
+                var forcedTarget = potentialTargets.FirstOrDefault(t => t.Id == forcedTargetId);
+
+                if (forcedTarget != null)
+                {
+                    //  ele torna-se a ÚNICA opção.
+                    potentialTargets = new List<Combatant> { forcedTarget };
+                }
+                else
+                {
+                    // TODO: Rever opções
+                    // Edge Case: O Tanque morreu ou ficou invisível?
+                    // Design Decision: O Taunt quebra e o jogador fica livre para escolher outros.
+                    // O código prossegue com a lista original.
+                }
+            }
+        }
+        // -----------------------------------
+
+        // 6. Seleção Final (Manual vs Automática)
         return ApplySelectionStrategy(rule, potentialTargets, playerInput);
     }
 
@@ -68,25 +98,19 @@ public class TargetResolutionService : ITargetResolutionService
         return rule.Type switch
         {
             TargetType.Self => new List<Combatant> { source },
-
             TargetType.Ally or TargetType.AllAllies =>
                 state.Combatants.Where(c => c.OwnerId == source.OwnerId && c.Id != source.Id).ToList(),
-
             TargetType.Friendly or TargetType.AllFriendlies =>
                 state.Combatants.Where(c => c.OwnerId == source.OwnerId).ToList(),
-
             TargetType.Enemy or TargetType.AllEnemies =>
                 state.Combatants.Where(c => c.OwnerId != source.OwnerId).ToList(),
-
             TargetType.All => state.Combatants.ToList(),
-
             _ => new List<Combatant>()
         };
     }
 
     private List<Combatant> FilterByRace(List<Combatant> candidates, TargetingRule rule)
     {
-        // Se não houver restrições, devolve a lista original
         if ((rule.RequiredRaceIds == null || rule.RequiredRaceIds.Count == 0) &&
             (rule.ExcludedRaceIds == null || rule.ExcludedRaceIds.Count == 0))
         {
@@ -95,36 +119,26 @@ public class TargetResolutionService : ITargetResolutionService
 
         return candidates.Where(c =>
         {
-            // 1. Verificação de Inclusão (Whitelist)
-            // Se a lista existir, o alvo TEM de estar nela.
             if (rule.RequiredRaceIds != null && rule.RequiredRaceIds.Count > 0)
             {
-                if (!rule.RequiredRaceIds.Contains(c.RaceId))
-                    return false;
+                if (!rule.RequiredRaceIds.Contains(c.RaceId)) return false;
             }
-
-            // 2. Verificação de Exclusão (Blacklist)
-            // Se a lista existir, o alvo NÃO PODE estar nela.
             if (rule.ExcludedRaceIds != null && rule.ExcludedRaceIds.Count > 0)
             {
-                if (rule.ExcludedRaceIds.Contains(c.RaceId))
-                    return false;
+                if (rule.ExcludedRaceIds.Contains(c.RaceId)) return false;
             }
-
             return true;
         }).ToList();
     }
 
-
     private List<Combatant> ApplySelectionStrategy(
         TargetingRule rule,
-        List<Combatant> potencialTargets,
+        List<Combatant> potentialTargets,
         AbilityTargets playerInput)
     {
-        // Se for AoE, devolve todos os candidatos válidos
         if (IsAreaEffect(rule.Type) || rule.Type == TargetType.Self)
         {
-            return potencialTargets;
+            return potentialTargets;
         }
 
         switch (rule.Strategy)
@@ -132,46 +146,45 @@ public class TargetResolutionService : ITargetResolutionService
             case TargetSelectionStrategy.Manual:
                 if (playerInput.SelectedTargets.TryGetValue(rule.RuleId, out var selectedIds))
                 {
-                    // Interseção: Só aceita IDs que estejam na lista de candidatos válidos
-                    return potencialTargets.Where(c => selectedIds.Contains(c.Id)).Take(rule.Count).ToList();
+                    return potentialTargets.Where(c => selectedIds.Contains(c.Id)).Take(rule.Count).ToList();
                 }
                 _logger.LogWarning("No manual selection provided for rule {RuleId}", rule.RuleId);
                 return new List<Combatant>();
 
             case TargetSelectionStrategy.Random:
-                return potencialTargets.OrderBy(x => _random.Next(int.MaxValue)).Take(rule.Count).ToList();
+                return potentialTargets.OrderBy(x => _random.Next(int.MaxValue))
+                    .Take(rule.Count)
+                    .ToList();
 
-            //TODO: Rever tie-break
             case TargetSelectionStrategy.LowestHP:
-                return potencialTargets
+                return potentialTargets
                     .OrderBy(c => c.CurrentHP)
-                    .ThenBy(c => c.Id) // TIE-BREAK (Determinismo)
+                    .ThenBy(c => c.Id)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.HighestHP:
-                return potencialTargets
+                return potentialTargets
                     .OrderByDescending(c => c.CurrentHP)
-                    .ThenBy(c => c.Id) // TIE-BREAK
+                    .ThenBy(c => c.Id)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.LowestHPPercent:
-                return potencialTargets
+                return potentialTargets
                     .OrderBy(c => (float)c.CurrentHP / c.MaxHP)
-                    .ThenBy(c => c.Id) // TIE-BREAK
+                    .ThenBy(c => c.Id)
                     .Take(rule.Count)
                     .ToList();
 
             case TargetSelectionStrategy.HighestHPPercent:
-                return potencialTargets
+                return potentialTargets
                     .OrderByDescending(c => (float)c.CurrentHP / c.MaxHP)
-                    .ThenBy(c => c.Id) // TIE-BREAK
-                    .Take(rule.Count)
+                    .ThenBy(c => c.Id).Take(rule.Count)
                     .ToList();
 
-            default:                
-                return potencialTargets.Take(rule.Count).ToList();
+            default:
+                return potentialTargets.Take(rule.Count).ToList();
         }
     }
 
@@ -180,6 +193,6 @@ public class TargetResolutionService : ITargetResolutionService
         return type == TargetType.AllAllies ||
                type == TargetType.AllEnemies ||
                type == TargetType.AllFriendlies ||
-               type == TargetType.All; 
+               type == TargetType.All;
     }
 }
