@@ -11,9 +11,15 @@ public class ModifierDefinition
 {
     public required string Id { get; set; } // "MOD_POISON_WEAK"
     public required string Name { get; set; } // "Veneno Fraco"
-    public ModifierType Type { get; set; } // Enum: BUFF, DEBUFF
+    public ModifierType Type { get; set; } // Enum: Bless, Curse
 
-    
+    /// <summary>
+    /// The maximum number of times this modifier can stack.
+    /// Default is 1 (does not stack, just refreshes).
+    /// </summary>
+    public int MaxStacks { get; set; } = 1;
+
+
     public List<StatModification> StatModifications { get; set; } = new(); // Ex: { Attack: 10, Defense: -5, ... }
 
     public List<DamageModification> DamageModifications { get; set; } = new();

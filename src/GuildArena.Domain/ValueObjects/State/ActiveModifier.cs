@@ -10,6 +10,12 @@ public class ActiveModifier
    
     public int CasterId { get; set; }
 
+    /// <summary>
+    /// The current number of stacks for this modifier.
+    /// Affects the magnitude of Stat Modifications.
+    /// Default starts at 1.
+    /// </summary>
+    public int StackCount { get; set; } = 1;
 
     /// <summary>
     /// The remaining health of the barrier provided by this modifier.
@@ -21,4 +27,6 @@ public class ActiveModifier
     /// Snapshot of status effects granted by this modifier.    
     /// </summary>
     public List<StatusEffectType> ActiveStatusEffects { get; set; } = new();
+
+
 }

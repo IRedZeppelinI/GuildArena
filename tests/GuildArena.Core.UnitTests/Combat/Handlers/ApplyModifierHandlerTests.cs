@@ -331,4 +331,48 @@ public class ApplyModifierHandlerTests
             Arg.Any<Func<object, Exception?, string>>()
         );
     }
+
+
+    [Fact]
+    public void Apply_StackableModifier_ShouldIncrementStackCount_UpToMax()
+    {
+        // ARRANGE
+        var modId = "MOD_STACKABLE";
+        var modDef = new ModifierDefinition
+        {
+            Id = modId,
+            Name = "Stacker",
+            MaxStacks = 3
+        };
+        _repoMock.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+
+        var target = new Combatant { Id = 1, Name = "T", RaceId = "X", BaseStats = new() };
+
+        // Simula que já tem 1 stack
+        target.ActiveModifiers.Add(new ActiveModifier { DefinitionId = modId, StackCount = 1 });
+
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.APPLY_MODIFIER,
+            ModifierDefinitionId = modId,
+            DurationInTurns = 3,
+            TargetRuleId = "T_Self"
+        };
+
+        var actionResult = new CombatActionResult();
+
+        // ACT (Aplica 2ª vez)
+        _handler.Apply(effectDef, target, target, _dummyGameState, actionResult);
+
+        // ASSERT (Deve ter 2 stacks)
+        target.ActiveModifiers.First().StackCount.ShouldBe(2);
+
+        // ACT (Aplica 3ª vez)
+        _handler.Apply(effectDef, target, target, _dummyGameState, actionResult);
+        target.ActiveModifiers.First().StackCount.ShouldBe(3);
+
+        // ACT (Aplica 4ª vez - Cap é 3)
+        _handler.Apply(effectDef, target, target, _dummyGameState, actionResult);
+        target.ActiveModifiers.First().StackCount.ShouldBe(3);
+    }
 }

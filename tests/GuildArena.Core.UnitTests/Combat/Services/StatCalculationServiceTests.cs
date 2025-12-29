@@ -175,4 +175,50 @@ public class StatCalculationServiceTests
         // Deve ser clampado a 1, não 0 ou negativo
         result.ShouldBe(1);
     }
+
+
+    [Fact]
+    public void GetStatValue_WithStackedModifier_ShouldMultiplyBonus()
+    {
+        // ARRANGE
+        var modId = "MOD_STACK_ATK";
+        var modDef = new ModifierDefinition
+        {
+            Id = modId,
+            Name = "Rage",
+            MaxStacks = 5,
+            StatModifications = new() { new() 
+            { 
+                Stat = StatType.Attack,
+                Type = ModificationType.FLAT,
+                Value = 10
+            } }
+        };
+
+        // Setup do Mock
+        var repoMock = Substitute.For<IModifierDefinitionRepository>();
+        repoMock.GetAllDefinitions()
+            .Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+        var service = new StatCalculationService(repoMock);
+
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Berserker",
+            RaceId = "X",
+            BaseStats = new BaseStats { Attack = 10 },
+            MaxHP = 50,
+            CurrentHP = 50,
+        };
+
+        // Tem 3 stacks (+10 * 3 = +30)
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = modId, StackCount = 3 });
+
+        // ACT
+        var result = service.GetStatValue(combatant, StatType.Attack);
+
+        // ASSERT
+        // 10 Base + 30 Bonus = 40
+        result.ShouldBe(40);
+    }
 }

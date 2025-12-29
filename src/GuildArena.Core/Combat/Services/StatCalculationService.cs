@@ -43,13 +43,16 @@ public class StatCalculationService : IStatCalculationService
             {
                 if (statMod.Stat == statType)
                 {
+                    // multiplicar pelo StackCount                     
+                    float totalValue = statMod.Value * activeMod.StackCount;
+
                     if (statMod.Type == ModificationType.FLAT)
                     {
-                        flatBonus += statMod.Value;
+                        flatBonus += totalValue;
                     }
                     else if (statMod.Type == ModificationType.PERCENTAGE)
                     {
-                        percentBonus += statMod.Value;
+                        percentBonus += totalValue;
                     }
                 }
             }

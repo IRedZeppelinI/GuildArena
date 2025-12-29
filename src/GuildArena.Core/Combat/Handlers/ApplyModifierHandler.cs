@@ -61,19 +61,29 @@ public class ApplyModifierHandler : IEffectHandler
 
         if (existingModifier != null)
         {
-            // Lógica de Refresh
             existingModifier.TurnsRemaining = def.DurationInTurns;
+
+            // ---  Stacking ---
+            if (modDef.MaxStacks > 1)
+            {
+                int oldStacks = existingModifier.StackCount;
+                existingModifier.StackCount = Math.Min(existingModifier.StackCount + 1, modDef.MaxStacks);
+
+                if (existingModifier.StackCount > oldStacks)
+                {
+                    _battleLog.Log($"{target.Name}'s {modDef.Name} stacks increased to {existingModifier.StackCount}.");
+                }
+            }
+            // --------------------------------
 
             if (initialBarrierValue > 0)
             {
+                // barreiras não têm stacking
                 existingModifier.CurrentBarrierValue = initialBarrierValue;
-                // --- BATTLE LOG ---
-                _battleLog.Log
-                    ($"{target.Name}'s {modDef.Name} was refreshed (Barrier: {initialBarrierValue}).");
+                _battleLog.Log($"{target.Name}'s {modDef.Name} was refreshed (Barrier: {initialBarrierValue}).");
             }
             else
             {
-                // --- BATTLE LOG ---
                 _battleLog.Log($"{target.Name}'s {modDef.Name} was refreshed.");
             }
 
@@ -88,6 +98,7 @@ public class ApplyModifierHandler : IEffectHandler
                 TurnsRemaining = def.DurationInTurns,
                 CasterId = source.Id,
                 CurrentBarrierValue = initialBarrierValue,
+                StackCount = 1, // Começa com 1 stack
                 ActiveStatusEffects = modDef.GrantedStatusEffects.ToList()
             };
 
