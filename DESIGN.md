@@ -67,15 +67,15 @@ A execução ocorre por agendamento e processamento linear:
 4.  **Resultado:** O Engine retorna uma lista de `CombatActionResult`, contendo o histórico narrativo de tudo o que aconteceu em cadeia.
 
 ### 3.2. Battle Logs e Feedback
-Cada ação processada gera um `CombatActionResult` que contém:
-* `IsSuccess`: Se a ação ocorreu ou falhou.
-* `BattleLogEntries`: Uma lista de strings formatadas para o jogador.
-* `Tags`: Metadados para a UI disparar animações (ex: "Critical", "Miss").
+A narrativa do combate é gerida por um serviço Scoped (IBattleLogService).
+* Qualquer serviço (Engine, TurnManager, Handlers) pode injetar este serviço e escrever logs (ex: "Korg ganhou 10 Defense").
+* No final do pedido (Request), o Handler recolhe todos os logs acumulados e envia-os para o cliente (via resposta HTTP temporariamente, e via SignalR no futuro).
+* O CombatActionResult mantém-se apenas para dados técnicos (IsSuccess) e Tags semânticas (ResultTags) para animações de UI.
 
 ### 3.3. Entidades e Serviços Chave
-* **`ExecuteAbilityAction`:** Encapsula toda a lógica de uma habilidade (Validação de Status, Pagamento de Essence/HP, Cooldowns, Hit Chance).
+* **`ExecuteAbilityAction`:** Encapsula a lógica de execução. Não injeta serviços no construtor; utiliza o ICombatEngine como Service Locator para aceder a CostService, BattleLog, etc.
 * **`IEffectHandler`:** Implementações especializadas para cada tipo de efeito (Dano, Cura, Buffs).
-* **`TriggerProcessor`:** Ouve eventos e agenda reações. Filtra eventos globais usando `ValidateCondition` (ex: garantir que só reajo se for eu a levar dano).
+* **`TriggerProcessor`:** Ouve eventos e agenda reações. Filtra eventos globais usando `ValidateCondition`. 
 
 ---
 
@@ -109,9 +109,12 @@ O sistema de seleção de alvos (`ITargetResolutionService`) resolve quem vai so
 
 ### 5.1. Estado Atual
 Suporta regras baseadas em:
-* **Relação:** Self, Ally, Enemy.
+* **Relação:** Self, Ally, Enemy, AllEnemies, etc.
+* **Raça:** Filtros inclusivos (RequiredRaceIds) e exclusivos (ExcludedRaceIds).
 * **Quantidade:** Single Target, Multi-Target, AoE (All).
 * **Estratégia Auto:** Random, LowestHP, HighestHP (para AI ou Triggers).
+* **Taunt :** Implementado como um Debuff na Vítima (StatusEffectType.Taunted). Se o atacante tiver o modifier Taunted, a lista de alvos válidos é filtrada para conter apenas a fonte do Taunt (CasterId).
+
 
 ### 5.2. Visão Futura (Race & Traits)
 Planeia-se expandir o sistema de filtros para permitir sinergias raciais e temáticas.
@@ -124,10 +127,10 @@ Isto será feito através de tags e propriedades na `TargetingRule`.
 ## 6. Modificadores e Status (Buffs/Debuffs)
 
 O sistema de Modifiers é a espinha dorsal da complexidade do jogo.
-* **Stacking:** Modifiers podem acumular ou fazer refresh de duração.
+* **Stacking:** Modifiers podem acumular ou fazer refresh de duração dependendo do seu MaxStacks.
 * **Barreiras (Shields):** Suportam scaling (ex: 50% de Magic) e podem bloquear tipos específicos de dano (ex: "Fire Shield").
 * **Status Effects (CC):**
     * `Stun`: Bloqueia tudo.
-    * `Silence`: Bloqueia Skills (permite Basic Attack).
-    * `Disarm`: Bloqueia Basic Attack (permite Skills).
+    * `Silence`: Bloqueia habilidades com Tags mágicas (Spell, Magic).
+    * `Disarm`: Disarm: Bloqueia habilidades com Tags físicas (Melee, Ranged, Weapon).
     * `Invulnerable` / `Untargetable`: Regras defensivas absolutas.
