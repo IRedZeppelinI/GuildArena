@@ -41,7 +41,6 @@ public class CharacterDefinition
     public string? TraitModifierId { get; set; } 
 
 
-    public required string BasicAttackAbilityId { get; set; }
 
     // Habilidades de defesa/foco específicas deste herói    
     public string? GuardAbilityId { get; set; }

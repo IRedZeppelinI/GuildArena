@@ -63,9 +63,7 @@ public class CombatantFactory : ICombatantFactory
             ActionsTakenThisTurn = 0
         };
 
-        // 4. Configurar Habilidades
-        combatant.BasicAttack = ResolveAbility(charDef.BasicAttackAbilityId);
-
+        // 4. Configurar Habilidades      
         // Special Ability
         // Verifica se o herói tem Guard ou Focus        
         string? specialId = !string.IsNullOrEmpty(charDef.GuardAbilityId)

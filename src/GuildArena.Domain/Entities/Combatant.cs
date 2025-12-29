@@ -30,7 +30,6 @@ public class Combatant
     public required BaseStats BaseStats { get; set; }
 
     // Habilidades comuns. GuardAbility e FocusAbility são exclusivas, ou uma ou outra
-    public AbilityDefinition? BasicAttack { get; set; }
 
     /// <summary>
     /// The unique utility ability available to this combatant.
@@ -46,7 +45,7 @@ public class Combatant
 
     /// <summary>
     /// The list of active abilities/skills this combatant can use in battle.
-    /// Does not include Basic Attack, Guard or Focus.
+    /// Does not include Guard or Focus.
     /// </summary>
     public List<AbilityDefinition> Abilities { get; set; } = new();
 

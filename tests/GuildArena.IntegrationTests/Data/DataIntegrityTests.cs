@@ -93,11 +93,7 @@ public class DataIntegrityTests
                 if (!abilities.ContainsKey(abilId))
                     errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown AbilityId:" +
                         $" '{abilId}'");
-            }
-
-            if (!abilities.ContainsKey(hero.BasicAttackAbilityId))
-                errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown BasicAttackAbilityId:" +
-                    $" '{hero.BasicAttackAbilityId}'");
+            }            
 
             if (!string.IsNullOrEmpty(hero.GuardAbilityId) && !abilities.ContainsKey(hero.GuardAbilityId))
                 errors.Add($"Hero '{hero.Name}' ({hero.Id}) references unknown GuardAbilityId:" +
