@@ -1,0 +1,169 @@
+[
+  {
+    "Id": "ABIL_KORG_SMASH",
+    "Name": "Stone Fist",
+    "Description": "A heavy punch infused with earth essence.",
+    "Tags": [ "Physical", "Melee", "Vigor" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 8,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Blunt" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_KORG_SHARD",
+    "Name": "Trembling Strike",
+    "Description": "Hurls a rock that reduces the enemy's agility.",
+    "Tags": [ "Physical", "Ranged", "Vigor" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 2,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Ranged",
+        "BaseAmount": 10,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 0.8,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Earth" ]
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_KORG_CONCUSSION",
+        "DurationInTurns": 2,
+        "TargetRuleId": "TGT"
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_KORG_LINK",
+    "Name": "Guardian's Link",
+    "Description": "Shields an ally using the caster's Defense.",
+    "Tags": [ "Spell", "Light", "Vigor" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      },
+      {
+        "Type": "Light",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Ally",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_KORG_LINK_BARRIER",
+        "DurationInTurns": 2,
+        "TargetRuleId": "TGT",
+        "CanBeEvaded": false
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_KORG_FORTRESS",
+    "Name": "Fortress Form",
+    "Description": "Become an immovable object, provoking one enemy.",
+    "Tags": [ "Spell", "Buff", "Ultimate", "Light" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 5,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 2
+      },
+      {
+        "Type": "Light",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      },
+      {
+        "RuleId": "TGT_TAUNT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_KORG_FORTRESS_BUFF",
+        "DurationInTurns": 2,
+        "TargetRuleId": "SELF",
+        "CanBeEvaded": false
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_KORG_PROVOKED",
+        "DurationInTurns": 2,
+        "TargetRuleId": "TGT_TAUNT",
+        "CanBeEvaded": false
+      }
+    ]
+  },
+  {
+    "Id": "INT_KORG_HARDEN_PROC",
+    "Name": "Reactive Harden",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal" ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_KORG_HARDEN",
+        "DurationInTurns": 2,
+        "TargetRuleId": "SELF"
+      }
+    ]
+  }
+]

@@ -1,5 +1,5 @@
 [
-  { // --- GARRET ---
+  {
     "Id": "HERO_GARRET",
     "Name": "Garret",
     "Description": "A seasoned slayer. Deals heavy physical damage.",
@@ -23,9 +23,7 @@
       "MaxActions": 0,
       "MaxHP": 15
     },
-    "BasicAttackAbilityId": "ABIL_COMMON_SLASH",
     "GuardAbilityId": "ABIL_COMMON_GUARD",
-    "FocusAbilityId": null,
     "AbilityIds": [
       "ABIL_GARRET_PRECISION",
       "ABIL_GARRET_POMMEL",
@@ -33,10 +31,10 @@
       "ABIL_GARRET_EXECUTE"
     ]
   },
-  { // --- KORG ---
+  {
     "Id": "HERO_KORG",
     "Name": "Korg",
-    "Description": "A stoic Valdrin guardian. Protects allies with earth magic.",
+    "Description": "A stoic Valdrin guardian. Shields allies and withstands heavy blows.",
     "RaceId": "RACE_VALDRIN",
     "TraitModifierId": "MOD_KORG_TRAIT",
     "BaseStats": {

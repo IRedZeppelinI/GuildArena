@@ -1,14 +1,14 @@
 [
-  { // Valdrin
-    "Id": "MOD_RACIAL_ROCK_SKIN",
+  {
+    "Id": "MOD_RACIAL_VALDRIN_SKIN",
     "Name": "Rock Skin",
     "Type": "Bless",
-    "Description": "Reduces incoming Physical damage.",
+    "Description": "Reduces incoming Physical damage by 3.",
     "DamageModifications": [
       {
         "RequiredTag": "Physical",
-        "Type": "PERCENTAGE",
-        "Value": -0.15
+        "Type": "FLAT",
+        "Value": -3
       }
     ]
   }

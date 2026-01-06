@@ -128,17 +128,25 @@ public class DamageEffectHandler : IEffectHandler
     private float CalculateMitigatedDamage(EffectDefinition def, Combatant source, Combatant target)
     {
         float sourceStatValue = 0;
-        switch (def.Delivery)
+        if (def.ScalingStat != StatType.None)
         {
-            case DeliveryMethod.Melee:
-                sourceStatValue = _statService.GetStatValue(source, StatType.Attack);
-                break;
-            case DeliveryMethod.Ranged:
-                sourceStatValue = _statService.GetStatValue(source, StatType.Agility);
-                break;
-            case DeliveryMethod.Spell:
-                sourceStatValue = _statService.GetStatValue(source, StatType.Magic);
-                break;
+            sourceStatValue = _statService.GetStatValue(source, def.ScalingStat);
+        }
+        else
+        {
+            //TODO: Rever se quero este fallback ou obrigar effects a conterem sempre ScalingStat
+            switch (def.Delivery)
+            {
+                case DeliveryMethod.Melee:
+                    sourceStatValue = _statService.GetStatValue(source, StatType.Attack);
+                    break;
+                case DeliveryMethod.Ranged:
+                    sourceStatValue = _statService.GetStatValue(source, StatType.Agility);
+                    break;
+                case DeliveryMethod.Spell:
+                    sourceStatValue = _statService.GetStatValue(source, StatType.Magic);
+                    break;
+            }
         }
 
         float rawDamage = (sourceStatValue * def.ScalingFactor) + def.BaseAmount;

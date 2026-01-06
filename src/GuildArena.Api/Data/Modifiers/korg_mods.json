@@ -1,0 +1,69 @@
+[
+  {
+    "Id": "MOD_KORG_TRAIT",
+    "Name": "Obsidian Resonance",
+    "Type": "Bless",
+    "Description": "[Passive] When taking damage, gain stacking Defense.",
+    "Triggers": [ "ON_RECEIVE_DAMAGE" ],
+    "TriggeredAbilityId": "INT_KORG_HARDEN_PROC"
+  },
+  {
+    "Id": "MOD_KORG_HARDEN",
+    "Name": "Hardened",
+    "Type": "Bless",
+    "Description": "+10% Defense (Stacks up to 5 times)",
+    "MaxStacks": 5,
+    "StatModifications": [
+      {
+        "Stat": "Defense",
+        "Type": "PERCENTAGE",
+        "Value": 0.10
+      }
+    ]
+  },
+  {
+    "Id": "MOD_KORG_CONCUSSION",
+    "Name": "Concussed",
+    "Type": "Curse",
+    "Description": "-20% Agility",
+    "StatModifications": [
+      {
+        "Stat": "Agility",
+        "Type": "PERCENTAGE",
+        "Value": -0.20
+      }
+    ]
+  },
+  {
+    "Id": "MOD_KORG_LINK_BARRIER",
+    "Name": "Stone Shield",
+    "Type": "Bless",
+    "Description": "Barrier scaling with Caster Defense.",
+    "Barrier": {
+      "BaseAmount": 10,
+      "ScalingStat": "Defense",
+      "ScalingFactor": 1.5,
+      "BlockedTags": []
+    }
+  },
+  {
+    "Id": "MOD_KORG_FORTRESS_BUFF",
+    "Name": "Fortress",
+    "Type": "Bless",
+    "Description": "Massive Barrier.",
+    "Barrier": {
+      "BaseAmount": 50,
+      "ScalingStat": "Defense",
+      "ScalingFactor": 2.0,
+      "BlockedTags": []
+    }
+  },
+  {
+    "Id": "MOD_KORG_PROVOKED",
+    "Name": "Provoked",
+    "Type": "Curse",
+    "Description": "Forced to attack Korg.",
+    "GrantedStatusEffects": [ "Taunted" ],
+    "RemoveOnCasterDeath": true
+  }
+]

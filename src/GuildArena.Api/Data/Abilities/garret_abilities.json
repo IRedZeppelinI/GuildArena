@@ -2,10 +2,10 @@
   {
     "Id": "ABIL_GARRET_PRECISION",
     "Name": "Precision Strike",
-    "Description": "A calculated strike that deals heavy damage.",
-    "Tags": [ "Physical", "Melee" ],
+    "Description": "A calculated strike dealing heavy damage.",
+    "Tags": [ "Physical", "Melee", "Vigor" ],
     "ActionPointCost": 1,
-    "BaseCooldown": 2,
+    "BaseCooldown": 0,
     "Costs": [
       {
         "Type": "Vigor",
@@ -36,7 +36,7 @@
     "Id": "ABIL_GARRET_POMMEL",
     "Name": "Pommel Bash",
     "Description": "Strikes the enemy, stunning them for 1 turn.",
-    "Tags": [ "Physical", "Melee", "CC" ],
+    "Tags": [ "Physical", "Melee", "CC", "Vigor" ],
     "ActionPointCost": 1,
     "BaseCooldown": 3,
     "Costs": [
@@ -65,7 +65,7 @@
         "ScalingStat": "Attack",
         "ScalingFactor": 0.5,
         "TargetRuleId": "TGT",
-        "Tags": []
+        "Tags": [ "Physical" ]
       },
       {
         "Type": "APPLY_MODIFIER",
@@ -80,7 +80,7 @@
     "Id": "ABIL_GARRET_ADRENALINE",
     "Name": "Adrenaline",
     "Description": "Increases stats for 2 turns.",
-    "Tags": [ "Buff" ],
+    "Tags": [ "Buff", "Vigor" ],
     "ActionPointCost": 0,
     "BaseCooldown": 4,
     "Costs": [
@@ -110,10 +110,9 @@
     "Id": "ABIL_GARRET_EXECUTE",
     "Name": "Slayer's Mercy",
     "Description": "A devastating finisher.",
-    "Tags": [ "Physical", "Melee", "Ultimate" ],
+    "Tags": [ "Physical", "Melee", "Ultimate", "Vigor" ],
     "ActionPointCost": 1,
     "BaseCooldown": 5,
-    "HPCost": 0,
     "Costs": [
       {
         "Type": "Vigor",

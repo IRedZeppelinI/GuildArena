@@ -18,7 +18,7 @@
     "Id": "RACE_VALDRIN",
     "Name": "Valdrin",
     "Description": "Stone-kin warriors with hardened skin.",
-    "RacialModifierIds": [ "MOD_RACIAL_ROCK_SKIN" ],
+    "RacialModifierIds": [ "MOD_RACIAL_VALDRIN_SKIN" ],
     "BonusStats": {
       "Attack": 0,
       "Defense": 5,

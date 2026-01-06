@@ -2,6 +2,7 @@
 
 public enum StatType
 {
+    None = 0,
     Attack,
     Defense,
     Agility,

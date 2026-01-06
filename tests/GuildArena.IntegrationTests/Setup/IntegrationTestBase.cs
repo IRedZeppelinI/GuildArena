@@ -59,12 +59,17 @@ public abstract class IntegrationTestBase
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
 
         // 6. SIMULAR UTILIZADOR (Player 1)
-        services.AddScoped<ICurrentUserService>(sp =>
-        {
-            var mock = Substitute.For<ICurrentUserService>();
-            mock.UserId.Returns(1);
-            return mock;
-        });
+        //services.AddScoped<ICurrentUserService>(sp =>
+        //{
+        //    var mock = Substitute.For<ICurrentUserService>();
+        //    mock.UserId.Returns(1);
+        //    return mock;
+        //});
+        //Como singleton para alterar durante testes
+        var userMock = Substitute.For<ICurrentUserService>();
+        userMock.UserId.Returns(1); // Default Player 1        
+        services.AddSingleton(userMock);
+
 
         // 7. CONSTRUIR
         Provider = services.BuildServiceProvider();
