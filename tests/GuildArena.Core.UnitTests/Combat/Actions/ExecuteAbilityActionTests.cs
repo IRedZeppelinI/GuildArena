@@ -296,6 +296,66 @@ public class ExecuteAbilityActionTests
     }
 
     [Fact]
+    public void Execute_WhenPlayerLiesAboutPayment_ShouldFail()
+    {
+        // ARRANGE
+        var source = CreateCombatant(1, 1);
+        var ability = CreateAbility("CheatSkill");
+        var player = new CombatPlayer { PlayerId = 1 };
+
+        // Cenário: O Player tem 5 Vigor. Não tem Mind.
+        player.EssencePool[EssenceType.Vigor] = 5;
+
+        var state = new GameState { Players = new() { player } };
+
+        // O custo da habilidade é 1 Neutral (teoricamente pagável com Vigor)
+        var costs = new FinalAbilityCosts
+        {
+            HPCost = 0,
+            EssenceCosts = new() { new EssenceAmount { Type = EssenceType.Neutral, Amount = 1 } }
+        };
+
+        // Mock 1: O custo é calculado corretamente
+        _costMock.CalculateFinalCosts(
+            player,
+            ability,
+            Arg.Any<List<Combatant>>(),
+            Arg.Any<AbilityTargets>())
+            .Returns(costs);
+
+        // Mock 2: A validação teórica passa (porque 5 Vigor > 1 Neutral)
+        _essenceMock.HasEnoughEssence(
+            Arg.Any<CombatPlayer>(),
+            Arg.Any<List<EssenceAmount>>())
+            .Returns(true);
+
+        // A BATOTA: O jogador tenta pagar com 1 Mind (que não tem)
+        var paymentLie = new Dictionary<EssenceType, int> { { EssenceType.Mind, 1 } };
+
+        var action = new ExecuteAbilityAction(
+            ability,
+            source,
+            new AbilityTargets(),
+            paymentLie); 
+
+        // ACT
+        var result = action.Execute(_engineMock, state);
+
+        // ASSERT
+        // Deve falhar porque a validação de ownership deteta que não há Mind no pool
+        result.IsSuccess.ShouldBeFalse();
+
+        // Verifica se logou o aviso de segurança
+        _engineMock.AppLogger.Received(1).Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("possess")), // "essence they do not possess"
+            null,
+            Arg.Any<Func<object, Exception?, string>>()
+        );
+    }
+
+    [Fact]
     public void Execute_WhenTargetInvulnerable_ShouldLogAndSkip()
     {
         // ARRANGE
