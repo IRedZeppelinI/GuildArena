@@ -145,9 +145,13 @@ public class ExecuteAbilityAction : ICombatAction
         // Cálculo e Validação de Custos (Essence/HP)
         var player = state.Players.First(p => p.PlayerId == Source.OwnerId);
 
-        // --- PASSAGEM DO NOVO ARGUMENTO ---
-        calculatedCost = engine.CostService.CalculateFinalCosts(player, _ability, targets, _userSelectedTargets);
-        // ----------------------------------
+        
+        calculatedCost = engine.CostService.CalculateFinalCosts(
+            player,
+            _ability,
+            targets,
+            _userSelectedTargets);
+        
 
         if (calculatedCost.HPCost > 0 && Source.CurrentHP <= calculatedCost.HPCost) return false;
         if (!engine.EssenceService.HasEnoughEssence(player, calculatedCost.EssenceCosts)) return false;
@@ -156,6 +160,13 @@ public class ExecuteAbilityAction : ICombatAction
         if (!ValidateAllocation(calculatedCost.EssenceCosts))
         {
             engine.AppLogger.LogWarning("Invalid resource allocation.");
+            return false;
+        }
+        
+        //verificar se jogador tem a essence que enviou para pagar
+        if (!ValidatePaymentOwnership(player, _payment))
+        {
+            engine.AppLogger.LogWarning("Player tried to pay with essence they do not possess.");
             return false;
         }
 
@@ -174,6 +185,23 @@ public class ExecuteAbilityAction : ICombatAction
 
         int neutralNeeded = required.Where(c => c.Type == EssenceType.Neutral).Sum(c => c.Amount);
         return pool.Values.Sum() >= neutralNeeded;
+    }
+
+    private bool ValidatePaymentOwnership(CombatPlayer player, Dictionary<EssenceType, int> payment)
+    {
+        foreach (var item in payment)
+        {
+            // Ignora pagamentos de 0
+            if (item.Value <= 0) continue;
+            
+            
+            if (!player.EssencePool.TryGetValue(item.Key, out int currentAmount) || 
+                currentAmount < item.Value)
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void PayCosts(ICombatEngine engine, GameState state, FinalAbilityCosts costs)
