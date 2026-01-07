@@ -46,6 +46,8 @@ public class TriggerProcessor : ITriggerProcessor
                 if (!allDefinitions.TryGetValue(activeMod.DefinitionId, out var def)) continue;
 
                 if (!def.Triggers.Contains(trigger)) continue;
+
+                // Valida se o trigger pertence a este combatente
                 if (!ValidateCondition(trigger, combatant, context)) continue;
 
                 if (!string.IsNullOrEmpty(def.TriggeredAbilityId))
@@ -62,7 +64,10 @@ public class TriggerProcessor : ITriggerProcessor
     private bool ValidateCondition(ModifierTrigger trigger, Combatant holder, TriggerContext context)
     {
         // Lógica para triggers Defensivos (Quem recebe a ação)
-        if (trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
+        if (trigger == ModifierTrigger.ON_RECEIVE_DAMAGE ||
+            trigger == ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE ||
+            trigger == ModifierTrigger.ON_RECEIVE_MAGIC_DAMAGE ||
+            trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
             trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK)
         {
@@ -71,9 +76,13 @@ public class TriggerProcessor : ITriggerProcessor
         }
 
         // Lógica para triggers Ofensivos (Quem causa a ação)
-        if (trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
+        if (trigger == ModifierTrigger.ON_DEAL_DAMAGE ||
+            trigger == ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE ||
+            trigger == ModifierTrigger.ON_DEAL_MAGIC_DAMAGE ||
+            trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_DEAL_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK)
+            trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK ||
+            trigger == ModifierTrigger.ON_ABILITY_CAST)
         {
             // O trigger só dispara se o portador do modifier for a FONTE do evento
             return context.Source.Id == holder.Id;
