@@ -7,22 +7,32 @@ public class PlayerRepository : IPlayerRepository
 {
     public Task<List<HeroCharacter>> GetHeroesAsync(int playerId, List<int> heroIds)
     {
-        // STUB: Simula uma base de dados onde o jogador tem alguns heróis.
-        // Vamos fingir que o jogador tem sempre os heróis que pede, 
-        // desde que os IDs sejam "válidos" para efeitos de teste.
+        // STUB DB
 
         var result = new List<HeroCharacter>();
 
         foreach (var id in heroIds)
         {
-            // Simulação: Cria o herói on-the-fly baseado no ID pedido.
-            // Num cenário real, faria: _context.Heroes.Where(h => ids.Contains(h.Id) && h.OwnerId == playerId)
+            // _context.Heroes.Where(h => ids.Contains(h.Id) && h.OwnerId == playerId)
+
+            //A fornecer herois harcoded ate criar infrastrutura sql
+            // TODO: Mudar base de herois para GuildRepository, Player será para questoes de conta de user
+            //TODO: Remover hardcoded de DEBUG
+            // ID 101 -> Garret
+            // ID 102 -> Korg
+            // Outros -> Garret (Fallback)
+            string defId = id switch
+            {
+                101 => "HERO_GARRET",
+                102 => "HERO_KORG",
+                _ => "HERO_GARRET"
+            };
 
             result.Add(new HeroCharacter
             {
                 Id = id,
                 GuildId = playerId,
-                CharacterDefinitionID = "HERO_GARRET", // Hardcoded para o teste funcionar
+                CharacterDefinitionID = defId,
                 CurrentLevel = 1,
                 CurrentXP = 0
             });

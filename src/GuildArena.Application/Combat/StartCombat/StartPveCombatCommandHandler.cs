@@ -151,6 +151,15 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         // Regra de Handicap: O primeiro jogador recebe menos recursos (definido no serviço)
         var startingPlayer = gameState.Players.First(p => p.PlayerId == startingPlayerId);
+
+
+#if DEBUG
+        // --- DEBUG: START WITH FULL RESOURCES ---        
+        _essenceService.AddEssence(startingPlayer, EssenceType.Vigor, 5);
+        _essenceService.AddEssence(startingPlayer, EssenceType.Light, 5);
+        _essenceService.AddEssence(startingPlayer, EssenceType.Mind, 5);
+        // ----------------------------------------
+#endif
         _essenceService.GenerateStartOfTurnEssence(startingPlayer, baseAmount: 2);
 
         // 8. Persistir Estado Inicial no Redis
