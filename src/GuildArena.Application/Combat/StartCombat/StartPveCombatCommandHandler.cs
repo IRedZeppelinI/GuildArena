@@ -154,6 +154,11 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
 
 #if DEBUG
+        //UTILIZDO SÓ PARA DEBUG
+        startingPlayer = gameState.Players.Where(p => p.PlayerId == 1).First();
+        startingPlayer.MaxTotalEssence = 20;
+        gameState.CurrentPlayerId = 1;
+
         // --- DEBUG: START WITH FULL RESOURCES ---        
         _essenceService.AddEssence(startingPlayer, EssenceType.Vigor, 5);
         _essenceService.AddEssence(startingPlayer, EssenceType.Light, 5);
