@@ -57,7 +57,7 @@
     },
     "GuardAbilityId": "ABIL_COMMON_GUARD",
     "AbilityIds": [
-      "ABIL_KORG_SMASH",
+      "ABIL_KORG_STONE_FIST",
       "ABIL_KORG_SHARD",
       "ABIL_KORG_LINK",
       "ABIL_KORG_FORTRESS"

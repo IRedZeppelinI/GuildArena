@@ -1,12 +1,13 @@
-﻿using GuildArena.Application.Combat.ExecuteAbility;
-using GuildArena.Application.Abstractions;
+﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
-using Shouldly;
 using MediatR;
-using GuildArena.Domain.Enums.Stats;
+using Shouldly;
 
 namespace GuildArena.IntegrationTests.Scenarios.General;
 
@@ -28,7 +29,12 @@ public class CommonAbilitiesTests : IntegrationTestBase
             CurrentHP = 100,
             MaxHP = 100,
             BaseStats = new BaseStats { Attack = 10, Defense = 5 },
-            Position = 1
+            Position = 1,
+            Abilities = new List<AbilityDefinition>
+            {
+                new AbilityDefinition { Id = "ABIL_COMMON_SLASH", Name = "Slash" }
+            },
+            SpecialAbility = new AbilityDefinition { Id = "ABIL_COMMON_GUARD", Name = "Guard" }
         };
 
         var dummy = new Combatant

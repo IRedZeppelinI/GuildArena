@@ -1,6 +1,6 @@
 [
   {
-    "Id": "ABIL_KORG_SMASH",
+    "Id": "ABIL_KORG_STONE_FIST",
     "Name": "Stone Fist",
     "Description": "A heavy punch infused with earth essence.",
     "Tags": [ "Physical", "Melee", "Vigor" ],

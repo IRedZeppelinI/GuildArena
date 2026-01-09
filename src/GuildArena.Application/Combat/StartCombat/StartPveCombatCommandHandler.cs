@@ -155,9 +155,15 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
 #if DEBUG
         //UTILIZDO SÓ PARA DEBUG
-        startingPlayer = gameState.Players.Where(p => p.PlayerId == 1).First();
-        startingPlayer.MaxTotalEssence = 20;
-        gameState.CurrentPlayerId = 1;
+
+        // Garantimos que temos o valor (o Handler já validou null em cima, por isso é seguro)
+        int debugPlayerId = playerId.Value;
+
+        // 1. Forçar o turno para o jogador humano atual (seja ele 1 ou 123)
+        gameState.CurrentPlayerId = debugPlayerId;
+
+        // 2. Encontrar o objeto desse jogador
+        startingPlayer = gameState.Players.First(p => p.PlayerId == debugPlayerId);
 
         // --- DEBUG: START WITH FULL RESOURCES ---        
         _essenceService.AddEssence(startingPlayer, EssenceType.Vigor, 5);

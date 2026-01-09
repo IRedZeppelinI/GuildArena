@@ -65,7 +65,11 @@ public class ExecuteAbilityCommandHandlerTests
             RaceId = "Human",
             BaseStats = new BaseStats(),
             CurrentHP = 100, 
-            MaxHP = 100
+            MaxHP = 100,
+            Abilities = new List<AbilityDefinition>
+            {
+                new AbilityDefinition { Id = abilityId, Name = "Fire" }
+            }
         };
 
         var gameState = new GameState

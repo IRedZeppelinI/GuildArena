@@ -57,6 +57,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
                 ($"Source combatant {request.SourceId} not found in this combat.");
         }
 
+        //validacao combatant pertence ao player que executa a habilidade
         if (sourceCombatant.OwnerId != userId)
         {
             _logger.LogWarning(
@@ -66,6 +67,17 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
                 sourceCombatant.OwnerId);
             throw new InvalidOperationException("You do not own this combatant.");
         }
+
+        //validacao combatant possui a habilidade
+        bool knowsAbility = sourceCombatant.Abilities.Any(a => a.Id == request.AbilityId) ||
+                            sourceCombatant.SpecialAbility?.Id == request.AbilityId;
+        if (!knowsAbility)
+        {
+            _logger.LogWarning("Combatant {Source} tried to use unknown ability {AbilityId}.",
+                sourceCombatant.Name, request.AbilityId);
+            throw new InvalidOperationException($"Combatant {sourceCombatant.Name} does not know ability {request.AbilityId}.");
+        }
+
 
         // 5. Load Ability Definition
         if (!_abilityRepo.TryGetDefinition(request.AbilityId, out var abilityDef))

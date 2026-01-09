@@ -1,12 +1,13 @@
-﻿using GuildArena.Application.Combat.ExecuteAbility;
-using GuildArena.Application.Abstractions;
+﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
-using Shouldly;
-using GuildArena.Domain.ValueObjects.State;
 using MediatR;
+using Shouldly;
 
 namespace GuildArena.IntegrationTests.Scenarios.General;
 
@@ -46,7 +47,11 @@ public class RacialMechanicsTests : IntegrationTestBase
             BaseStats = new BaseStats { Attack = 10 },
             Position = 1,
             CurrentHP = 100,
-            MaxHP = 100
+            MaxHP = 100,
+            Abilities = new List<AbilityDefinition>
+            {
+                new() { Id = "ABIL_COMMON_SLASH", Name = "Slash" }
+            }
         };
 
         var gameState = new GameState

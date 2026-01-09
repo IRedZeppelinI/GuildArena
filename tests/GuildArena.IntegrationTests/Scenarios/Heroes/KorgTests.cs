@@ -1,5 +1,6 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
@@ -38,6 +39,13 @@ public class KorgTests : IntegrationTestBase
             {
                 new ActiveModifier { DefinitionId = "MOD_RACIAL_VALDRIN_SKIN", TurnsRemaining = -1 },
                 new ActiveModifier { DefinitionId = "MOD_KORG_TRAIT", TurnsRemaining = -1, CasterId = 101 }
+            },
+            Abilities = new List<AbilityDefinition>
+            {
+                new() { Id = "ABIL_KORG_STONE_FIST", Name = "Stone Fist" }, 
+                new() { Id = "ABIL_KORG_SHARD", Name = "Shard" },
+                new() { Id = "ABIL_KORG_LINK", Name = "Link" },
+                new() { Id = "ABIL_KORG_FORTRESS", Name = "Fortress" }
             }
         };
 
@@ -64,7 +72,11 @@ public class KorgTests : IntegrationTestBase
             CurrentHP = 100,
             MaxHP = 100,
             BaseStats = new BaseStats { Defense = 0, Attack = 10, MaxActions = 2 },
-            Position = 1
+            Position = 1,
+            Abilities = new List<AbilityDefinition>
+            {
+                new() { Id = "ABIL_COMMON_SLASH", Name = "Slash" }
+            }
         };
 
         var gameState = new GameState
@@ -92,7 +104,7 @@ public class KorgTests : IntegrationTestBase
         {
             CombatId = combatId,
             SourceId = 101,
-            AbilityId = "ABIL_KORG_SMASH",
+            AbilityId = "ABIL_KORG_STONE_FIST",
             TargetSelections = new() { { "TGT", new List<int> { 201 } } },
             Payment = new()
         };

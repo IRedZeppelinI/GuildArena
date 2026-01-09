@@ -1,13 +1,14 @@
-﻿using GuildArena.Application.Combat.ExecuteAbility;
-using GuildArena.Application.Abstractions;
+﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
-using Shouldly;
-using GuildArena.Domain.Enums.Modifiers;
 using MediatR;
-using GuildArena.Domain.ValueObjects.State;
+using Shouldly;
 
 namespace GuildArena.IntegrationTests.Scenarios.Heroes;
 
@@ -38,6 +39,14 @@ public class GarretTests : IntegrationTestBase
                     TurnsRemaining = -1,
                     CasterId = 101
                 }
+            },
+            Abilities = new List<AbilityDefinition>
+            {
+                new() { Id = "ABIL_COMMON_SLASH", Name = "Slash" },
+                new() { Id = "ABIL_GARRET_PRECISION", Name = "Precision" },
+                new() { Id = "ABIL_GARRET_POMMEL", Name = "Pommel" },
+                new() { Id = "ABIL_GARRET_ADRENALINE", Name = "Adrenaline" },
+                new() { Id = "ABIL_GARRET_EXECUTE", Name = "Execute" }
             }
         };
 
