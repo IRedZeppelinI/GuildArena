@@ -3,13 +3,14 @@ using GuildArena.Core.Combat.Enums;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.ValueObjects.Resources;
-using GuildArena.Domain.ValueObjects.Targeting;
-using GuildArena.Domain.ValueObjects.State;
-using Microsoft.Extensions.Logging;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Stats;
+using GuildArena.Domain.Enums.Targeting;
+using GuildArena.Domain.ValueObjects.Resources;
+using GuildArena.Domain.ValueObjects.State;
+using GuildArena.Domain.ValueObjects.Targeting;
+using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Actions;
 
@@ -52,7 +53,13 @@ public class ExecuteAbilityAction : ICombatAction
             "Processing Action: {ActionName} for Source {SourceId}", Name, Source.Id);
 
         // 2. Resolve Targets (Converte Input UI -> Combatentes Reais)
-        var resolvedTargets = ResolveInitialTargets(engine, gameState);
+        var resolvedTargets = ResolveAndValidateTargets(engine, gameState);
+
+        if (resolvedTargets == null)
+        {
+            result.IsSuccess = false;
+            return result; // Aborta ANTES de gastar mana
+        }
 
         // 3. Validações (Custos, Status, Cooldowns)
         if (!CanExecute(engine, gameState, resolvedTargets, out var calculatedCost, result))
@@ -88,12 +95,30 @@ public class ExecuteAbilityAction : ICombatAction
 
     // --- Lógica Interna ---
 
-    private List<Combatant> ResolveInitialTargets(ICombatEngine engine, GameState state)
+    private List<Combatant>? ResolveAndValidateTargets(ICombatEngine engine, GameState state)
     {
         var list = new List<Combatant>();
+
         foreach (var rule in _ability.TargetingRules)
         {
-            list.AddRange(engine.TargetService.ResolveTargets(rule, Source, state, _userSelectedTargets));
+            var targets = engine.TargetService.ResolveTargets(rule, Source, state, _userSelectedTargets);
+                        
+            // Se a regra é Manual e exige alvos (Count > 0)
+            if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
+            {
+                // Se o serviço devolveu menos alvos do que o exigido
+                // (ex: devolveu 0 porque o alvo era inválido)
+                if (targets.Count < rule.Count)
+                {
+                    engine.BattleLog.Log
+                        ($"Invalid target selection for rule {rule.RuleId}. Expected {rule.Count}," +
+                        $" found {targets.Count}.");
+                    return null; // Retorna NULL para sinalizar erro
+                }
+            }
+            
+
+            list.AddRange(targets);
         }
         return list;
     }
