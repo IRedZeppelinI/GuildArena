@@ -110,9 +110,7 @@ public class ExecuteAbilityAction : ICombatAction
                 // (ex: devolveu 0 porque o alvo era inválido)
                 if (targets.Count < rule.Count)
                 {
-                    engine.BattleLog.Log
-                        ($"Invalid target selection for rule {rule.RuleId}. Expected {rule.Count}," +
-                        $" found {targets.Count}.");
+                    engine.BattleLog.Log($"Invalid target selected.");
                     return null; // Retorna NULL para sinalizar erro
                 }
             }

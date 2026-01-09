@@ -108,9 +108,10 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
                 request.AbilityId,
                 sourceCombatant.Name);
 
-            // TODO:  return a specific error code instead of a generic exception.
-            throw new InvalidOperationException
-                ("Ability execution failed. Check logs for details (Cost, Cooldown, Status).");
+            // TODO:  De momento alterado apra devolver battleLogs
+            //throw new InvalidOperationException
+            //    ("Ability execution failed. Check logs for details (Cost, Cooldown, Status).");
+            return _battleLog.GetAndClearLogs();
         }
 
         // 9. Persist State

@@ -193,8 +193,67 @@ public class ExecuteAbilityCommandHandlerTests
         ex.Message.ShouldContain("do not own");
     }
 
+    //[Fact]
+    //public async Task Handle_ShouldThrowInvalidOperation_WhenEngineReturnsFailure()
+    //{
+    //    // ARRANGE
+    //    var userId = 1;
+    //    var sourceId = 10;
+    //    var abilityId = "ABIL_FAIL";
+
+    //    _userMock.UserId.Returns(userId);
+
+    //    var combatant = new Combatant
+    //    {
+    //        Id = sourceId,
+    //        OwnerId = userId,
+    //        Name = "Hero",
+    //        RaceId = "H",
+    //        BaseStats = new BaseStats(),
+    //        CurrentHP = 100,
+    //        MaxHP = 100
+    //    };
+
+    //    var gameState = new GameState
+    //    {
+    //        CurrentPlayerId = userId,
+    //        Combatants = new List<Combatant> { combatant }
+    //    };
+
+    //    _combatRepoMock.GetAsync("C1").Returns(gameState);
+
+    //    _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
+    //        .Returns(x =>
+    //        {
+    //            x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
+    //            return true;
+    //        });
+
+    //    // O Engine diz que falhou (ex: não tem mana, está atordoado)
+    //    _engineMock.ExecuteAbility(
+    //        default!, default!, default!, default!, default!)
+    //        .ReturnsForAnyArgs(new List<CombatActionResult>
+    //        {
+    //            new CombatActionResult { IsSuccess = false } // Falha lógica
+    //        });
+
+    //    var command = new ExecuteAbilityCommand
+    //    {
+    //        CombatId = "C1",
+    //        SourceId = sourceId,
+    //        AbilityId = abilityId
+    //    };
+
+    //    // ACT & ASSERT
+    //    await Should.ThrowAsync<InvalidOperationException>(() =>
+    //        _handler.Handle(command, CancellationToken.None));
+
+    //    // Não deve guardar estado se a ação falhou logicamente
+    //    await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
+    //}
+
     [Fact]
-    public async Task Handle_ShouldThrowInvalidOperation_WhenEngineReturnsFailure()
+    public async Task Handle_ShouldReturnLogs_WhenEngineReturnsFailure()
     {
         // ARRANGE
         var userId = 1;
@@ -211,7 +270,8 @@ public class ExecuteAbilityCommandHandlerTests
             RaceId = "H",
             BaseStats = new BaseStats(),
             CurrentHP = 100,
-            MaxHP = 100
+            MaxHP = 100,
+            Abilities = new List<AbilityDefinition> { new() { Id = abilityId, Name = "Fail Skill" } }
         };
 
         var gameState = new GameState
@@ -223,18 +283,21 @@ public class ExecuteAbilityCommandHandlerTests
         _combatRepoMock.GetAsync("C1").Returns(gameState);
 
         _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
-            .Returns(x =>
-            {
-                x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
-                return true;
-            });
+            .Returns(x => { x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
+                return true; });
 
-        // O Engine diz que falhou (ex: não tem mana, está atordoado)
-        _engineMock.ExecuteAbility(
-            default!, default!, default!, default!, default!)
+        _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Not enough mana." });
+
+        // O Engine diz que falhou logicamente
+        _engineMock.ExecuteAbility
+            (default!,
+            default!,
+            default!,
+            default!,
+            default!)
             .ReturnsForAnyArgs(new List<CombatActionResult>
             {
-                new CombatActionResult { IsSuccess = false } // Falha lógica
+                new CombatActionResult { IsSuccess = false }
             });
 
         var command = new ExecuteAbilityCommand
@@ -244,11 +307,14 @@ public class ExecuteAbilityCommandHandlerTests
             AbilityId = abilityId
         };
 
-        // ACT & ASSERT
-        await Should.ThrowAsync<InvalidOperationException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        // ACT
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Não deve guardar estado se a ação falhou logicamente
+        // ASSERT
+        result.ShouldNotBeEmpty();
+        result.First().ShouldBe("Not enough mana.");
+
+        // Garantimos que NÃO guardou o estado (porque a ação falhou)
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
     }
 }
