@@ -65,7 +65,7 @@
     "Description": "Defensive stance.",
     "Tags": [ "Physical", "Utility" ],
     "ActionPointCost": 1,
-    "BaseCooldown": 0,
+    "BaseCooldown": 2,
     "HPCost": 0,
     "Costs": [],
     "TargetingRules": [

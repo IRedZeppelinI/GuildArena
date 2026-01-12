@@ -1,4 +1,4 @@
-[
+[ //GARRET
   {
     "Id": "HERO_GARRET",
     "Name": "Garret",
@@ -31,7 +31,7 @@
       "ABIL_GARRET_EXECUTE"
     ]
   },
-  {
+  { // KORG
     "Id": "HERO_KORG",
     "Name": "Korg",
     "Description": "A stoic Valdrin guardian. Shields allies and withstands heavy blows.",
