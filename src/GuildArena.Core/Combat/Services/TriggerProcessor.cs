@@ -69,20 +69,23 @@ public class TriggerProcessor : ITriggerProcessor
             trigger == ModifierTrigger.ON_RECEIVE_MAGIC_DAMAGE ||
             trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK)
+            trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK ||
+            trigger == ModifierTrigger.ON_RECEIVE_HEAL)
         {
             // O trigger só dispara se o portador do modifier for o ALVO do evento
             return context.Target?.Id == holder.Id;
         }
 
         // Lógica para triggers Ofensivos (Quem causa a ação)
-        if (trigger == ModifierTrigger.ON_DEAL_DAMAGE ||
+        if (
+            trigger == ModifierTrigger.ON_ABILITY_CAST ||
+            trigger == ModifierTrigger.ON_DEAL_DAMAGE ||
             trigger == ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE ||
             trigger == ModifierTrigger.ON_DEAL_MAGIC_DAMAGE ||
             trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
             trigger == ModifierTrigger.ON_DEAL_RANGED_ATTACK ||
             trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK ||
-            trigger == ModifierTrigger.ON_ABILITY_CAST)
+            trigger == ModifierTrigger.ON_DEAL_HEAL)
         {
             // O trigger só dispara se o portador do modifier for a FONTE do evento
             return context.Source.Id == holder.Id;

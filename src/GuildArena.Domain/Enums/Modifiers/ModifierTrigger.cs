@@ -16,12 +16,14 @@ public enum ModifierTrigger
     ON_DEAL_PHYSICAL_DAMAGE,
     ON_RECEIVE_PHYSICAL_DAMAGE,
     ON_DEAL_MAGIC_DAMAGE,
-    ON_RECEIVE_MAGIC_DAMAGE,       
-    ON_DEATH,
+    ON_RECEIVE_MAGIC_DAMAGE,        
+    ON_DEAL_HEAL,      
+    ON_RECEIVE_HEAL,   
 
     /// <summary>
     /// Fires immediately after paying costs for an ability, but before effects are resolved.
     /// Useful for "On Cast" effects like "Gain 10 Rage when using a Skill".
     /// </summary>
-    ON_ABILITY_CAST
+    ON_ABILITY_CAST,
+    ON_DEATH,
 }
