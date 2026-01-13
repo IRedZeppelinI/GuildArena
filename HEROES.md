@@ -82,10 +82,48 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 
 ## Planeamento (Futuro)
 
-### 3. Elysia (The Oracle)
-*   **Raça:** Psylian (Channel melhorado: gera 2 essence)
-*   **Afinidade:** Mind (Mana Manipulation / Heals)
-*   **Conceito:** Healer e Bateria de Mana.
+## 3. Elysia (The Oracle)
+*   **Raça:** Psylian (Trait Racial: Channel melhorado - gera 2 essence)
+*   **Role:** Healer / Utility
+*   **Afinidade:** Mind (Control) / Light (Healing)
+*   **Estado:** *A Implementar*
+
+### Trait: Blessing of Light
+*   **Reactivo:** Sempre que a Elysia restaura HP a um alvo (seja Single Target ou AoE), esse alvo ganha também **+2 Defense** (ou +10% se formos por percentagem) por 2 turnos.
+    *   *Nota:* Com o Ultimate, isto significa um buff de defesa à equipa inteira.
+
+### Habilidades
+
+**1. Psionic Bolt**
+*   **Custo:** 0 Essence
+*   **Cooldown:** 0 Turnos
+*   **Tags:** `Spell`, `Ranged`, `Mind`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** Causa dano mágico (Scale 1.0 Magic). Ataca a **Magic Defense**.
+
+**2. Mind Shock**
+*   **Custo:** 1 Mind + 1 Neutral
+*   **Cooldown:** 3 Turnos
+*   **Tags:** `Spell`, `Ranged`, `Mind`, `CC`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** Causa dano mágico leve (Scale 0.5 Magic) e aplica **Silence** por 1 turno.
+
+**3. Mending Light**
+*   **Custo:** 1 Mind + 1 Light
+*   **Cooldown:** 0 Turnos (Spammable, limitado apenas pela Essence)
+*   **Tags:** `Spell`, `Light`, `Heal`
+*   **Alvo:** 1 Aliado
+*   **Efeito:** Restaura HP (Scale 1.5 Magic). Aplica automaticamente o Trait (Defense Buff).
+
+**4. Astral Convergence (Ultimate)**
+*   **Custo:** 2 Mind + 2 Light
+*   **Cooldown:** 5 Turnos
+*   **Tags:** `Spell`, `Ultimate`, `Light`, `Heal`
+*   **Alvo:** All Allies (AoE)
+*   **Efeito:** Restaura HP a todos os aliados (Scale 1.2 Magic). Aplica o Trait (Defense Buff) a todos.
+
+
+------------------------------------------------------------
 
 ### 4. Vex (The Unstable)
 *   **Raça:** Kymera (Thorns: Reflete dano melee)
