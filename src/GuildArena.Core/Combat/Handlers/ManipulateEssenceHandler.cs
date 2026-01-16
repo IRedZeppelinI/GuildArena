@@ -52,16 +52,17 @@ public class ManipulateEssenceHandler : IEffectHandler
             _essenceService.AddEssence(player, manipulation.Type, manipulation.Amount);
 
             // --- BATTLE LOG ---
-            if (manipulation.Amount > 0)
-            {
-                _battleLog.Log(
-                    $"{target.Name} gained {manipulation.Amount} {manipulation.Type} Essence.");
-            }
-            else
-            {
-                _battleLog.Log(
-                    $"{target.Name} lost {Math.Abs(manipulation.Amount)} {manipulation.Type} Essence.");
-            }
+            //Alterado para utilizar apenas battleLog de EssenceService. Apagar após testes
+            //if (manipulation.Amount > 0)
+            //{
+            //    _battleLog.Log(
+            //        $"{target.Name} gained {manipulation.Amount} {manipulation.Type} Essence.");
+            //}
+            //else
+            //{
+            //    _battleLog.Log(
+            //        $"{target.Name} lost {Math.Abs(manipulation.Amount)} {manipulation.Type} Essence.");
+            //}
 
             // App Log
             _logger.LogInformation(

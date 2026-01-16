@@ -83,7 +83,18 @@ public class ModifierDefinition
     /// </summary>
     public bool RemoveOnCasterDeath { get; set; } = false;
 
+    /// <summary>
+    /// If true, defensive/reactive triggers (e.g. ON_RECEIVE_HEAL) will fire even if the event 
+    /// happened to an ally, not the modifier holder.
+    /// Default is false.
+    /// </summary>
+    public bool TriggerOnAllies { get; set; } = false;
 
+    /// <summary>
+    /// If true, defensive/reactive triggers will fire even if the event happened to an enemy.
+    /// Default is false.
+    /// </summary>
+    public bool TriggerOnEnemies { get; set; } = false;
 
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
     public string? TriggeredAbilityId { get; set; }

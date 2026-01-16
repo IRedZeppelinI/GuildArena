@@ -48,7 +48,7 @@ public class TriggerProcessor : ITriggerProcessor
                 if (!def.Triggers.Contains(trigger)) continue;
 
                 // Valida se o trigger pertence a este combatente
-                if (!ValidateCondition(trigger, combatant, context)) continue;
+                if (!ValidateCondition(trigger, combatant, context, def)) continue;
 
                 if (!string.IsNullOrEmpty(def.TriggeredAbilityId))
                 {
@@ -60,37 +60,53 @@ public class TriggerProcessor : ITriggerProcessor
 
     /// <summary>
     /// Validates if the context meets the logic requirements for the modifier holder.
+    /// Handles both Self-Triggers (Standard) and Observer-Triggers (Allies/Enemies).
     /// </summary>
-    private bool ValidateCondition(ModifierTrigger trigger, Combatant holder, TriggerContext context)
+    private bool ValidateCondition(
+        ModifierTrigger trigger,
+        Combatant holder,
+        TriggerContext context,
+        ModifierDefinition def)
     {
-        // Lógica para triggers Defensivos (Quem recebe a ação)
-        if (trigger == ModifierTrigger.ON_RECEIVE_DAMAGE ||
-            trigger == ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE ||
-            trigger == ModifierTrigger.ON_RECEIVE_MAGIC_DAMAGE ||
-            trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
-            trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK ||
-            trigger == ModifierTrigger.ON_RECEIVE_HEAL)
+        // 1. Triggers Ofensivos (Ações causadas pelo Holder)
+        if (IsOffensiveTrigger(trigger))
         {
-            // O trigger só dispara se o portador do modifier for o ALVO do evento
-            return context.Target?.Id == holder.Id;
-        }
-
-        // Lógica para triggers Ofensivos (Quem causa a ação)
-        if (
-            trigger == ModifierTrigger.ON_ABILITY_CAST ||
-            trigger == ModifierTrigger.ON_DEAL_DAMAGE ||
-            trigger == ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE ||
-            trigger == ModifierTrigger.ON_DEAL_MAGIC_DAMAGE ||
-            trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
-            trigger == ModifierTrigger.ON_DEAL_RANGED_ATTACK ||
-            trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK ||
-            trigger == ModifierTrigger.ON_DEAL_HEAL)
-        {
-            // O trigger só dispara se o portador do modifier for a FONTE do evento
+            // O trigger só dispara se o portador do modifier for a FONTE do evento.
+            // Ex: Garret ataca -> Garret ativa trait.
             return context.Source.Id == holder.Id;
         }
 
+        // 2. Triggers Defensivos / Reativos (Ações recebidas)
+        if (IsDefensiveTrigger(trigger))
+        {
+            // Caso Base: O holder é o alvo do evento? (Ex: Korg leva dano)
+            if (context.Target?.Id == holder.Id)
+            {
+                return true;
+            }
+
+            // Caso Observer: O holder não é o alvo, mas configurou flags para observar outros.
+            if (context.Target != null)
+            {
+                bool isAlly = context.Target.OwnerId == holder.OwnerId;
+
+                // Observar Aliados (ex: Elysia vê Korg ser curado)
+                if (def.TriggerOnAllies && isAlly)
+                {
+                    return true;
+                }
+
+                // Observar Inimigos (ex: Bloodlust quando inimigo sangra)
+                if (def.TriggerOnEnemies && !isAlly)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Para triggers globais (ON_TURN_START, etc), assume-se true se passou os filtros iniciais.
         return true;
     }
 
@@ -126,27 +142,94 @@ public class TriggerProcessor : ITriggerProcessor
         _actionQueue.Enqueue(action);
     }
 
+    //private AbilityTargets ResolveAutoTargets(
+    //    TriggerContext context,
+    //    AbilityDefinition ability,
+    //    Combatant source)
+    //{
+    //    var targets = new AbilityTargets();
+
+    //    foreach (var rule in ability.TargetingRules)
+    //    {
+    //        // Se a regra pede Inimigo, e o contexto tem um atacante (Source), usamos esse.
+    //        if (rule.Type == TargetType.Enemy && context.Source.Id != source.Id)
+    //        {
+    //            targets.SelectedTargets[rule.RuleId] = new List<int> { context.Source.Id };
+    //        }
+    //        // Se a regra pede Self/Friendly, e o contexto tem Target, usamos esse
+    //        else if ((rule.Type == TargetType.Self || rule.Type == TargetType.Friendly) 
+    //            && context.Target != null)
+    //        {
+    //            targets.SelectedTargets[rule.RuleId] = new List<int> { source.Id };
+    //        }
+    //    }
+    //    return targets;
+    //}
+
+    /// <summary>
+    /// Intelligently resolves targets for reactive abilities based on the trigger context.
+    /// </summary>
     private AbilityTargets ResolveAutoTargets(
         TriggerContext context,
         AbilityDefinition ability,
-        Combatant source)
+        Combatant holder)
     {
         var targets = new AbilityTargets();
 
         foreach (var rule in ability.TargetingRules)
         {
-            // Se a regra pede Inimigo, e o contexto tem um atacante (Source), usamos esse.
-            if (rule.Type == TargetType.Enemy && context.Source.Id != source.Id)
+            // CASO A: Vingança / Counter-Attack (Ex: Thorns)
+            // A regra pede um Inimigo. O evento foi causado por alguém que não eu?
+            // Alvo = A FONTE do evento (quem bateu).
+            if (rule.Type == TargetType.Enemy && context.Source.Id != holder.Id)
             {
                 targets.SelectedTargets[rule.RuleId] = new List<int> { context.Source.Id };
             }
-            // Se a regra pede Self/Friendly, e o contexto tem Target, usamos esse
-            else if ((rule.Type == TargetType.Self || rule.Type == TargetType.Friendly) 
-                && context.Target != null)
+
+            // CASO B: Suporte / Proteção (Ex: Elysia Trait)
+            // A regra pede um Aliado/Friendly. O evento aconteceu a alguém?
+            // Alvo = O ALVO do evento (quem foi curado/atacado).
+            // Isto garante que a Elysia buffa o Korg (Target) e não a si mesma (Holder).
+            else if (
+                (rule.Type == TargetType.Self || 
+                rule.Type == TargetType.Friendly || 
+                rule.Type == TargetType.Ally) && context.Target != null)
             {
-                targets.SelectedTargets[rule.RuleId] = new List<int> { source.Id };
+                // Nota: Se for um Self-Trigger normal (Holder == Target), isto também funciona corretamente.
+                targets.SelectedTargets[rule.RuleId] = new List<int> { context.Target.Id };
+            }
+
+            // CASO C: Fallback genérico para Self (caso não haja contexto de alvo externo)
+            else if (rule.Type == TargetType.Self)
+            {
+                targets.SelectedTargets[rule.RuleId] = new List<int> { holder.Id };
             }
         }
         return targets;
+    }
+
+    // --- HELPERS 
+
+    private static bool IsDefensiveTrigger(ModifierTrigger trigger)
+    {
+        return trigger == ModifierTrigger.ON_RECEIVE_DAMAGE ||
+               trigger == ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE ||
+               trigger == ModifierTrigger.ON_RECEIVE_MAGIC_DAMAGE ||
+               trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
+               trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
+               trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK ||
+               trigger == ModifierTrigger.ON_RECEIVE_HEAL;
+    }
+
+    private static bool IsOffensiveTrigger(ModifierTrigger trigger)
+    {
+        return trigger == ModifierTrigger.ON_ABILITY_CAST ||
+               trigger == ModifierTrigger.ON_DEAL_DAMAGE ||
+               trigger == ModifierTrigger.ON_DEAL_PHYSICAL_DAMAGE ||
+               trigger == ModifierTrigger.ON_DEAL_MAGIC_DAMAGE ||
+               trigger == ModifierTrigger.ON_DEAL_MELEE_ATTACK ||
+               trigger == ModifierTrigger.ON_DEAL_RANGED_ATTACK ||
+               trigger == ModifierTrigger.ON_DEAL_SPELL_ATTACK ||
+               trigger == ModifierTrigger.ON_DEAL_HEAL;
     }
 }

@@ -11,7 +11,7 @@
         "Value": 0.5
       }
     ]
-  },
+  },  
   {
     "Id": "MOD_STUN",
     "Name": "Stunned",
@@ -19,4 +19,5 @@
     "Description": "Unit cannot act.",
     "GrantedStatusEffects": [ "Stun" ]
   }
+
 ]

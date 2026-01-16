@@ -95,6 +95,33 @@ public class ExecuteAbilityAction : ICombatAction
 
     // --- Lógica Interna ---
 
+    //private List<Combatant>? ResolveAndValidateTargets(ICombatEngine engine, GameState state)
+    //{
+    //    var list = new List<Combatant>();
+
+    //    foreach (var rule in _ability.TargetingRules)
+    //    {
+    //        var targets = engine.TargetService.ResolveTargets(rule, Source, state, _userSelectedTargets);
+
+    //        // Se a regra é Manual e exige alvos (Count > 0)
+    //        if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
+    //        {
+    //            // Se o serviço devolveu menos alvos do que o exigido
+    //            // (ex: devolveu 0 porque o alvo era inválido)
+    //            if (targets.Count < rule.Count)
+    //            {
+    //                engine.BattleLog.Log($"Invalid target selected.");
+    //                return null; // Retorna NULL para sinalizar erro
+    //            }
+    //        }
+
+
+    //        list.AddRange(targets);
+    //    }
+    //    return list;
+    //}
+
+
     private List<Combatant>? ResolveAndValidateTargets(ICombatEngine engine, GameState state)
     {
         var list = new List<Combatant>();
@@ -103,18 +130,23 @@ public class ExecuteAbilityAction : ICombatAction
         {
             var targets = engine.TargetService.ResolveTargets(rule, Source, state, _userSelectedTargets);
                         
-            // Se a regra é Manual e exige alvos (Count > 0)
-            if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
+            // Define o que é uma habilidade de Área que não requer contagem exata.
+            bool isAoE = rule.Type == TargetType.All ||
+                         rule.Type == TargetType.AllAllies ||
+                         rule.Type == TargetType.AllEnemies ||
+                         rule.Type == TargetType.AllFriendlies;
+
+            // Só valida a contagem exata se NÃO for AoE.
+            // Para AoE, o "Count" no JSON (ex: 99) serve de limite máximo, não de requisito mínimo.
+            if (!isAoE && rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
             {
-                // Se o serviço devolveu menos alvos do que o exigido
-                // (ex: devolveu 0 porque o alvo era inválido)
                 if (targets.Count < rule.Count)
                 {
-                    engine.BattleLog.Log($"Invalid target selected.");
-                    return null; // Retorna NULL para sinalizar erro
+                    engine.BattleLog.Log
+                        ($"Invalid target selected (Expected {rule.Count}, got {targets.Count}).");
+                    return null;
                 }
             }
-            
 
             list.AddRange(targets);
         }

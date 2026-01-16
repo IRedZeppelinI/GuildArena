@@ -20,11 +20,13 @@ public class PlayerRepository : IPlayerRepository
             //TODO: Remover hardcoded de DEBUG
             // ID 101 -> Garret
             // ID 102 -> Korg
+            // ID 103 -> Elysia
             // Outros -> Garret (Fallback)
             string defId = id switch
             {
                 101 => "HERO_GARRET",
                 102 => "HERO_KORG",
+                103 => "HERO_ELYSIA",
                 _ => "HERO_GARRET"
             };
 

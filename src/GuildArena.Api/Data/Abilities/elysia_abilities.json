@@ -1,0 +1,164 @@
+[
+  {
+    "Id": "ABIL_ELYSIA_BOLT",
+    "Name": "Psionic Bolt",
+    "Description": "Fires a bolt of mental energy.",
+    "Tags": [ "Spell", "Ranged", "Mind" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 8,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Mind" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_ELYSIA_SHOCK",
+    "Name": "Mind Shock",
+    "Description": "Damages and Silences the enemy.",
+    "Tags": [ "Spell", "Ranged", "Mind", "CC" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [
+      {
+        "Type": "Mind",
+        "Amount": 1
+      },
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 5,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 0.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Mind" ]
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_SILENCE",
+        "DurationInTurns": 1,
+        "TargetRuleId": "TGT"
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_ELYSIA_MEND",
+    "Name": "Mending Light",
+    "Description": "Restores HP to an ally.",
+    "Tags": [ "Spell", "Light", "Heal" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [
+      {
+        "Type": "Mind",
+        "Amount": 1
+      },
+      {
+        "Type": "Light",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Ally",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "HEAL",
+        "BaseAmount": 10,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Light" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_ELYSIA_ULTI",
+    "Name": "Astral Convergence",
+    "Description": "Heals all allies.",
+    "Tags": [ "Spell", "Ultimate", "Light", "Heal" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 5,
+    "Costs": [
+      {
+        "Type": "Mind",
+        "Amount": 2
+      },
+      {
+        "Type": "Light",
+        "Amount": 2
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT_ALL",
+        "Type": "AllFriendlies",
+        "Count": 99
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "HEAL",
+        "BaseAmount": 20,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.2,
+        "TargetRuleId": "TGT_ALL",
+        "Tags": [ "Light" ]
+      }
+    ]
+  },
+  {
+    "Id": "INT_ELYSIA_TRAIT_PROC",
+    "Name": "Apply Blessing",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal" ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT_AUTO",
+        "Type": "Friendly",
+        "Count": 1 
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_ELYSIA_DEFENSE_BUFF",
+        "DurationInTurns": 3,
+        "TargetRuleId": "TGT_AUTO"
+      }
+    ]
+  }
+]

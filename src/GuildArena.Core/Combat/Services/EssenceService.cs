@@ -87,17 +87,18 @@ public class EssenceService : IEssenceService
 
         if (amount > 0)
         {
-            _battleLog.Log($"Player {player.PlayerId} gained {amount} {type} Essence.");
+            _battleLog.Log($"{player.Name} gained {amount} {type} Essence.");
         }
         else if (amount < 0)
         {
-            _battleLog.Log($"Player {player.PlayerId} lost {Math.Abs(amount)} {type} Essence.");
+            _battleLog.Log($"{player.Name} lost {Math.Abs(amount)} {type} Essence.");
         }
 
         if (amount != 0)
         {
-            _logger.LogDebug("Player {Id} essence change: {Amount} {Type}. New Total: {Total}",
-                player.PlayerId, amount, type, player.EssencePool[type]);
+            _logger.LogDebug(
+                "Player {Id} with {Name} essence change: {Amount} {Type}. New Total: {Total}",
+                player.PlayerId, player.Name, amount, type, player.EssencePool[type]);
         }
     }
 

@@ -83,5 +83,65 @@
         "TargetRuleId": "SELF"
       }
     ]
+  },
+  {
+    "Id": "ABIL_COMMON_FOCUS",
+    "Name": "Focus",
+    "Description": "Gather energy from the environment.",
+    "Tags": [ "Utility", "Channel" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "MANIPULATE_ESSENCE",
+        "TargetRuleId": "SELF",
+        "EssenceManipulations": [
+          {
+            "Type": "Random",
+            "Amount": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_PSYLIAN_FOCUS",
+    "Name": "Deep Focus",
+    "Description": "[Racial] Improved channeling. Generates Mind and Neutral essence.",
+    "Tags": [ "Utility", "Channel", "Racial" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "MANIPULATE_ESSENCE",
+        "TargetRuleId": "SELF",
+        "EssenceManipulations": [
+          {
+            "Type": "Random",
+            "Amount": 1
+          },
+          {
+            "Type": "Random",
+            "Amount": 1
+          }
+        ]
+      }
+    ]
   }
 ]

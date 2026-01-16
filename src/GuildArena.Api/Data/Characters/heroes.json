@@ -62,5 +62,38 @@
       "ABIL_KORG_LINK",
       "ABIL_KORG_FORTRESS"
     ]
+  },
+  { // ELYSIA
+    "Id": "HERO_ELYSIA",
+    "Name": "Elysia",
+    "Description": "The Oracle. A powerful healer and mind weaver.",
+    "RaceId": "RACE_PSYLIAN",
+    "TraitModifierId": "MOD_ELYSIA_TRAIT",
+    "BaseStats": {
+      "Attack": 2,
+      "Defense": 4,
+      "Agility": 5,
+      "Magic": 12,
+      "MagicDefense": 10,
+      "MaxActions": 1,
+      "MaxHP": 80
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 0.5,
+      "Defense": 0.5,
+      "Agility": 0.5,
+      "Magic": 2.5,
+      "MagicDefense": 1.5,
+      "MaxActions": 0,
+      "MaxHP": 10
+    },
+    "FocusAbilityId": "ABIL_PSYLIAN_FOCUS",
+    "GuardAbilityId": null,
+    "AbilityIds": [
+      "ABIL_ELYSIA_BOLT",
+      "ABIL_ELYSIA_SHOCK",
+      "ABIL_ELYSIA_MEND",
+      "ABIL_ELYSIA_ULTI"
+    ]
   }
 ]

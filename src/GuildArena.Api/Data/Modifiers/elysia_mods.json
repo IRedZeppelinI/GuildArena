@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "MOD_ELYSIA_TRAIT",
+    "Name": "Blessing of Light",
+    "Type": "Bless",
+    "Description": "[Passive] Whenever an ally receives healing, they gain Defense.",
+    "TriggerOnAllies": true,
+    "Triggers": [ "ON_RECEIVE_HEAL" ],
+    "TriggeredAbilityId": "INT_ELYSIA_TRAIT_PROC"
+  },
+  {
+    "Id": "MOD_ELYSIA_DEFENSE_BUFF",
+    "Name": "Light's Protection",
+    "Type": "Bless",
+    "Description": "+2 Defense (Stacks up to 5)",
+    "MaxStacks": 5,
+    "StatModifications": [
+      {
+        "Stat": "Defense",
+        "Type": "FLAT",
+        "Value": 2
+      }
+    ]
+  },
+  {
+    "Id": "MOD_SILENCE",
+    "Name": "Silenced",
+    "Type": "Curse",
+    "Description": "Cannot cast Spells.",
+    "GrantedStatusEffects": [ "Silence" ]
+  }
+]

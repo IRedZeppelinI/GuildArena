@@ -15,6 +15,9 @@ public class CombatPlayer
     /// </summary>
     public int PlayerId { get; set; }
 
+
+    public string Name { get; set; } = "Unknown Player";
+
     /// <summary>
     /// Type of Player (Human or AI).
     /// </summary>

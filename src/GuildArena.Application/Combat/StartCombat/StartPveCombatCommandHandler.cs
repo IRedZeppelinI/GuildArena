@@ -95,6 +95,10 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         var humanPlayer = new CombatPlayer
         {
             PlayerId = playerId.Value,
+
+            // NO FUTURO: _userRepo.GetUserName(playerId.Value)
+            Name = $"Player {playerId.Value}",
+
             Type = CombatPlayerType.Human,
             MaxTotalEssence = 10,
             EssencePool = new Dictionary<EssenceType, int>()
@@ -116,6 +120,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         var aiPlayer = new CombatPlayer
         {
             PlayerId = aiPlayerId,
+            Name = "Enemy AI",
             Type = CombatPlayerType.AI,
             MaxTotalEssence = 10,
             EssencePool = new Dictionary<EssenceType, int>()
@@ -164,6 +169,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         // 2. Encontrar o objeto desse jogador
         startingPlayer = gameState.Players.First(p => p.PlayerId == debugPlayerId);
+
+        startingPlayer.MaxTotalEssence = 30;
 
         // --- DEBUG: START WITH FULL RESOURCES ---        
         _essenceService.AddEssence(startingPlayer, EssenceType.Vigor, 5);
