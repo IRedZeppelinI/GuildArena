@@ -3,7 +3,7 @@
 Este documento serve como referência central para o design dos personagens, as suas habilidades, custos e mecânicas.
 Qualquer alteração de balanceamento deve ser registada aqui.
 
----
+------------------------------------------------------------
 
 ## 1. Garret (The Slayer)
 *   **Raça:** Human (+1 Action Point)
@@ -40,7 +40,7 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 *   **Alvo:** 1 Inimigo
 *   **Efeito:** Causa **True Damage** massivo (Ignora defesa e barreiras físicas).
 
----
+------------------------------------------------------------
 
 ## 2. Korg (The Obsidian Guardian)
 *   **Raça:** Valdrin (-3 Dano recebido de `Melee` e `Ranged`)
@@ -78,9 +78,7 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 *   **Efeito (Self):** Ganha uma Barreira Massiva (`Fortress`).
 *   **Efeito (Inimigo):** Aplica **Taunt** (Inimigo fica obrigado a atacar o Korg).
 
----
-
-## Planeamento (Futuro)
+------------------------------------------------------------
 
 ## 3. Elysia (The Oracle)
 *   **Raça:** Psylian (Trait Racial: Channel melhorado - gera 2 essence)
@@ -125,15 +123,61 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 
 ------------------------------------------------------------
 
-### 4. Vex (The Unstable)
-*   **Raça:** Kymera (Thorns: Reflete dano melee)
-*   **Afinidade:** Flux (Randomness / High Risk)
-*   **Conceito:** Berserker que pune quem lhe toca.
+## 4. Vex (The Unstable)
+*   **Raça:** Kymera (Trait Racial: **Flux Conductor**)
+    *   *Efeito:* No início do combate, gera automaticamente **1 Flux Essence**.
+    *   *Mecânica:* Trigger `ON_COMBAT_START`.
+*   **Role:** Berserker / Anti-Melee
+*   **Afinidade:** Vigor (HP Sacrifice) / Flux (Chaos)
+*   **Estado:** *A Implementar*
+
+### Trait: Spiked Carapace
+*   **Reactivo:** Sempre que recebe um ataque **Melee**, reflete dano ao atacante.
+*   **Fórmula:** 2 + (0.25 * Attack). (Ex: Com 14 Attack -> 5.5 Dano).
+
+### Habilidades
+
+**1. Reckless Strike**
+*   **Custo:** 0 Essence | **10 HP**
+*   **Tags:** `Physical`, `Melee`, `Vigor`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** Causa dano físico elevado (Scale 1.4 Attack).
+
+**2. Chaos Barrage**
+*   **Custo:** 1 Flux
+*   **Tags:** `Spell`, `Magical`, `Flux`
+*   **Alvo:** 2 Inimigos Aleatórios (`Strategy: Random`)
+*   **Efeito:** Causa dano mágico médio (Scale 0.8 Magic).
+
+**3. Blood Fuel**
+*   **Custo:** **15 HP**
+*   **Cooldown:** 3 Turnos
+*   **Tags:** `Utility`, `Buff`
+*   **Alvo:** Self
+*   **Efeito:** 
+    1. Gera **2 Vigor Essence** imediatamente.
+    2. Aplica **Blood Rush** (+30% Attack) por 1 turno.
+
+**4. Decimate (Ultimate)**
+*   **Custo:** 2 Vigor + 1 Flux
+*   **Cooldown:** 5 Turnos
+*   **Tags:** `Physical`, `Melee`, `Ultimate`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:**
+    1. Aplica buff **Predator Instinct** (Trigger: `ON_DEATH` -> Heal Self) no Vex.
+    2. Causa **True Damage** massivo (Scale 1.5 Attack + 30 Base).
+    *   *Combo:* Se o dano matar o alvo, o trigger dispara e o Vex recupera vida.
+
+
+------------------------------------------------------------
+
 
 ### 5. Nyx (The Shadow)
 *   **Raça:** Nethra (Blur: Chance de Evasão)
 *   **Afinidade:** Shadow (Stealth / DoTs)
 *   **Conceito:** Assassino esquivo.
+
+------------------------------------------------------------
 
 ### 6. Solas (The Just)
 *   **Raça:** Aureon (Divine Shell: Resistência a Status)
