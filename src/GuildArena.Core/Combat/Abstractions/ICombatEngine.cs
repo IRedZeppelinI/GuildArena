@@ -44,9 +44,16 @@ public interface ICombatEngine
         Dictionary<EssenceType, int> payment);
 
 
+
     // --- Queue Management ---
     void EnqueueAction(ICombatAction action);
 
-    // --- Legacy / Compatibility (Opcional, se quiseres manter por agora) ---
-    // void ExecuteAbility(...); 
+
+    /// <summary>
+    /// Processes all actions currently waiting in the Action Queue until it is empty.
+    /// Useful for processing system-generated triggers (like Start of Combat) that occur outside of a player's action.
+    /// </summary>
+    /// <param name="state">The current game state.</param>
+    /// <returns>A list of results from the processed actions.</returns>
+    List<CombatActionResult> ProcessPendingActions(GameState state);
 }

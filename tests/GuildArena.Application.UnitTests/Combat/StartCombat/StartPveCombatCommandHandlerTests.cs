@@ -2,11 +2,13 @@
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -26,6 +28,8 @@ public class StartPveCombatCommandHandlerTests
     private readonly IEssenceService _essenceServiceMock;
     private readonly ILogger<StartPveCombatCommandHandler> _loggerMock;
     private readonly IRandomProvider _rngMock;
+    private readonly ITriggerProcessor _triggerProcessorMock;
+    private readonly ICombatEngine _combatEngineMock;
 
     // SUT
     private readonly StartPveCombatCommandHandler _handler;
@@ -40,6 +44,8 @@ public class StartPveCombatCommandHandlerTests
         _essenceServiceMock = Substitute.For<IEssenceService>();
         _loggerMock = Substitute.For<ILogger<StartPveCombatCommandHandler>>();
         _rngMock = Substitute.For<IRandomProvider>();
+        _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
+        _combatEngineMock = Substitute.For<ICombatEngine>();
 
         _handler = new StartPveCombatCommandHandler(
             _combatStateRepoMock,
@@ -49,7 +55,9 @@ public class StartPveCombatCommandHandlerTests
             _factoryMock,
             _essenceServiceMock,
             _loggerMock,
-            _rngMock
+            _rngMock,
+            _triggerProcessorMock, 
+            _combatEngineMock      
         );
     }
 
@@ -121,6 +129,11 @@ public class StartPveCombatCommandHandlerTests
 
         // Deve ter guardado no Redis
         await _combatStateRepoMock.Received(1).SaveAsync(result, Arg.Any<GameState>());
+
+        _triggerProcessorMock.Received()
+            .ProcessTriggers(ModifierTrigger.ON_COMBAT_START, Arg.Any<TriggerContext>());
+        _combatEngineMock.Received(1).ProcessPendingActions(Arg.Any<GameState>());
+
 
         // Verificação detalhada do GameState guardado
         await _combatStateRepoMock.Received(1).SaveAsync(

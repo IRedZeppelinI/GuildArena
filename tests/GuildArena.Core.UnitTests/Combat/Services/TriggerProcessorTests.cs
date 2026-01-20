@@ -10,6 +10,7 @@ using GuildArena.Domain.Enums.Targeting;
 using GuildArena.Domain.ValueObjects.State;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using Shouldly;
 using Xunit;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
@@ -220,5 +221,96 @@ public class TriggerProcessorTests
             action is ExecuteAbilityAction &&
             action.Source.Id == necromancer.Id
         ));
+    }
+
+    [Fact]
+    public void ProcessTriggers_WithRemoveAfterTrigger_ShouldExecuteAndRemoveModifier()
+    {
+        // ARRANGE
+        var modId = "MOD_ONE_TIME";
+        var abilityId = "ABIL_TEST";
+
+        // Definição com a nova flag 'RemoveAfterTrigger = true'
+        var modDef = new ModifierDefinition
+        {
+            Id = modId,
+            Name = "One Shot",
+            Triggers = new() { ModifierTrigger.ON_COMBAT_START },
+            TriggeredAbilityId = abilityId,
+            RemoveAfterTrigger = true // <--- O que estamos a testar
+        };
+
+        _modRepo.GetAllDefinitions()
+            .Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+
+        // Setup da Ability (só para garantir que o fluxo normal ocorre antes da remoção)
+        var abilityDef = new AbilityDefinition { Id = abilityId, Name = "Test Ability" };
+        _abilityRepo.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
+            .Returns(x => { x[1] = abilityDef; return true; });
+
+        // Combatente com o Modifier
+        var combatant = new Combatant
+        {
+            Id = 1,
+            Name = "Tester",
+            RaceId = "RACE_TEST",
+            BaseStats = new(),
+            CurrentHP = 100
+        };
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = modId });
+
+        var gameState = new GameState { Combatants = new() { combatant } };
+
+        var context = new TriggerContext
+        {
+            Source = combatant,
+            Target = combatant,
+            GameState = gameState,
+            Tags = new HashSet<string> { "StartCombat" }
+        };
+
+        // ACT
+        _processor.ProcessTriggers(ModifierTrigger.ON_COMBAT_START, context);
+
+        // ASSERT
+        // 1. A habilidade deve ter sido agendada na mesma
+        _actionQueue.Received(1).Enqueue(Arg.Any<ICombatAction>());
+
+        // 2. A lista de modifiers deve estar vazia (o modifier foi consumido)
+        combatant.ActiveModifiers.ShouldBeEmpty("Modifier should have been removed after trigger.");
+    }
+
+    [Fact]
+    public void ProcessTriggers_WithoutRemoveAfterTrigger_ShouldKeepModifier()
+    {
+        // ARRANGE
+        var modId = "MOD_PERSISTENT";
+        var modDef = new ModifierDefinition
+        {
+            Id = modId,
+            Name = "Persistent",
+            Triggers = new() { ModifierTrigger.ON_COMBAT_START },
+            RemoveAfterTrigger = false // <--- Normal behavior
+        };
+
+        _modRepo.GetAllDefinitions()
+            .Returns(new Dictionary<string, ModifierDefinition> { { modId, modDef } });
+
+        var combatant = new Combatant { Id = 1, Name = "Tester", RaceId = "X", BaseStats = new() };
+        combatant.ActiveModifiers.Add(new ActiveModifier { DefinitionId = modId });
+
+        var context = new TriggerContext
+        {
+            Source = combatant,
+            Target = combatant,
+            GameState = new GameState { Combatants = { combatant } }
+        };
+
+        // ACT
+        _processor.ProcessTriggers(ModifierTrigger.ON_COMBAT_START, context);
+
+        // ASSERT
+        combatant.ActiveModifiers.Count.ShouldBe(1);
+        combatant.ActiveModifiers.First().DefinitionId.ShouldBe(modId);
     }
 }

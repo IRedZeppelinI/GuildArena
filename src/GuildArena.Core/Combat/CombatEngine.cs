@@ -61,6 +61,8 @@ public class CombatEngine : ICombatEngine
         _actionQueue = actionQueue;
         BattleLog = battleLog;
     }
+        
+
 
     /// <inheritdoc />
     public IEffectHandler GetEffectHandler(EffectType type)
@@ -78,6 +80,26 @@ public class CombatEngine : ICombatEngine
     /// Executes a player's ability by scheduling the intention and processing the resulting action queue.    
     /// </summary>
     /// <returns>A list of results (one per action) containing Battle Logs for the UI.</returns>
+    //public List<CombatActionResult> ExecuteAbility(
+    //    GameState state,
+    //    AbilityDefinition ability,
+    //    Combatant source,
+    //    AbilityTargets targets,
+    //    Dictionary<EssenceType, int> payment)
+    //{
+    //    // 1. Limpar fila (garantia de estado limpo para o novo pedido)
+    //    _actionQueue.Clear();
+
+    //    // 2. Criar a ação raiz (A intenção do jogador)
+    //    // Nota: O bool 'false' indica que é uma ação voluntária, não um trigger (respeita regras de morte)
+    //    var rootAction = new ExecuteAbilityAction(ability, source, targets, payment, isTriggeredAction: false);
+    //    _actionQueue.Enqueue(rootAction);
+
+    //    // 3. Processar tudo até a fila esvaziar
+    //    return ProcessQueue(state);
+    //}
+
+    /// <inheritdoc />
     public List<CombatActionResult> ExecuteAbility(
         GameState state,
         AbilityDefinition ability,
@@ -89,15 +111,17 @@ public class CombatEngine : ICombatEngine
         _actionQueue.Clear();
 
         // 2. Criar a ação raiz (A intenção do jogador)
-        // Nota: O bool 'false' indica que é uma ação voluntária, não um trigger (respeita regras de morte)
         var rootAction = new ExecuteAbilityAction(ability, source, targets, payment, isTriggeredAction: false);
         _actionQueue.Enqueue(rootAction);
 
-        // 3. Processar tudo até a fila esvaziar
-        return ProcessQueue(state);
+        // 3. Processar (Agora delegado no método partilhado)
+        return ProcessPendingActions(state);
     }
 
-    private List<CombatActionResult> ProcessQueue(GameState state)
+
+
+    /// <inheritdoc />
+    public List<CombatActionResult> ProcessPendingActions(GameState state)
     {
         var results = new List<CombatActionResult>();
         int safetyCounter = 0;
@@ -115,8 +139,6 @@ public class CombatEngine : ICombatEngine
             var action = _actionQueue.Dequeue();
             if (action == null) continue;
 
-            
-
             // Executar a Ação
             var result = action.Execute(this, state);
 
@@ -125,4 +147,33 @@ public class CombatEngine : ICombatEngine
 
         return results;
     }
+
+    //private List<CombatActionResult> ProcessQueue(GameState state)
+    //{
+    //    var results = new List<CombatActionResult>();
+    //    int safetyCounter = 0;
+    //    const int MaxActionsPerTurn = 50;
+
+    //    while (_actionQueue.HasNext())
+    //    {
+    //        if (safetyCounter++ > MaxActionsPerTurn)
+    //        {
+    //            AppLogger.LogError(
+    //                "Max actions per execution exceeded. Possible infinite trigger loop.");
+    //            break;
+    //        }
+
+    //        var action = _actionQueue.Dequeue();
+    //        if (action == null) continue;
+
+            
+
+    //        // Executar a Ação
+    //        var result = action.Execute(this, state);
+
+    //        results.Add(result);
+    //    }
+
+    //    return results;
+    //}
 }

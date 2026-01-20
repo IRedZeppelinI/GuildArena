@@ -96,6 +96,14 @@ public class ModifierDefinition
     /// </summary>
     public bool TriggerOnEnemies { get; set; } = false;
 
+    /// <summary>
+    /// If true, the modifier is automatically removed from the holder immediately after 
+    /// any of its triggers fires successfully. 
+    /// Useful for "Next Attack deals X" or "Start of Combat" one-time effects.
+    /// Default is false.
+    /// </summary>
+    public bool RemoveAfterTrigger { get; set; } = false;
+
     public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
     public string? TriggeredAbilityId { get; set; }
 }

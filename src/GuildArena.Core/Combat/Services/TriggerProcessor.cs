@@ -7,6 +7,7 @@ using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Targeting;
+using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 
@@ -41,6 +42,10 @@ public class TriggerProcessor : ITriggerProcessor
             // Se estiver morto, só processa triggers de morte (ON_DEATH)
             if (!combatant.IsAlive && trigger != ModifierTrigger.ON_DEATH) continue;
 
+            // Lista para guardar os modifiers que se "gastaram" e devem ser removidos
+            var modifiersToRemove = new List<ActiveModifier>();
+
+
             foreach (var activeMod in combatant.ActiveModifiers)
             {
                 if (!allDefinitions.TryGetValue(activeMod.DefinitionId, out var def)) continue;
@@ -54,6 +59,19 @@ public class TriggerProcessor : ITriggerProcessor
                 {
                     ExecuteTriggeredAbility(def.TriggeredAbilityId, combatant, context);
                 }
+
+                if (def.RemoveAfterTrigger)
+                {
+                    modifiersToRemove.Add(activeMod);
+                }
+            }
+
+            foreach (var mod in modifiersToRemove)
+            {
+                combatant.ActiveModifiers.Remove(mod);
+                // Opcional: Logar que o efeito expirou/foi consumido
+                _logger.LogDebug
+                    ("Modifier {ModId} consumed on trigger {Trigger}.", mod.DefinitionId, trigger);
             }
         }
     }

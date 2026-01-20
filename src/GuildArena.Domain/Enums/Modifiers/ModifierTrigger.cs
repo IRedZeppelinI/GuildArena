@@ -3,6 +3,11 @@
 public enum ModifierTrigger
 {
     PASSIVE,
+    /// <summary>
+    /// Fires once at the very beginning of the combat, before the first turn.
+    /// Used for racial traits (e.g. Start with Flux) or items.
+    /// </summary>
+    ON_COMBAT_START,
     ON_TURN_START,
     ON_TURN_END,
     ON_DEAL_MELEE_ATTACK,

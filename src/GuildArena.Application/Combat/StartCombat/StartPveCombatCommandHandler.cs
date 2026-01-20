@@ -1,11 +1,13 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
     private readonly IEssenceService _essenceService;
     private readonly ILogger<StartPveCombatCommandHandler> _logger;
     private readonly IRandomProvider _rng;
+    private readonly ITriggerProcessor _triggerProcessor;
+    private readonly ICombatEngine _combatEngine;
 
     public StartPveCombatCommandHandler(
         ICombatStateRepository combatStateRepo,
@@ -31,7 +35,9 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         ICombatantFactory combatantFactory,
         IEssenceService essenceService,
         ILogger<StartPveCombatCommandHandler> logger,
-        IRandomProvider rng)
+        IRandomProvider rng,
+         ITriggerProcessor triggerProcessor,
+        ICombatEngine combatEngine)
     {
         _combatStateRepo = combatStateRepo;
         _playerRepo = playerRepo;
@@ -41,6 +47,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         _essenceService = essenceService;
         _logger = logger;
         _rng = rng;
+        _triggerProcessor = triggerProcessor;
+        _combatEngine = combatEngine;
     }
 
     public async Task<string> Handle(StartPveCombatCommand request, CancellationToken cancellationToken)
@@ -96,7 +104,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         {
             PlayerId = playerId.Value,
 
-            // NO FUTURO: _userRepo.GetUserName(playerId.Value)
+            // TODO: NO FUTURO: _userRepo.GetUserName(playerId.Value)
             Name = $"Player {playerId.Value}",
 
             Type = CombatPlayerType.Human,
@@ -180,6 +188,9 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 #endif
         _essenceService.GenerateStartOfTurnEssence(startingPlayer, baseAmount: 2);
 
+        InitializeCombatTriggers(gameState);
+
+
         // 8. Persistir Estado Inicial no Redis
         await _combatStateRepo.SaveAsync(combatId, gameState);
 
@@ -187,4 +198,29 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         return combatId;
     }
+
+
+    /// <summary>
+    /// Fires ON_COMBAT_START triggers for all participants (e.g. Racial Traits, Items)
+    /// and resolves the resulting actions immediately.
+    /// </summary>
+    private void InitializeCombatTriggers(GameState gameState)
+    {
+        foreach (var combatant in gameState.Combatants)
+        {
+            var context = new TriggerContext
+            {
+                Source = combatant,
+                Target = combatant,
+                GameState = gameState,
+                Tags = new HashSet<string> { "StartCombat" }
+            };
+
+            _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_COMBAT_START, context);
+        }
+
+        // Executa imediatamente os efeitos (ex: Dar Mana ao Kymera)
+        _combatEngine.ProcessPendingActions(gameState);
+    }
+
 }
