@@ -17,19 +17,22 @@ public class DamageEffectHandler : IEffectHandler
     private readonly IDamageResolutionService _resolutionService;
     private readonly ITriggerProcessor _triggerProcessor;
     private readonly IBattleLogService _battleLog;
+    private readonly IDeathService _deathService;
 
     public DamageEffectHandler(
         IStatCalculationService statService,
         ILogger<DamageEffectHandler> logger,
         IDamageResolutionService resolutionService,
         ITriggerProcessor triggerProcessor,
-        IBattleLogService battleLog)
+        IBattleLogService battleLog,
+        IDeathService deathService)
     {
         _statService = statService;
         _logger = logger;
         _resolutionService = resolutionService;
         _triggerProcessor = triggerProcessor;
         _battleLog = battleLog;
+        _deathService = deathService;
     }
 
     public EffectType SupportedType => EffectType.DAMAGE;
@@ -64,6 +67,9 @@ public class DamageEffectHandler : IEffectHandler
             // 4. Disparar Triggers
             // Nota: Na Fase 3 o triggerProcessor vai apenas agendar, mas por agora mantém a chamada.
             TriggerEvents(def, source, target, damageInt, gameState);
+
+            // 5. Verificar Morte (Delegar ao Serviço)
+            _deathService.ProcessDeathIfApplicable(target, source, gameState);
         }
         else
         {
