@@ -1,0 +1,34 @@
+[
+  {
+    "Id": "MOD_VEX_TRAIT",
+    "Name": "Spiked Carapace",
+    "Type": "Bless",
+    "Description": "[Passive] Reflects damage to melee attackers.",
+    "Triggers": [ "ON_RECEIVE_MELEE_ATTACK" ],
+    "TriggeredAbilityId": "INT_VEX_THORNS_PROC"
+  },
+  {
+    "Id": "MOD_VEX_ADRENALINE",
+    "Name": "Blood Rush",
+    "Type": "Bless",
+    "Description": "+30% Attack.",
+    "DurationInTurns": 1,
+    "StatModifications": [
+      {
+        "Stat": "Attack",
+        "Type": "PERCENTAGE",
+        "Value": 0.3
+      }
+    ]
+  },
+  {
+    "Id": "MOD_VEX_PREDATOR",
+    "Name": "Predator Instinct",
+    "Type": "Bless",
+    "Description": "Heals if an enemy dies.",
+    "DurationInTurns": 1,
+    "TriggerOnEnemies": true,
+    "Triggers": [ "ON_DEATH" ],
+    "TriggeredAbilityId": "INT_VEX_HEAL_PROC"
+  }
+]

@@ -1,0 +1,195 @@
+[
+  {
+    "Id": "ABIL_VEX_RECKLESS",
+    "Name": "Reckless Strike",
+    "Description": "Sacrifices health for heavy damage.",
+    "Tags": [ "Physical", "Melee", "Vigor" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "HPCost": 10,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 0,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.4,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_VEX_CHAOS",
+    "Name": "Chaos Barrage",
+    "Description": "Unleashes raw flux on random enemies.",
+    "Tags": [ "Spell", "Magical", "Flux" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 2,
+    "Costs": [
+      {
+        "Type": "Flux",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT_RND",
+        "Type": "Enemy",
+        "Count": 2,
+        "Strategy": "Random"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 5,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 0.8,
+        "TargetRuleId": "TGT_RND",
+        "Tags": [ "Flux" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_VEX_FUEL",
+    "Name": "Blood Fuel",
+    "Description": "Convert life into power and essence.",
+    "Tags": [ "Utility", "Buff" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "HPCost": 15,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "MANIPULATE_ESSENCE",
+        "TargetRuleId": "SELF",
+        "EssenceManipulations": [
+          {
+            "Type": "Vigor",
+            "Amount": 2
+          }
+        ]
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_VEX_ADRENALINE",
+        "DurationInTurns": 1,
+        "TargetRuleId": "SELF"
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_VEX_ULTI",
+    "Name": "Decimate",
+    "Description": "Massive damage. Heals if something dies.",
+    "Tags": [ "Physical", "Melee", "Ultimate" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 5,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 2
+      },
+      {
+        "Type": "Flux",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      },
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_VEX_PREDATOR",
+        "DurationInTurns": 1,
+        "TargetRuleId": "SELF"
+      },
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "True",
+        "Delivery": "Melee",
+        "BaseAmount": 30,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 1.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Execute" ]
+      }
+    ]
+  },
+  {
+    "Id": "INT_VEX_THORNS_PROC",
+    "Name": "Spiked Carapace",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal", "Physical" ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT_SOURCE",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 2,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 0.25,
+        "TargetRuleId": "TGT_SOURCE",
+        "Tags": [ "Physical" ]
+      }
+    ]
+  },
+  {
+    "Id": "INT_VEX_HEAL_PROC",
+    "Name": "Predator's Feast",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal", "Heal" ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "HEAL",
+        "BaseAmount": 30,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 0.5,
+        "TargetRuleId": "SELF"
+      }
+    ]
+  }
+]

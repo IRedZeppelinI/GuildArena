@@ -21,12 +21,14 @@ public class PlayerRepository : IPlayerRepository
             // ID 101 -> Garret
             // ID 102 -> Korg
             // ID 103 -> Elysia
+            // ID 104 -> Vex
             // Outros -> Garret (Fallback)
             string defId = id switch
             {
-                101 => "HERO_GARRET",
+                //101 => "HERO_GARRET",
                 102 => "HERO_KORG",
                 103 => "HERO_ELYSIA",
+                104 => "HERO_VEX",
                 _ => "HERO_GARRET"
             };
 

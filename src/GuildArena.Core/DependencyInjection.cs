@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IStatusConditionService, StatusConditionService>();
         services.AddScoped<IActionQueue, ActionQueue>();
         services.AddScoped<IBattleLogService, BattleLogService>();
+        services.AddScoped<IDeathService, DeathService>();
 
         // --- 2. CALCULATION SERVICES ---
         services.AddScoped<IDamageResolutionService, DamageResolutionService>();

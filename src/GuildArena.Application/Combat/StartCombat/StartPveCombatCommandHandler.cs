@@ -184,6 +184,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         _essenceService.AddEssence(startingPlayer, EssenceType.Vigor, 5);
         _essenceService.AddEssence(startingPlayer, EssenceType.Light, 5);
         _essenceService.AddEssence(startingPlayer, EssenceType.Mind, 5);
+        _essenceService.AddEssence(startingPlayer, EssenceType.Flux, 5);
         // ----------------------------------------
 #endif
         _essenceService.GenerateStartOfTurnEssence(startingPlayer, baseAmount: 2);

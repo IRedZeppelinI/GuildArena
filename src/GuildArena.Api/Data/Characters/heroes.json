@@ -95,5 +95,37 @@
       "ABIL_ELYSIA_MEND",
       "ABIL_ELYSIA_ULTI"
     ]
+  },
+  { // VEX
+    "Id": "HERO_VEX",
+    "Name": "Vex",
+    "Description": "The Unstable. Pays life for power.",
+    "RaceId": "RACE_KYMERA",
+    "TraitModifierId": "MOD_VEX_TRAIT",
+    "BaseStats": {
+      "Attack": 14,
+      "Defense": 6,
+      "Agility": 8,
+      "Magic": 4,
+      "MagicDefense": 4,
+      "MaxActions": 1,
+      "MaxHP": 140
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 3.0,
+      "Defense": 0.5,
+      "Agility": 1.0,
+      "Magic": 0.0,
+      "MagicDefense": 0.5,
+      "MaxActions": 0,
+      "MaxHP": 20
+    },
+    "GuardAbilityId": "ABIL_COMMON_GUARD",
+    "AbilityIds": [
+      "ABIL_VEX_RECKLESS",
+      "ABIL_VEX_CHAOS",
+      "ABIL_VEX_FUEL",
+      "ABIL_VEX_ULTI"
+    ]
   }
 ]

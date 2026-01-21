@@ -1,5 +1,7 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
@@ -148,6 +150,64 @@ public class RacialMechanicsTests : IntegrationTestBase
         totalEssence.ShouldBe
             (2,
             "Deep Focus should generate exactly 2 units of essence (Random types).");
+    }
+
+
+    [Fact]
+    public void Kymera_FluxConductor_ShouldGenerateFlux_OnCombatStart() 
+    {
+        // ARRANGE
+        var combatId = Guid.NewGuid().ToString();
+
+        // Criamos um Kymera genérico.
+        var kymeraUnit = new Combatant
+        {
+            Id = 101,
+            OwnerId = 1,
+            Name = "Kymera Test Subject",
+            RaceId = "RACE_KYMERA",
+            CurrentHP = 100,
+            MaxHP = 100,
+            BaseStats = new BaseStats(),
+            Position = 1,
+            ActiveModifiers = new List<ActiveModifier>
+            {
+                new ActiveModifier { DefinitionId = "MOD_RACIAL_KYMERA_TRAIT", TurnsRemaining = -1 }
+            }
+        };
+
+        var gameState = new GameState
+        {
+            CurrentPlayerId = 1,
+            Combatants = new List<Combatant> { kymeraUnit },
+            Players = new List<CombatPlayer> { new() { PlayerId = 1, EssencePool = new() } }
+        };
+
+        var triggerProcessor = GetService<ITriggerProcessor>();
+        var combatEngine = GetService<ICombatEngine>();
+
+        // ACT
+        // 1. Simular o evento de início de combate
+        var context = new TriggerContext
+        {
+            Source = kymeraUnit,
+            Target = kymeraUnit,
+            GameState = gameState,
+            Tags = new HashSet<string> { "StartCombat" }
+        };
+
+        triggerProcessor.ProcessTriggers(Domain.Enums.Modifiers.ModifierTrigger.ON_COMBAT_START, context);
+
+        // 2. Executar a ação agendada
+        combatEngine.ProcessPendingActions(gameState);
+
+        // ASSERT
+        var player = gameState.Players.First(p => p.PlayerId == 1);
+
+        player.EssencePool.TryGetValue(Domain.Enums.Resources.EssenceType.Flux, out int fluxAmount).ShouldBeTrue();
+        fluxAmount.ShouldBe(1, "Kymera should start with 1 Flux Essence.");
+
+        kymeraUnit.ActiveModifiers.ShouldBeEmpty("Racial modifier should be removed after triggering.");
     }
 
     /* 

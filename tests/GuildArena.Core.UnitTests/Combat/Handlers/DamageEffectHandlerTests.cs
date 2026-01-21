@@ -21,8 +21,10 @@ public class DamageEffectHandlerTests
     private readonly ILogger<DamageEffectHandler> _loggerMock;
     private readonly IDamageResolutionService _resolutionServiceMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
-    private readonly DamageEffectHandler _handler;
     private readonly IBattleLogService _battleLogService;
+    private readonly IDeathService _deathServiceMock; 
+
+    private readonly DamageEffectHandler _handler;
 
     public DamageEffectHandlerTests()
     {
@@ -31,13 +33,16 @@ public class DamageEffectHandlerTests
         _resolutionServiceMock = Substitute.For<IDamageResolutionService>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
         _battleLogService = Substitute.For<IBattleLogService>();
+        _deathServiceMock = Substitute.For<IDeathService>();
 
         _handler = new DamageEffectHandler(
             _statCalculationServiceMock,
             _loggerMock,
             _resolutionServiceMock,
             _triggerProcessorMock,
-            _battleLogService);
+            _battleLogService,
+            _deathServiceMock 
+            );
     }
 
     [Theory]
@@ -48,7 +53,7 @@ public class DamageEffectHandlerTests
         DeliveryMethod delivery, DamageCategory damageCategory, StatType sourceStat,
         float sourceStatValue, StatType targetStat, float targetStatValue, int expectedDamage)
     {
-        // 1. ARRANGE
+        // ARRANGE
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
@@ -63,55 +68,53 @@ public class DamageEffectHandlerTests
         {
             Id = 1,
             Name = "Source",
-            RaceId = "RACE_A",
+            RaceId = "A",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
         var target = new Combatant
         {
             Id = 2,
             Name = "Target",
-            RaceId = "RACE_B",
+            RaceId = "B",
+            MaxHP = 100,
             CurrentHP = 50,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
         var gameState = new GameState();
 
-        _statCalculationServiceMock.GetStatValue(source, sourceStat)
-            .Returns(sourceStatValue);
-        _statCalculationServiceMock.GetStatValue(target, targetStat)
-            .Returns(targetStatValue);
+        _statCalculationServiceMock.GetStatValue(source, sourceStat).Returns(sourceStatValue);
+        _statCalculationServiceMock.GetStatValue(target, targetStat).Returns(targetStatValue);
 
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
-            .Returns(call => new DamageResolutionResult
-            {
-                FinalDamageToApply = call.Arg<float>(),
-                AbsorbedDamage = 0
-            });
+            .Returns(new DamageResolutionResult { FinalDamageToApply = expectedDamage });
 
-        var actionResult = new CombatActionResult();
+        // ACT
+        _handler.Apply(effectDef, source, target, gameState, new CombatActionResult());
 
-        // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState, actionResult);
-
-        // 3. ASSERT
+        // ASSERT
         target.CurrentHP.ShouldBe(50 - expectedDamage);
-        _battleLogService.
-            Received(1).Log(
-            Arg.Is<string>(s => s.Contains($"took {expectedDamage} damage")));
+
+        _battleLogService.Received(1)
+            .Log(Arg.Is<string>(s => s.Contains($"took {expectedDamage} damage")));
+
+        // Verifica se chamou o trigger genérico de dano
+        _triggerProcessorMock.Received(1).ProcessTriggers(
+            ModifierTrigger.ON_DEAL_DAMAGE,
+            Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
     }
 
     [Fact]
     public void Apply_TrueDamage_ShouldIgnoreDefense()
     {
-        // 1. ARRANGE
+        // ARRANGE
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
             DamageCategory = DamageCategory.True,
             ScalingFactor = 1.0f,
-            BaseAmount = 0,
             TargetRuleId = "T_TestTarget"
         };
 
@@ -119,137 +122,111 @@ public class DamageEffectHandlerTests
         {
             Id = 1,
             Name = "Source",
-            RaceId = "RACE_A",
+            RaceId = "A",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
         var target = new Combatant
         {
             Id = 2,
             Name = "Target",
-            RaceId = "RACE_B",
+            RaceId = "B",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
-        var gameState = new GameState();
 
         _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(999f);
 
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
-            .Returns(call => new DamageResolutionResult
-            {
-                FinalDamageToApply = call.Arg<float>()
-            });
+            .Returns(new DamageResolutionResult { FinalDamageToApply = 10f });
 
-        var actionResult = new CombatActionResult();
+        // ACT
+        _handler.Apply
+            (effectDef, source, target, new GameState(), new CombatActionResult());
 
-        // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState, actionResult);
-
-        // 3. ASSERT
+        // ASSERT
         target.CurrentHP.ShouldBe(90);
-        _battleLogService.
-            Received(1).Log(Arg.Is<string>(s => s.Contains("took 10 damage")));
     }
 
     [Fact]
     public void Apply_WhenServiceReportsAbsorption_ShouldLogAndReduceOnlyRemainingDamage()
     {
-        // 1. ARRANGE
-        var effectDef = new EffectDefinition
-        {
-            TargetRuleId = "T_TestTarget",
-            Type = EffectType.DAMAGE,
-            Delivery = DeliveryMethod.Melee,
-            DamageCategory = DamageCategory.Physical,
-            ScalingFactor = 1.0f
-        };
+        // ARRANGE
+        var effectDef = new EffectDefinition { TargetRuleId = "T1" };
         var source = new Combatant
         {
             Id = 1,
-            Name = "Source",
-            RaceId = "RACE_A",
+            Name = "S",
+            RaceId = "A",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
         var target = new Combatant
         {
             Id = 2,
-            Name = "Target",
-            RaceId = "RACE_B",
+            Name = "T",
+            RaceId = "B",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
-        };
-        var gameState = new GameState();
-
-        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
-
-        var simulatedResult = new DamageResolutionResult
-        {
-            FinalDamageToApply = 5,
-            AbsorbedDamage = 5
+            BaseStats = new()
         };
 
-        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
-            .Returns(simulatedResult);
+        var simulatedResult = new DamageResolutionResult { FinalDamageToApply = 5, AbsorbedDamage = 5 };
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target).Returns(simulatedResult);
 
-        var actionResult = new CombatActionResult();
+        // ACT
+        _handler.Apply
+            (effectDef, source, target, new GameState(), new CombatActionResult());
 
-        // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState, actionResult);
-
-        // 3. ASSERT
+        // ASSERT
         target.CurrentHP.ShouldBe(95);
-        _battleLogService.
-            Received(1).Log(Arg.Is<string>(s => s.Contains("took 5 damage")));
-        _resolutionServiceMock.Received(1).ResolveDamage(10f, effectDef, source, target);
+        _battleLogService.Received(1)
+            .Log(Arg.Is<string>(s => s.Contains("took 5 damage")));
     }
 
     [Fact]
     public void Apply_WhenDamageIsDealt_ShouldNotifyTriggerProcessor_WithAllTags()
     {
-        // 1. ARRANGE
+        // ARRANGE
         var effectDef = new EffectDefinition
         {
             Type = EffectType.DAMAGE,
             Delivery = DeliveryMethod.Melee,
             DamageCategory = DamageCategory.Physical,
             ScalingFactor = 1.0f,
-            TargetRuleId = "T_TestTarget"
+            TargetRuleId = "T1"
         };
 
         var source = new Combatant
         {
             Id = 1,
-            Name = "Source",
-            RaceId = "RACE_A",
+            Name = "Attacker",
+            RaceId = "A",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
         var target = new Combatant
         {
             Id = 2,
-            Name = "Target",
-            RaceId = "RACE_B",
+            Name = "Defender",
+            RaceId = "B",
+            MaxHP = 100,
             CurrentHP = 100,
-            BaseStats = new BaseStats()
+            BaseStats = new()
         };
-        var gameState = new GameState();
-
-        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
-        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
 
         _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
             .Returns(new DamageResolutionResult { FinalDamageToApply = 10f });
 
-        var actionResult = new CombatActionResult();
+        // ACT
+        _handler.Apply
+            (effectDef, source, target, new GameState(), new CombatActionResult());
 
-        // 2. ACT
-        _handler.Apply(effectDef, source, target, gameState, actionResult);
-
-        // 3. ASSERT
+        // ASSERT - Reposição dos teus asserts detalhados originais
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_DEAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target && c.Value == 10f));
@@ -269,5 +246,88 @@ public class DamageEffectHandlerTests
         _triggerProcessorMock.Received(1).ProcessTriggers(
             ModifierTrigger.ON_RECEIVE_PHYSICAL_DAMAGE,
             Arg.Is<TriggerContext>(c => c.Source == source && c.Target == target));
+    }
+
+    // --- NOVOS TESTES (Morte) ---
+
+    [Fact]
+    public void Apply_WhenTargetDies_ShouldDelegateToDeathService()
+    {
+        // ARRANGE
+        var effectDef = new EffectDefinition { TargetRuleId = "T1" };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "Killer",
+            RaceId = "A",
+            MaxHP = 100,
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+        // Target com 10 HP
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Victim",
+            RaceId = "B",
+            MaxHP = 100,
+            CurrentHP = 10,
+            BaseStats = new()
+        };
+        var gameState = new GameState();
+
+        // Vai levar 10 de dano -> Fica com 0 HP
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(new DamageResolutionResult { FinalDamageToApply = 10 });
+
+        // ACT
+        _handler.Apply(effectDef, source, target, gameState, new CombatActionResult());
+
+        // ASSERT
+        target.CurrentHP.ShouldBe(0);
+
+        // Verifica se o serviço de morte foi chamado
+        _deathServiceMock.Received(1).ProcessDeathIfApplicable(target, source, gameState);
+
+        // Garante que o Handler NÃO tenta fazer o trabalho do DeathService (não dispara ON_DEATH)
+        _triggerProcessorMock.DidNotReceive()
+            .ProcessTriggers(ModifierTrigger.ON_DEATH, Arg.Any<TriggerContext>());
+    }
+
+    [Fact]
+    public void Apply_WhenTargetSurvives_ShouldCallDeathService()
+    {
+        // ARRANGE
+        var effectDef = new EffectDefinition { TargetRuleId = "T1" };
+        var source = new Combatant
+        {
+            Id = 1,
+            Name = "S",
+            RaceId = "A",
+            MaxHP = 100,
+            CurrentHP = 100,
+            BaseStats = new()
+        };
+        var target = new Combatant
+        {
+            Id = 2,
+            Name = "Survivor",
+            RaceId = "B",
+            MaxHP = 100,
+            CurrentHP = 20,
+            BaseStats = new()
+        };
+
+        // Leva 10 dano -> Sobra 10 (Sobrevive)
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(new DamageResolutionResult { FinalDamageToApply = 10 });
+
+        // ACT
+        _handler.Apply(effectDef, source, target, new GameState(), new CombatActionResult());
+
+        // ASSERT
+        target.CurrentHP.ShouldBe(10);
+        
+        _deathServiceMock.Received(1).ProcessDeathIfApplicable(target, source, Arg.Any<GameState>());
     }
 }

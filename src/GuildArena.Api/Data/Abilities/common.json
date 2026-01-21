@@ -143,5 +143,30 @@
         ]
       }
     ]
+  },
+  {
+    "Id": "INT_RACIAL_FLUX_PROC",
+    "Name": "Generate Flux",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal", "Racial" ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "MANIPULATE_ESSENCE",
+        "TargetRuleId": "SELF",
+        "EssenceManipulations": [
+          {
+            "Type": "Flux",
+            "Amount": 1
+          }
+        ]
+      }
+    ]
   }
 ]

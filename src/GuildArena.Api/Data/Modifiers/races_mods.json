@@ -11,5 +11,14 @@
         "Value": -3
       }
     ]
+  },
+  {
+    "Id": "MOD_RACIAL_KYMERA_TRAIT",
+    "Name": "Flux Conductor",
+    "Type": "Bless",
+    "Description": "Starts combat with 1 Flux Essence.",
+    "Triggers": [ "ON_COMBAT_START" ],
+    "TriggeredAbilityId": "INT_RACIAL_FLUX_PROC",
+    "RemoveAfterTrigger": true
   }
 ]
