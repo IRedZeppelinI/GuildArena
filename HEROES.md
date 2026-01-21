@@ -84,7 +84,7 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 *   **Raça:** Psylian (Trait Racial: Channel melhorado - gera 2 essence)
 *   **Role:** Healer / Utility
 *   **Afinidade:** Mind (Control) / Light (Healing)
-*   **Estado:** *A Implementar*
+*   **Estado:** ✅ Implementado
 
 ### Trait: Blessing of Light
 *   **Reactivo:** Sempre que a Elysia restaura HP a um alvo (seja Single Target ou AoE), esse alvo ganha também **+2 Defense** (ou +10% se formos por percentagem) por 2 turnos.
@@ -129,7 +129,7 @@ Qualquer alteração de balanceamento deve ser registada aqui.
     *   *Mecânica:* Trigger `ON_COMBAT_START`.
 *   **Role:** Berserker / Anti-Melee
 *   **Afinidade:** Vigor (HP Sacrifice) / Flux (Chaos)
-*   **Estado:** *A Implementar*
+*   **Estado:** ✅ Implementado
 
 ### Trait: Spiked Carapace
 *   **Reactivo:** Sempre que recebe um ataque **Melee**, reflete dano ao atacante.
@@ -172,10 +172,49 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 ------------------------------------------------------------
 
 
-### 5. Nyx (The Shadow)
-*   **Raça:** Nethra (Blur: Chance de Evasão)
-*   **Afinidade:** Shadow (Stealth / DoTs)
-*   **Conceito:** Assassino esquivo.
+## 5. Nyx (The Shadow)
+*   **Raça:** Nethra (Trait Racial: **Blur**)
+    *   *Efeito:* Possui **+15% Evasão** contra ataques físicos.
+    *   *Mecânica:* `EvasionModifications` no `HitChanceService`.
+*   **Role:** Assassin / Evasion Tank
+*   **Afinidade:** Shadow (Void)
+*   **Estado:** *A Implementar*
+
+### Trait: Phase Shift
+*   **Reactivo:** Sempre que a Nyx se esquiva (Evade/Miss) de um ataque, ganha **+10% Agility**  por 2 turnos. Acumula.
+*   **Mecânica:** Trigger `ON_EVADE`.
+
+### Habilidades
+
+**1. Phantom Cut**
+*   **Custo:** 1 Shadow
+*   **Tags:** `Melee`, `Physical`, `Shadow`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** Dano Físico. Ignora **50% da Defesa** do alvo (Penetration).
+
+**2. Shroud of Night**
+*   **Custo:** 1 Shadow
+*   **Cooldown:** 3 Turnos
+*   **Alvo:** Self
+*   **Efeito:** 
+    1. Aplica **Stealth** (Untargetable).
+    2. Aplica **+50% Evasão** (Para sobreviver a AoE).
+    *   **Duração:** 2 Turnos.
+
+**3. Withering Gaze**
+*   **Custo:** 1 Shadow
+*   **Cooldown:** 2 Turnos
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** Causa dano mágico leve e aplica **Blind** (-20% Hit Chance) por 2 turnos.
+
+**4. Void Singularity (Ultimate)**
+*   **Custo:** 2 Shadow + 1 Flux
+*   **Cooldown:** 5 Turnos
+*   **Tags:** `Spell`, `Ultimate`, `Shadow`
+*   **Alvo:** 1 Inimigo
+*   **Efeito:** 
+    1. Causa dano massivo.
+    2. **Condicional:** Se o alvo tiver **Blind**, o ataque torna-se **Impossible to Evade** e causa **+50% de Dano**.
 
 ------------------------------------------------------------
 
