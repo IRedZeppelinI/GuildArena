@@ -7,6 +7,7 @@ using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Stats;
+using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -329,5 +330,119 @@ public class DamageEffectHandlerTests
         target.CurrentHP.ShouldBe(10);
         
         _deathServiceMock.Received(1).ProcessDeathIfApplicable(target, source, Arg.Any<GameState>());
+    }
+
+    // --- NOVOS TESTES (Penetração e Condicional) ---
+
+    [Fact]
+    public void Apply_WithDefensePenetration_ShouldIgnorePercentageOfDefense()
+    {
+        // ARRANGE
+        // Cenário: 20 Ataque vs 10 Defesa.
+        // Normal: 20 - 10 = 10 Dano.
+        // Com 50% Pen: 20 - (10 * 0.5) = 15 Dano.
+
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageCategory = DamageCategory.Physical,
+            ScalingFactor = 1.0f,
+            BaseAmount = 0f,
+            TargetRuleId = "T1",
+            DefensePenetration = 0.5f // <--- 50% Penetração
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", RaceId = "A", BaseStats = new() };
+        var target = new Combatant { Id = 2, Name = "Target", RaceId = "B", CurrentHP = 100, BaseStats = new() };
+
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(20f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(10f);
+
+        // Configurar o Mock do ResolutionService para devolver o dano que recebe (Pass-through)
+        // para podermos validar o cálculo que o Handler fez antes.
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(x => new DamageResolutionResult { FinalDamageToApply = x.Arg<float>() });
+
+        // ACT
+        _handler.Apply(effectDef, source, target, new GameState(), new CombatActionResult());
+
+        // ASSERT
+        // Esperamos 15 de dano (20 - 5), e não 10.
+        target.CurrentHP.ShouldBe(85); // 100 - 15
+    }
+
+    [Fact]
+    public void Apply_WithConditionalMultiplier_ShouldIncreaseDamage_WhenStatusPresent()
+    {
+        // ARRANGE
+        // Cenário: Ataque base 10. Se alvo tiver Blind, x2.0 Dano.
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageCategory = DamageCategory.Physical,
+            ScalingFactor = 1.0f,
+            TargetRuleId = "T1",
+            ConditionStatus = StatusEffectType.Blind,    // Requer Blind
+            ConditionDamageMultiplier = 2.0f             // Dobra o dano
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", RaceId = "A", BaseStats = new() };
+        var target = new Combatant { Id = 2, Name = "Target", RaceId = "B", CurrentHP = 100, BaseStats = new() };
+
+        // Dar o status ao alvo
+        target.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_BLIND",
+            ActiveStatusEffects = new() { StatusEffectType.Blind }
+        });
+
+        // 10 Ataque vs 0 Defesa = 10 Dano Base
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
+
+        // Mock Pass-through
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(x => new DamageResolutionResult { FinalDamageToApply = x.Arg<float>() });
+
+        // ACT
+        _handler.Apply(effectDef, source, target, new GameState(), new CombatActionResult());
+
+        // ASSERT
+        // 10 Base * 2.0 Multiplier = 20 Dano.
+        target.CurrentHP.ShouldBe(80); // 100 - 20
+    }
+
+    [Fact]
+    public void Apply_WithConditionalMultiplier_ShouldIgnore_WhenStatusMissing()
+    {
+        // ARRANGE
+        var effectDef = new EffectDefinition
+        {
+            Type = EffectType.DAMAGE,
+            Delivery = DeliveryMethod.Melee,
+            DamageCategory = DamageCategory.Physical,
+            ScalingFactor = 1.0f, // <--- FALTAVA ISTO
+            TargetRuleId = "T1",
+            ConditionStatus = StatusEffectType.Blind,
+            ConditionDamageMultiplier = 2.0f
+        };
+
+        var source = new Combatant { Id = 1, Name = "Source", RaceId = "A", BaseStats = new() };
+        var target = new Combatant { Id = 2, Name = "Target", RaceId = "B", CurrentHP = 100, BaseStats = new() };
+
+        _statCalculationServiceMock.GetStatValue(source, StatType.Attack).Returns(10f);
+        _statCalculationServiceMock.GetStatValue(target, StatType.Defense).Returns(0f);
+
+        _resolutionServiceMock.ResolveDamage(Arg.Any<float>(), effectDef, source, target)
+            .Returns(x => new DamageResolutionResult { FinalDamageToApply = x.Arg<float>() });
+
+        // ACT
+        _handler.Apply(effectDef, source, target, new GameState(), new CombatActionResult());
+
+        // ASSERT
+        // 10 Base * 1.0 (Sem Bónus porque não tem status) = 10 Dano.
+        target.CurrentHP.ShouldBe(90);
     }
 }

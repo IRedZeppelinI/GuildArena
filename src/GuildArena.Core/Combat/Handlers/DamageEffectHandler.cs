@@ -47,6 +47,18 @@ public class DamageEffectHandler : IEffectHandler
         // 1. Calcular Dano Bruto Mitigado (Stats vs Defesa)
         float mitigatedDamage = CalculateMitigatedDamage(def, source, target);
 
+        if (def.ConditionStatus.HasValue && def.ConditionDamageMultiplier != 1.0f)
+        {
+            if (HasStatus(target, def.ConditionStatus.Value))
+            {
+                mitigatedDamage *= def.ConditionDamageMultiplier;
+                _logger.LogDebug("Conditional Damage Applied: x{Mult}", def.ConditionDamageMultiplier);
+
+                // Opcional: Adicionar tag para UI (Ex: "Critical")
+                actionResult.ResultTags.Add("Critical");
+            }
+        }
+
         // 2. Resolver Dano Final (Modifiers + Barreiras)
         var resolution = _resolutionService.ResolveDamage(mitigatedDamage, def, source, target);
 
@@ -169,8 +181,19 @@ public class DamageEffectHandler : IEffectHandler
             {
                 targetDefenseValue = _statService.GetStatValue(target, StatType.MagicDefense);
             }
+
+            if (def.DefensePenetration > 0)
+            {
+                // Se Penetration = 0.5 (50%), Defense efetiva = Defense * 0.5
+                targetDefenseValue *= (1.0f - def.DefensePenetration);
+            }
         }
 
         return Math.Max(0, rawDamage - targetDefenseValue);
+    }
+
+    private bool HasStatus(Combatant target, StatusEffectType status)
+    {
+        return target.ActiveModifiers.Any(m => m.ActiveStatusEffects.Contains(status));
     }
 }

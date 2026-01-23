@@ -8,6 +8,7 @@ public enum StatusEffectType
     Stun,           // Não pode agir (passa o turno)
     Silence,        // Não pode usar Skills (apenas Basic Attack)
     Disarm,         // Não pode usar Basic Attack (apenas Skills)    
+    Blind,          // Reduz Hit Chance ou ativa condições de crítico
 
     // --- Targeting / Defensive States ---
     Invulnerable,   // Imune a todo o dano e efeitos negativos

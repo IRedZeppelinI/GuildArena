@@ -3,6 +3,7 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Stats;
 
 namespace GuildArena.Core.Combat.Services;
@@ -34,6 +35,15 @@ public class HitChanceService : IHitChanceService
         {
             return 1.0f;
         }
+
+        if (effect.ConditionGuaranteedHit && effect.ConditionStatus.HasValue)
+        {
+            if (HasStatus(target, effect.ConditionStatus.Value))
+            {
+                return 1.0f; // Acerto garantido
+            }
+        }
+
 
         // 2. Cálculo Base (Stats) - Lógica existente
         float sourceStatValue = 0;
@@ -134,5 +144,10 @@ public class HitChanceService : IHitChanceService
             }
         }
         return total;
+    }
+
+    private bool HasStatus(Combatant target, StatusEffectType status)
+    {
+        return target.ActiveModifiers.Any(m => m.ActiveStatusEffects.Contains(status));
     }
 }

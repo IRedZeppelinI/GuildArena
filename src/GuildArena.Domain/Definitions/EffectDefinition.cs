@@ -1,4 +1,5 @@
 ﻿using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Resources;
 
@@ -26,6 +27,28 @@ public class EffectDefinition
     /// Default is true.
     /// </summary>
     public bool CanBeEvaded { get; set; } = true;
+
+    /// <summary>
+    /// Percentage of Target's Defense/MagicDefense to ignore.
+    /// Range: 0.0 to 1.0. Default 0.
+    /// </summary>
+    public float DefensePenetration { get; set; } = 0f;
+
+    /// <summary>
+    /// The status effect required on the target to trigger conditional bonuses (Crit/Hit).
+    /// </summary>
+    public StatusEffectType? ConditionStatus { get; set; }
+
+    /// <summary>
+    /// Multiplier applied to damage if ConditionStatus is met.
+    /// Default 1.0 (No change).
+    /// </summary>
+    public float ConditionDamageMultiplier { get; set; } = 1.0f;
+
+    /// <summary>
+    /// If true and ConditionStatus is met, the attack cannot be evaded.
+    /// </summary>
+    public bool ConditionGuaranteedHit { get; set; } = false;
 
 
     /// <summary>

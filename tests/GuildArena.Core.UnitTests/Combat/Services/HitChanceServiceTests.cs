@@ -4,6 +4,7 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.ValueObjects.Modifiers;
 using GuildArena.Domain.ValueObjects.State;
@@ -202,6 +203,71 @@ public class HitChanceServiceTests
         // 1.0 (Base) - 0.15 (Evasion) = 0.85
         chance.ShouldBe(0.85f, 0.01f);
     }
+    
+
+    [Fact]
+    public void Calculate_ConditionalGuaranteedHit_ShouldReturnOne_WhenStatusPresent()
+    {
+        // ARRANGE
+        var source = CreateCombatant(1, 1);
+        var target = CreateCombatant(2, 1);
+
+        // O alvo tem Blind
+        target.ActiveModifiers.Add(new ActiveModifier
+        {
+            DefinitionId = "MOD_BLIND",
+            ActiveStatusEffects = new() { StatusEffectType.Blind }
+        });
+
+        // Habilidade configurada para não falhar se tiver Blind
+        var effect = new EffectDefinition
+        {
+            TargetRuleId = "T_NYX",
+            CanBeEvaded = true, // Normalmente pode falhar...
+            ConditionStatus = StatusEffectType.Blind,
+            ConditionGuaranteedHit = true // ... mas aqui torna-se garantido
+        };
+
+        // Stats configurados para dar uma chance baixa (ex: Defensor tem muita Agilidade)
+        // Isto prova que a condição sobrepõe a matemática.
+        SetupStat(source, StatType.Attack, 10);
+        SetupStat(target, StatType.Agility, 9999);
+
+        // ACT
+        var chance = _service.CalculateHitChance(source, target, effect);
+
+        // ASSERT
+        chance.ShouldBe(1.0f);
+    }
+
+    [Fact]
+    public void Calculate_ConditionalGuaranteedHit_ShouldUseNormalCalc_WhenStatusMissing()
+    {
+        // ARRANGE
+        var source = CreateCombatant(1, 1);
+        var target = CreateCombatant(2, 1);
+        // Alvo NÃO tem Blind
+
+        var effect = new EffectDefinition
+        {
+            TargetRuleId = "T_NYX",
+            CanBeEvaded = true,
+            ConditionStatus = StatusEffectType.Blind,
+            ConditionGuaranteedHit = true
+        };
+
+        // Stats configurados para dar MinChance
+        SetupStat(source, StatType.Attack, 10);
+        SetupStat(target, StatType.Agility, 9999);
+
+        // ACT
+        var chance = _service.CalculateHitChance(source, target, effect);
+
+        // ASSERT
+        // Como a condição falhou, usa a matemática normal (que dá 5% devido à Agilidade alta)
+        chance.ShouldBe(0.05f); // MinChance
+    }
+
 
     // --- Helpers ---
     private Combatant CreateCombatant(int id, int level)
