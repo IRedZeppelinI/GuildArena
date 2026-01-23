@@ -30,5 +30,11 @@ public enum ModifierTrigger
     /// Useful for "On Cast" effects like "Gain 10 Rage when using a Skill".
     /// </summary>
     ON_ABILITY_CAST,
+
+    /// <summary>
+    /// Fires when a combatant successfully evades an incoming hostile effect.
+    /// </summary>
+    ON_EVADE,
+
     ON_DEATH,
 }

@@ -236,7 +236,8 @@ public class TriggerProcessor : ITriggerProcessor
                trigger == ModifierTrigger.ON_RECEIVE_MELEE_ATTACK ||
                trigger == ModifierTrigger.ON_RECEIVE_RANGED_ATTACK ||
                trigger == ModifierTrigger.ON_RECEIVE_SPELL_ATTACK ||
-               trigger == ModifierTrigger.ON_RECEIVE_HEAL;
+               trigger == ModifierTrigger.ON_RECEIVE_HEAL ||
+               trigger == ModifierTrigger.ON_EVADE; 
     }
 
     private static bool IsOffensiveTrigger(ModifierTrigger trigger)

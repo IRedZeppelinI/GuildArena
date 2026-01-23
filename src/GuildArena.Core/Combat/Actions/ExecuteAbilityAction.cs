@@ -93,33 +93,7 @@ public class ExecuteAbilityAction : ICombatAction
         return result;
     }
 
-    // --- Lógica Interna ---
-
-    //private List<Combatant>? ResolveAndValidateTargets(ICombatEngine engine, GameState state)
-    //{
-    //    var list = new List<Combatant>();
-
-    //    foreach (var rule in _ability.TargetingRules)
-    //    {
-    //        var targets = engine.TargetService.ResolveTargets(rule, Source, state, _userSelectedTargets);
-
-    //        // Se a regra é Manual e exige alvos (Count > 0)
-    //        if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
-    //        {
-    //            // Se o serviço devolveu menos alvos do que o exigido
-    //            // (ex: devolveu 0 porque o alvo era inválido)
-    //            if (targets.Count < rule.Count)
-    //            {
-    //                engine.BattleLog.Log($"Invalid target selected.");
-    //                return null; // Retorna NULL para sinalizar erro
-    //            }
-    //        }
-
-
-    //        list.AddRange(targets);
-    //    }
-    //    return list;
-    //}
+    
 
 
     private List<Combatant>? ResolveAndValidateTargets(ICombatEngine engine, GameState state)
@@ -317,6 +291,18 @@ public class ExecuteAbilityAction : ICombatAction
                         {
                             engine.BattleLog.Log($"{Source.Name} missed {target.Name}!");
                             result.ResultTags.Add("Miss");
+
+                            // --- DISPARAR TRIGGER ON_EVADE ---
+                            var evadeContext = new TriggerContext
+                            {
+                                Source = Source,   // Quem atacou e falhou
+                                Target = target,   // Quem se desviou (Holder do Trigger)
+                                GameState = state,
+                                Value = 0,         // Dano evitado? (impossivel saber)
+                                Tags = new HashSet<string>(_ability.Tags, StringComparer.OrdinalIgnoreCase)
+                            };
+
+                            engine.TriggerProcessor.ProcessTriggers(ModifierTrigger.ON_EVADE, evadeContext);
                         }
                     }
 

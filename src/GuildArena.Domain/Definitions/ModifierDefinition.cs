@@ -20,28 +20,7 @@ public class ModifierDefinition
     public int MaxStacks { get; set; } = 1;
 
 
-    public List<StatModification> StatModifications { get; set; } = new(); // Ex: { Attack: 10, Defense: -5, ... }
-
-    public List<DamageModification> DamageModifications { get; set; } = new();
-    public List<CooldownModification> CooldownModifications { get; set; } = new();
-
-
-    /// <summary>
-    /// Modifications that affect ability essence costs.
-    /// </summary>
-    public List<CostModification> EssenceCostModifications { get; set; } = new();
-
-
-    /// <summary>
-    /// Modifications that affect ability HP costs.
-    /// </summary>
-    public List<HPCostModification> HPCostModifications { get; set; } = new();
-
-
-    /// <summary>
-    /// Modifications that affect turn-start essence generation.
-    /// </summary>
-    public List<EssenceGenerationModification> EssenceGenerationModifications { get; set; } = new();
+    
 
 
     /// <summary>
@@ -65,23 +44,9 @@ public class ModifierDefinition
     public List<StatusEffectType> GrantedStatusEffects { get; set; } = new();
 
 
-    /// <summary>
-    /// Defines the barrier properties granted by this modifier, if any.
-    /// </summary>
-    public BarrierProperties? Barrier { get; set; }
+    public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
+    public string? TriggeredAbilityId { get; set; }
 
-    /// <summary>
-    /// Modifications that affect the strength of barriers created by this character.
-    /// </summary>
-    public List<BarrierModification> BarrierModifications { get; set; } = new();
-
-    /// <summary>
-    /// If true, this modifier is automatically removed from the target 
-    /// if the caster (originator) dies.
-    /// Useful for channeled spells, links, or taunts.
-    /// Default: false.
-    /// </summary>
-    public bool RemoveOnCasterDeath { get; set; } = false;
 
     /// <summary>
     /// If true, defensive/reactive triggers (e.g. ON_RECEIVE_HEAL) will fire even if the event 
@@ -104,8 +69,66 @@ public class ModifierDefinition
     /// </summary>
     public bool RemoveAfterTrigger { get; set; } = false;
 
-    public List<ModifierTrigger> Triggers { get; set; } = new(); // Enum: ON_TURN_START, ON_TAKE_DAMAGE...       
-    public string? TriggeredAbilityId { get; set; }
+    /// <summary>
+    /// If true, this modifier is automatically removed from the target 
+    /// if the caster (originator) dies.
+    /// Useful for channeled spells, links, or taunts.
+    /// Default: false.
+    /// </summary>
+    public bool RemoveOnCasterDeath { get; set; } = false;
+
+    #region Modifications
+
+
+    /// <summary>
+    /// Modifications that affect the character's accuracy (Hit Chance).
+    /// </summary>
+    public List<HitChanceModification> HitChanceModifications { get; set; } = new();
+
+    /// <summary>
+    /// Modifications that affect the character's ability to dodge attacks (Evasion).
+    /// </summary>
+    public List<EvasionModification> EvasionModifications { get; set; } = new();
+
+    /// <summary>
+    /// Defines the barrier properties granted by this modifier, if any.
+    /// </summary>
+    public BarrierProperties? Barrier { get; set; }
+
+    /// <summary>
+    /// Modifications that affect the strength of barriers created by this character.
+    /// </summary>
+    public List<BarrierModification> BarrierModifications { get; set; } = new();
+
+
+    public List<StatModification> StatModifications { get; set; } = new(); // Ex: { Attack: 10, Defense: -5, ... }
+
+    public List<DamageModification> DamageModifications { get; set; } = new();
+    public List<CooldownModification> CooldownModifications { get; set; } = new();
+
+
+    /// <summary>
+    /// Modifications that affect ability essence costs.
+    /// </summary>
+    public List<CostModification> EssenceCostModifications { get; set; } = new();
+
+
+    /// <summary>
+    /// Modifications that affect ability HP costs.
+    /// </summary>
+    public List<HPCostModification> HPCostModifications { get; set; } = new();
+
+
+    /// <summary>
+    /// Modifications that affect turn-start essence generation.
+    /// </summary>
+    public List<EssenceGenerationModification> EssenceGenerationModifications { get; set; } = new();
+
+    #endregion
+
+
+
+
 }
 
 
