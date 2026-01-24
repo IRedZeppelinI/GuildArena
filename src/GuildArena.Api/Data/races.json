@@ -58,5 +58,20 @@
       "MaxActions": 0,
       "MaxHP": 10
     }
+  },
+  {
+    "Id": "RACE_NETHRA",
+    "Name": "Nethra",
+    "Description": "Void Walkers. Agile and elusive.",
+    "RacialModifierIds": [ "MOD_RACIAL_NETHRA_BLUR" ],
+    "BonusStats": {
+      "Attack": 2,
+      "Defense": -2,
+      "Agility": 5,
+      "Magic": 0,
+      "MagicDefense": 0,
+      "MaxActions": 0,
+      "MaxHP": -10
+    }
   }
 ]

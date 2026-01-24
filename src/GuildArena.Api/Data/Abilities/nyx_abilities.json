@@ -1,0 +1,168 @@
+[
+  {
+    "Id": "ABIL_NYX_CUT",
+    "Name": "Phantom Cut",
+    "Description": "Strikes from the shadows. Ignores 50% Defense.",
+    "Tags": [ "Physical", "Melee", "Shadow" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "Costs": [
+      {
+        "Type": "Shadow",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 5,
+        "ScalingStat": "Agility",
+        "ScalingFactor": 1.2,
+        "DefensePenetration": 0.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Shadow" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_NYX_SHROUD",
+    "Name": "Shroud of Night",
+    "Description": "Vanish into darkness. +50% Evasion.",
+    "Tags": [ "Buff", "Shadow" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [
+      {
+        "Type": "Shadow",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_NYX_SHROUD",
+        "DurationInTurns": 2,
+        "TargetRuleId": "SELF",
+        "CanBeEvaded": false
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_NYX_GAZE",
+    "Name": "Withering Gaze",
+    "Description": "Blinds the enemy (-20% Hit).",
+    "Tags": [ "Spell", "Shadow", "Curse" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 2,
+    "Costs": [
+      {
+        "Type": "Shadow",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 5,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 0.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Shadow" ]
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_NYX_BLIND",
+        "DurationInTurns": 2,
+        "TargetRuleId": "TGT"
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_NYX_ULTI",
+    "Name": "Void Singularity",
+    "Description": "Massive damage. Unavoidable and Crit if Blind.",
+    "Tags": [ "Spell", "Ultimate", "Shadow" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 5,
+    "Costs": [
+      {
+        "Type": "Shadow",
+        "Amount": 2
+      },
+      {
+        "Type": "Flux",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 35,
+        "ScalingStat": "Agility",
+        "ScalingFactor": 1.6,
+        "CanBeEvaded": true,
+        "ConditionStatus": "Blind",
+        "ConditionGuaranteedHit": true,
+        "ConditionDamageMultiplier": 1.5,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Shadow", "Ultimate" ]
+      }
+    ]
+  },
+  {
+    "Id": "INT_NYX_PASSIVE_PROC",
+    "Name": "Phase Shift",
+    "ActionPointCost": 0,
+    "Tags": [ "Internal" ],
+    "TargetingRules": [
+      {
+        "RuleId": "SELF",
+        "Type": "Self",
+        "Count": 1
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_NYX_AGILITY_BUFF",
+        "DurationInTurns": 2,
+        "TargetRuleId": "SELF",
+        "CanBeEvaded": false
+      }
+    ]
+  }
+]

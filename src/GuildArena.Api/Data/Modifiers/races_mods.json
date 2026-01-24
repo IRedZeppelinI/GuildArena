@@ -20,5 +20,17 @@
     "Triggers": [ "ON_COMBAT_START" ],
     "TriggeredAbilityId": "INT_RACIAL_FLUX_PROC",
     "RemoveAfterTrigger": true
+  },
+  {
+    "Id": "MOD_RACIAL_NETHRA_BLUR",
+    "Name": "Blur",
+    "Type": "Bless",
+    "Description": "+15% Evasion against Physical attacks.",
+    "EvasionModifications": [
+      {
+        "Value": 0.15,
+        "RequiredDamageCategory": "Physical"
+      }
+    ]
   }
 ]

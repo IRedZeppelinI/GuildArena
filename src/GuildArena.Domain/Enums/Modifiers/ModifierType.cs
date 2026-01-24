@@ -2,6 +2,7 @@
 
 public enum ModifierType
 {
-    Bless,
-    Curse
+    None = 0, 
+    Bless = 1,
+    Curse = 2
 }

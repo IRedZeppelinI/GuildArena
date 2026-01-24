@@ -127,5 +127,38 @@
       "ABIL_VEX_FUEL",
       "ABIL_VEX_ULTI"
     ]
+  },
+  { //  NYX
+    "Id": "HERO_NYX",
+    "Name": "Vesper",
+    "Description": "The Shadow Assassin. Uses evasion and stealth.",
+    "RaceId": "RACE_NETHRA",
+    "TraitModifierId": "MOD_NYX_TRAIT",
+    "BaseStats": {
+      "Attack": 12,
+      "Defense": 4,
+      "Agility": 12,
+      "Magic": 6,
+      "MagicDefense": 4,
+      "MaxActions": 1,
+      "MaxHP": 90
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 2.5,
+      "Defense": 0.5,
+      "Agility": 2.5,
+      "Magic": 0.5,
+      "MagicDefense": 0.5,
+      "MaxActions": 0,
+      "MaxHP": 12
+    },
+    "GuardAbilityId": null,
+    "FocusAbilityId": "ABIL_COMMON_FOCUS",
+    "AbilityIds": [
+      "ABIL_NYX_CUT",
+      "ABIL_NYX_SHROUD",
+      "ABIL_NYX_GAZE",
+      "ABIL_NYX_ULTI"
+    ]
   }
 ]

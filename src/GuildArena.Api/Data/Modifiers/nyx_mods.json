@@ -1,0 +1,46 @@
+[
+  {
+    "Id": "MOD_NYX_TRAIT",
+    "Name": "Phase Shift",
+    "Type": "Bless",
+    "Description": "[Passive] When evading, gain Agility.",
+    "Triggers": [ "ON_EVADE" ],
+    "TriggeredAbilityId": "INT_NYX_PASSIVE_PROC"
+  },
+  {
+    "Id": "MOD_NYX_AGILITY_BUFF",
+    "Name": "Phased",
+    "Type": "Bless",
+    "Description": "+10% Agility (Stacks up to 5)",
+    "MaxStacks": 5,
+    "DurationInTurns": 2,
+    "StatModifications": [
+      {
+        "Stat": "Agility",
+        "Type": "PERCENTAGE",
+        "Value": 0.10
+      }
+    ]
+  },
+  {
+    "Id": "MOD_NYX_BLIND",
+    "Name": "Blind",
+    "Type": "Curse",
+    "Description": "-20% Hit Chance.",
+    "DurationInTurns": 2,
+    "HitChanceModifications": [
+      { "Value": -0.20 }
+    ]
+  },
+  {
+    "Id": "MOD_NYX_SHROUD",
+    "Name": "Shroud of Night",
+    "Type": "Bless",
+    "Description": "Stealth and +50% Evasion.",
+    "DurationInTurns": 2,
+    "GrantedStatusEffects": [ "Untargetable", "Stealth" ],
+    "EvasionModifications": [
+      { "Value": 0.50 }
+    ]
+  }
+]
