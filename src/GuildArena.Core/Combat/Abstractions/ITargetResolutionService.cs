@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Entities;
+﻿using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Targeting;
 
 namespace GuildArena.Core.Combat.Abstractions;

@@ -2,9 +2,9 @@
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 

@@ -5,6 +5,7 @@ using GuildArena.Domain.Entities;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.State;
 using Microsoft.Extensions.Logging;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.Combat.Factories;
 
@@ -31,7 +32,7 @@ public class CombatantFactory : ICombatantFactory
         _logger = logger;
     }
 
-    public Combatant Create(HeroCharacter hero, int ownerId, List<string>? loadoutModifierIds = null)
+    public Combatant Create(Hero hero, int ownerId, List<string>? loadoutModifierIds = null)
     {
         // 1. Carregar Definições
         if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionID, out var charDef))

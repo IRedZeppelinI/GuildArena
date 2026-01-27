@@ -1,5 +1,5 @@
-﻿using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums.Stats;
+﻿using GuildArena.Domain.Enums.Stats;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.Combat.Abstractions;
 

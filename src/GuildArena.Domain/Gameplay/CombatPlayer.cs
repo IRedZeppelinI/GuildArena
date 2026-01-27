@@ -2,7 +2,7 @@
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.ValueObjects.State;
 
-namespace GuildArena.Domain.Entities;
+namespace GuildArena.Domain.Gameplay;
 
 /// <summary>
 /// Represents a "player" (human or AI) within a combat instance.

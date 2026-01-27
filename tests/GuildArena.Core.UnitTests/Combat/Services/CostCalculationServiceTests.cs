@@ -10,6 +10,7 @@ using NSubstitute;
 using Shouldly;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 

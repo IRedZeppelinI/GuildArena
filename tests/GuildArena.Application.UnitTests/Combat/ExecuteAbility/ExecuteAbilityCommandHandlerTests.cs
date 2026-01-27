@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Xunit;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Application.UnitTests.Combat.ExecuteAbility;
 

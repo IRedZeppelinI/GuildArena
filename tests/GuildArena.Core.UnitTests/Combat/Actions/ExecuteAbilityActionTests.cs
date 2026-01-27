@@ -9,6 +9,7 @@ using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.Enums.Targeting;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Resources;
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;

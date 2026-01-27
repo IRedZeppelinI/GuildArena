@@ -2,15 +2,14 @@
 using GuildArena.Core.Combat.Actions;
 using GuildArena.Core.Combat.Handlers;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Resources;
 using GuildArena.Domain.ValueObjects.Stats;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
-using Shouldly;
-using Xunit;
+
 
 namespace GuildArena.Core.UnitTests.Combat.Handlers;
 

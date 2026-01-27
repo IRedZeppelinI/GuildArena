@@ -1,5 +1,5 @@
-﻿using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums.Resources;
+﻿using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Resources;
 
 namespace GuildArena.Core.Combat.Abstractions;

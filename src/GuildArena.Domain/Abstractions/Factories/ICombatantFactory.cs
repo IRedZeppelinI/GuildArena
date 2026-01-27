@@ -1,4 +1,5 @@
 ﻿using GuildArena.Domain.Entities;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Domain.Abstractions.Factories;
 
@@ -14,5 +15,5 @@ public interface ICombatantFactory
     /// <param name="hero">The persistent hero data.</param>
     /// <param name="ownerId">The Player ID.</param>
     /// <param name="loadoutModifierIds">Optional list of modifiers selected by the player (Runes/Masteries).</param>
-    Combatant Create(HeroCharacter hero, int ownerId, List<string>? loadoutModifierIds = null);
+    Combatant Create(Hero hero, int ownerId, List<string>? loadoutModifierIds = null);
 }

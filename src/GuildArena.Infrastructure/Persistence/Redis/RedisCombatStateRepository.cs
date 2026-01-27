@@ -1,5 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
-using GuildArena.Domain.Entities;
+using GuildArena.Domain.Gameplay;
 using StackExchange.Redis;
 using System.Text.Json;
 

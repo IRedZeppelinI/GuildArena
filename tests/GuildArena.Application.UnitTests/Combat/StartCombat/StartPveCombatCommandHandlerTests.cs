@@ -7,13 +7,11 @@ using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums;
 using GuildArena.Domain.Enums.Modifiers;
-using GuildArena.Domain.ValueObjects;
+using GuildArena.Domain.Gameplay;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Application.UnitTests.Combat.StartCombat;
 
@@ -73,7 +71,7 @@ public class StartPveCombatCommandHandlerTests
         _currentUserMock.UserId.Returns(playerId);
 
         // 2. Mock Player Heroes (Retorna a quantidade correta para passar a validação)
-        var heroesFromDb = new List<HeroCharacter>
+        var heroesFromDb = new List<Hero>
         {
             new() { Id = 10, CharacterDefinitionID = "HERO_A" },
             new() { Id = 11, CharacterDefinitionID = "HERO_B" }
@@ -99,11 +97,11 @@ public class StartPveCombatCommandHandlerTests
             });
 
         // 4. Mock Factory (Devolve um combatente genérico para não rebentar)
-        _factoryMock.Create(Arg.Any<HeroCharacter>(), Arg.Any<int>())
+        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>())
             .Returns(info => new Combatant
             {
                 // Usar o ID do HeroCharacter passado para garantir unicidade no teste
-                Id = info.Arg<HeroCharacter>().Id,
+                Id = info.Arg<Hero>().Id,
                 Name = "Mock",
                 RaceId = "RACE_MOCK",
                 OwnerId = info.Arg<int>(), // Usa o ownerId passado no Create
@@ -197,7 +195,7 @@ public class StartPveCombatCommandHandlerTests
 
         // O repo só devolve o ID 10
         _playerRepoMock.GetHeroesAsync(playerId, requestedIds)
-            .Returns(new List<HeroCharacter> { new() { Id = 10, CharacterDefinitionID = "H" } });
+            .Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionID = "H" } });
 
         var command = new StartPveCombatCommand
         {
@@ -223,7 +221,7 @@ public class StartPveCombatCommandHandlerTests
 
         // Repo devolve os heróis corretamente
         _playerRepoMock.GetHeroesAsync(playerId, Arg.Any<List<int>>())
-            .Returns(new List<HeroCharacter> { new() { Id = 1, CharacterDefinitionID = "H" } });
+            .Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionID = "H" } });
 
         // Encounter Repo falha
         _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())

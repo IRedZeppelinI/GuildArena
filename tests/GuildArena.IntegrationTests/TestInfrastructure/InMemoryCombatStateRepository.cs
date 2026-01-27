@@ -1,5 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
-using GuildArena.Domain.Entities;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.IntegrationTests.TestInfrastructure;
 

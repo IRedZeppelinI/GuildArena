@@ -1,8 +1,8 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Gameplay;
 using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Core.Combat.Handlers;

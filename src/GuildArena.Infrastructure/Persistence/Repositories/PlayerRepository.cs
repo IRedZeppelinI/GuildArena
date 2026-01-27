@@ -5,11 +5,11 @@ namespace GuildArena.Infrastructure.Persistence.Repositories;
 
 public class PlayerRepository : IPlayerRepository
 {
-    public Task<List<HeroCharacter>> GetHeroesAsync(int playerId, List<int> heroIds)
+    public Task<List<Hero>> GetHeroesAsync(int playerId, List<int> heroIds)
     {
         // STUB DB
 
-        var result = new List<HeroCharacter>();
+        var result = new List<Hero>();
 
         foreach (var id in heroIds)
         {
@@ -34,7 +34,7 @@ public class PlayerRepository : IPlayerRepository
                 _ => "HERO_GARRET"
             };
 
-            result.Add(new HeroCharacter
+            result.Add(new Hero
             {
                 Id = id,
                 GuildId = playerId,

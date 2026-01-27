@@ -1,6 +1,6 @@
 ﻿namespace GuildArena.Domain.Entities;
 
-public class HeroCharacter
+public class Hero
 {
     public int Id { get; set; }
     public int GuildId { get; set; }

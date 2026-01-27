@@ -1,7 +1,7 @@
 ﻿using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.Combat.Abstractions
 {

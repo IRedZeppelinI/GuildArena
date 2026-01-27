@@ -5,6 +5,7 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using Microsoft.Extensions.Logging;

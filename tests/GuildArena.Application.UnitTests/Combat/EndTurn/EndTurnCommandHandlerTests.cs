@@ -1,7 +1,7 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Domain.Entities;
+using GuildArena.Domain.Gameplay;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;

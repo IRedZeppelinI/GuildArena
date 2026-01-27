@@ -1,4 +1,4 @@
-﻿using GuildArena.Domain.Entities;
+﻿using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.Combat.Abstractions;
 

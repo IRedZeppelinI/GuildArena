@@ -4,6 +4,7 @@ using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Stats;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
 using MediatR;

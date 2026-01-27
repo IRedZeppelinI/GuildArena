@@ -1,7 +1,6 @@
 ﻿using GuildArena.Core.Combat.Services;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Modifiers;
 using Microsoft.Extensions.Logging;
@@ -9,6 +8,7 @@ using NSubstitute;
 using Shouldly;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.UnitTests.Combat.Services;
 

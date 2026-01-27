@@ -1,8 +1,8 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Enums;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Modifiers;
+using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Core.Combat.Services;
 

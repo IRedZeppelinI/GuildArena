@@ -2,7 +2,7 @@
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 
-namespace GuildArena.Domain.Entities;
+namespace GuildArena.Domain.Gameplay;
 
 public class Combatant
 {

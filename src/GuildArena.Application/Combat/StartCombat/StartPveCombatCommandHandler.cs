@@ -9,6 +9,7 @@ using GuildArena.Domain.Enums;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Gameplay;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -142,7 +143,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         {
             // Criamos uma entidade "volátil" apenas para alimentar a Factory.
             // Os mobs não têm persistência (XP, etc), por isso criamos on-the-fly.
-            var mobEntity = new HeroCharacter
+            var mobEntity = new Hero
             {
                 Id = mobIdCounter--,
                 GuildId = -1,

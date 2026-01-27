@@ -12,7 +12,7 @@ public interface IPlayerRepository
     /// </summary>
     /// <param name="playerId">The owner ID.</param>
     /// <param name="heroIds">The list of hero instance IDs to fetch.</param>
-    Task<List<HeroCharacter>> GetHeroesAsync(int playerId, List<int> heroIds);
+    Task<List<Hero>> GetHeroesAsync(int playerId, List<int> heroIds);
 
     // Futuramente terás aqui métodos como:
     // Task<PlayerProfile?> GetProfileAsync(int playerId);

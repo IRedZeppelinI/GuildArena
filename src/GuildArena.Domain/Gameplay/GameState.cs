@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Domain.Entities;
+﻿namespace GuildArena.Domain.Gameplay;
 
 public class GameState
 {
