@@ -22,32 +22,32 @@ services:
       - redis
 
   # --- POSTGRES (Dados Persistentes: Players, Guilds) ---
-  # postgres:
-  #   image: postgres:15-alpine
-  #   container_name: guildarena-postgres
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_USER: admin
-  #     POSTGRES_PASSWORD: password123
-  #     POSTGRES_DB: GuildArenaDb
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - postgres_data:/var/lib/postgresql/data
+  postgres:
+    image: postgres:latest
+    container_name: guildarena-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: GuildArenaDb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
 
   # --- PGADMIN (GUI para Postgres) ---
-  # pgadmin:
-  #   image: dpage/pgadmin4
-  #   container_name: guildarena-pgadmin
-  #   restart: unless-stopped
-  #   environment:
-  #     PGADMIN_DEFAULT_EMAIL: admin@guildarena.com
-  #     PGADMIN_DEFAULT_PASSWORD: password123
-  #   ports:
-  #     - "5050:80"
-  #   depends_on:
-  #     - postgres
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: guildarena-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@guildarena.com
+      PGADMIN_DEFAULT_PASSWORD: password123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
 
 volumes:
   redis_data:
-  # postgres_data:
+  postgres_data:
