@@ -38,7 +38,7 @@ public class PlayerRepository : IPlayerRepository
             {
                 Id = id,
                 GuildId = playerId,
-                CharacterDefinitionID = defId,
+                CharacterDefinitionId = defId,
                 CurrentLevel = 1,
                 CurrentXP = 0
             });

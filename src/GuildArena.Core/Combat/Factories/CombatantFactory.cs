@@ -35,8 +35,8 @@ public class CombatantFactory : ICombatantFactory
     public Combatant Create(Hero hero, int ownerId, List<string>? loadoutModifierIds = null)
     {
         // 1. Carregar Definições
-        if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionID, out var charDef))
-            throw new KeyNotFoundException($"Character '{hero.CharacterDefinitionID}' not found.");
+        if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionId, out var charDef))
+            throw new KeyNotFoundException($"Character '{hero.CharacterDefinitionId}' not found.");
 
         if (!_raceRepo.TryGetDefinition(charDef.RaceId, out var raceDef))
             throw new KeyNotFoundException($"Race '{charDef.RaceId}' not found.");

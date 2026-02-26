@@ -34,7 +34,7 @@ public class CombatantFactoryTests
     public void Create_ShouldAssignRaceId_Correctly()
     {
         // ARRANGE
-        var hero = new Hero { Id = 1, CharacterDefinitionID = "HERO_TEST", CurrentLevel = 1 };
+        var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_TEST", CurrentLevel = 1 };
 
         var charDef = new CharacterDefinition
         {
@@ -65,7 +65,7 @@ public class CombatantFactoryTests
     public void Create_ShouldCalculateStatsAndHP_UsingUnifiedBaseStats()
     {
         // ARRANGE
-        var hero = new Hero { Id = 100, CharacterDefinitionID = "HERO_TEST", CurrentLevel = 5 };
+        var hero = new Hero { Id = 100, CharacterDefinitionId = "HERO_TEST", CurrentLevel = 5 };
 
         var raceDef = new RaceDefinition
         {
@@ -83,7 +83,7 @@ public class CombatantFactoryTests
             StatsGrowthPerLevel = new BaseStats { Attack = 2, MaxHP = 10 }
         };
 
-        _charRepo.TryGetDefinition(hero.CharacterDefinitionID, out Arg.Any<CharacterDefinition>())
+        _charRepo.TryGetDefinition(hero.CharacterDefinitionId, out Arg.Any<CharacterDefinition>())
             .Returns(x => { x[1] = charDef; return true; });
         _raceRepo.TryGetDefinition(charDef.RaceId, out Arg.Any<RaceDefinition>())
             .Returns(x => { x[1] = raceDef; return true; });
@@ -104,7 +104,7 @@ public class CombatantFactoryTests
     public void Create_ShouldApplyModifiers_From_Race_Trait_And_Loadout()
     {
         // ARRANGE
-        var hero = new Hero { Id = 1, CharacterDefinitionID = "HERO_A", CurrentLevel = 1 };
+        var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_A", CurrentLevel = 1 };
         var playerLoadout = new List<string> { "MOD_LOADOUT_RUNES" };
 
         var raceDef = new RaceDefinition 
@@ -154,7 +154,7 @@ public class CombatantFactoryTests
     public void Create_ShouldLoadAbilities_FromCharacterDefinition()
     {
         // ARRANGE
-        var hero = new Hero { Id = 1, CharacterDefinitionID = "HERO_A", CurrentLevel = 1 };
+        var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_A", CurrentLevel = 1 };
 
         var charDef = new CharacterDefinition
         {
@@ -209,7 +209,7 @@ public class CombatantFactoryTests
     public void Create_ShouldResolveSpecialAbility_FromGuardId()
     {
         // ARRANGE
-        var hero = new Hero { Id = 1, CharacterDefinitionID = "HERO_GUARD", CurrentLevel = 1 };
+        var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_GUARD", CurrentLevel = 1 };
 
         var charDef = new CharacterDefinition
         {
@@ -250,7 +250,7 @@ public class CombatantFactoryTests
     public void Create_ShouldResolveSpecialAbility_FromFocusId()
     {
         // ARRANGE
-        var hero = new Hero { Id = 1, CharacterDefinitionID = "HERO_FOCUS", CurrentLevel = 1 };
+        var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_FOCUS", CurrentLevel = 1 };
 
         var charDef = new CharacterDefinition
         {

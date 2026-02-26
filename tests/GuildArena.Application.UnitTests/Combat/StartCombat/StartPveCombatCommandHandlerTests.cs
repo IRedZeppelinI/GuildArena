@@ -73,8 +73,8 @@ public class StartPveCombatCommandHandlerTests
         // 2. Mock Player Heroes (Retorna a quantidade correta para passar a validação)
         var heroesFromDb = new List<Hero>
         {
-            new() { Id = 10, CharacterDefinitionID = "HERO_A" },
-            new() { Id = 11, CharacterDefinitionID = "HERO_B" }
+            new() { Id = 10, CharacterDefinitionId = "HERO_A" },
+            new() { Id = 11, CharacterDefinitionId = "HERO_B" }
         };
         _playerRepoMock.GetHeroesAsync(playerId, heroIds).Returns(heroesFromDb);
 
@@ -195,7 +195,7 @@ public class StartPveCombatCommandHandlerTests
 
         // O repo só devolve o ID 10
         _playerRepoMock.GetHeroesAsync(playerId, requestedIds)
-            .Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionID = "H" } });
+            .Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H" } });
 
         var command = new StartPveCombatCommand
         {
@@ -221,7 +221,7 @@ public class StartPveCombatCommandHandlerTests
 
         // Repo devolve os heróis corretamente
         _playerRepoMock.GetHeroesAsync(playerId, Arg.Any<List<int>>())
-            .Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionID = "H" } });
+            .Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H" } });
 
         // Encounter Repo falha
         _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())

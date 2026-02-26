@@ -147,7 +147,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
             {
                 Id = mobIdCounter--,
                 GuildId = -1,
-                CharacterDefinitionID = enemyDef.CharacterDefinitionId,
+                CharacterDefinitionId = enemyDef.CharacterDefinitionId,
                 CurrentLevel = enemyDef.Level,
                 CurrentXP = 0
             };
