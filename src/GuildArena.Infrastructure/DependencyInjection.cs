@@ -1,9 +1,13 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Entities;
+using GuildArena.Infrastructure.Persistence.Context;
 using GuildArena.Infrastructure.Persistence.Json;
 using GuildArena.Infrastructure.Persistence.Redis;
 using GuildArena.Infrastructure.Persistence.Repositories;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
@@ -18,21 +22,39 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services, IConfiguration configuration)
     {
-        //  Configuração do Redis 
-
-        // 1. Obtém a connection string
+        //   Redis         
         var redisConnection = configuration.GetConnectionString("Redis");
 
         if (string.IsNullOrEmpty(redisConnection))
         {            
             redisConnection = "localhost:6379";            
         }
-
-        //  Redis como Singleton.        
+               
         services.AddSingleton<IConnectionMultiplexer>(
             ConnectionMultiplexer.Connect(redisConnection)
         );
-        // 3. Regista os repositórios
+
+        // PostgreSQL
+        var dbConnectionString = configuration.GetConnectionString("DefaultConnection");
+
+        services.AddDbContext<GuildArenaDbContext>(options =>
+            options.UseNpgsql(dbConnectionString));
+
+        // 3. Identity (Auth)
+        services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        {
+            options.User.RequireUniqueEmail = true;
+            // Regras relaxadas para desenvolvimento
+            options.Password.RequireDigit = false;
+            options.Password.RequiredLength = 4;
+            options.Password.RequireNonAlphanumeric = false;
+            options.Password.RequireUppercase = false;
+            options.Password.RequireLowercase = false;
+        })
+            .AddEntityFrameworkStores<GuildArenaDbContext>()
+            .AddDefaultTokenProviders();
+
+        // Repositórios
         //redis
         services.AddScoped<ICombatStateRepository, RedisCombatStateRepository>();
 
