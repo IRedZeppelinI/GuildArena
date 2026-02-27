@@ -30,15 +30,22 @@ The solution enforces strict separation of concerns to ensure testability and ma
 
 ### Combat Mechanics (Core)
 * **Action Queue System:** A deterministic engine that processes actions, reactions, and triggers sequentially, enabling complex interactions without recursion issues.
-* **Essence Economy:** A "colored" resource system (Vigor, Mind, Shadow, etc.) requiring strategic hand management and trade-offs.
-* **Dynamic Modifiers:** Robust system for Buffs, Debuffs, Shields (with scaling), and Status Effects (Stun, Silence, etc.).
+* **Advanced Modifier Engine:** Robust system for Buffs, Debuffs, Shields (with stat scaling), Evasion/Accuracy, Armor Penetration, and Conditional Crits.
+* **Observer Triggers & Death Lifecycle:** Modifiers can react to events happening to allies/enemies. A dedicated `DeathService` handles complex state cleanup (e.g., removing linked buffs when a caster dies).
+* **Essence Economy:** A "colored" resource system (Vigor, Mind, Shadow, Flux, Light) requiring strategic hand management and trade-offs.
 * **Data-Driven:** Heroes, Abilities, and Races are defined in JSON, allowing for balancing updates without recompilation.
 
+### Persistence & Meta-Game
+* **Entity Framework Core & Identity:** Secure user authentication linked to persistent player profiles (Guilds).
+* **Match History:** Relational tracking of PvE and PvP matches, including exact hero compositions used, to support complex quest requirements (e.g., "Win with 2 Kymera heroes").
+
 ### Roadmap
-* [ ] Guild Management & Recruitment.
-* [ ] World Map Exploration (POI System).
-* [ ] Dynamic Dungeons.
-* [ ] Shop & Gold Economy.
+* [x] Core Combat Engine & Unit Tests.
+* [x] Relational Database Schema (EF Core) & Identity.
+* [ ] Advanced AI for PvE encounters.
+* [ ] SignalR Integration for Real-Time feedback.
+* [ ] Blazor WebAssembly Frontend.
+* [ ] Shop, Gold Economy & Hero Unlocks.
 
 ## Testing
 

@@ -42,13 +42,17 @@ O projeto segue estritamente os princípios da **Clean Architecture** e **Domain
     * Implementação de Repositórios (SQL, Redis, JSON File System).
 
 ### 2.2. Estratégia de Dados
-
 | Tipo de Dados | Tecnologia | Descrição |
 | :--- | :--- | :--- |
-| **Estático (Blueprints)** | **JSON** | Definições de Heróis, Habilidades, Raças e Modificadores. Carregados para memória (Cache Singleton) no arranque. |
-| **Persistente (Meta)** | **PostgreSQL** | Contas de jogadores, inventários, progresso de heróis (XP, Loadouts), guildas. |
-| **Volátil (Combate)** | **Redis** | O estado de uma batalha ativa (`GameState`). Otimizado para leitura/escrita rápida. |
+| **Estático (Blueprints)** | **JSON** | Definições de Heróis, Habilidades, Raças e Modificadores. Carregados para memória no arranque através do `IModifierDefinitionRepository`, etc. |
+| **Persistente (Meta)** | **PostgreSQL (EF Core)** | Contas de utilizador (ASP.NET Identity), perfis (`Guild`), coleção dinâmica de heróis (`Hero`), e histórico de combates (`Match`). |
+| **Volátil (Combate)** | **Redis** | O estado de uma batalha ativa (`GameState`). Otimizado para leitura/escrita rápida (não relacional). |
 
+
+### 2.3. Separação de Contextos no Domínio (DDD)
+Para evitar acoplamento entre o ORM (EF Core) e o motor de jogo, o `GuildArena.Domain` está estritamente dividido:
+* **`Domain.Entities`:** Classes mapeadas para o PostgreSQL (`ApplicationUser`, `Guild`, `Hero`, `Match`). Guardam apenas estado persistente a longo prazo.
+* **`Domain.Combat`:** Classes mapeadas para o Redis (`GameState`, `Combatant`, `CombatPlayer`). Representam o estado de runtime de uma batalha. A ponte entre os dois mundos é feita apenas no início do combate (pela `CombatantFactory`).
 ---
 
 ## 3. O Motor de Combate (Core Mechanics)
@@ -76,7 +80,7 @@ A narrativa do combate é gerida por um serviço Scoped (IBattleLogService).
 * **`ExecuteAbilityAction`:** Encapsula a lógica de execução. Não injeta serviços no construtor; utiliza o ICombatEngine como Service Locator para aceder a CostService, BattleLog, etc.
 * **`IEffectHandler`:** Implementações especializadas para cada tipo de efeito (Dano, Cura, Buffs).
 * **`TriggerProcessor`:** Ouve eventos e agenda reações. Filtra eventos globais usando `ValidateCondition`. 
-
+* **`IDeathService`:** Isola a responsabilidade da morte. Quando o HP chega a 0, este serviço orquestra os triggers de `ON_DEATH` e limpa as "Linked Dependencies" (ex: remove um debuff de um inimigo se o mago que o conjurou morrer).
 ---
 
 ## 4. Economia de Essence (Mana System)
@@ -126,11 +130,14 @@ Isto será feito através de tags e propriedades na `TargetingRule`.
 
 ## 6. Modificadores e Status (Buffs/Debuffs)
 
-O sistema de Modifiers é a espinha dorsal da complexidade do jogo.
-* **Stacking:** Modifiers podem acumular ou fazer refresh de duração dependendo do seu MaxStacks.
+O sistema de Modifiers é a espinha dorsal da complexidade do jogo, sendo altamente configurável via JSON.
+* **Stacking & Consumables:** Modifiers podem acumular stacks ou ser configurados como `RemoveAfterTrigger` (ex: "Bloqueia o próximo ataque e desaparece").
 * **Barreiras (Shields):** Suportam scaling (ex: 50% de Magic) e podem bloquear tipos específicos de dano (ex: "Fire Shield").
+* **Evasion & Accuracy:** Modificadores influenciam diretamente a probabilidade de um ataque acertar (ex: Blur dá +15% Evasion, Blind dá -20% Hit Chance).
+* **Observer Pattern (Team Triggers):** Modificadores suportam as flags `TriggerOnAllies` e `TriggerOnEnemies`, permitindo que heróis reajam a eventos que não lhes aconteceram diretamente (ex: um Healer que ganha defesa sempre que qualquer aliado é curado).
 * **Status Effects (CC):**
     * `Stun`: Bloqueia tudo.
-    * `Silence`: Bloqueia habilidades com Tags mágicas (Spell, Magic).
-    * `Disarm`: Disarm: Bloqueia habilidades com Tags físicas (Melee, Ranged, Weapon).
-    * `Invulnerable` / `Untargetable`: Regras defensivas absolutas.
+    * `Silence`: Bloqueia habilidades mágicas.
+    * `Disarm`: Bloqueia habilidades físicas.
+    * `Blind`: Condição que reduz precisão ou permite interações críticas (ex: Ultimates que causam +50% dano a alvos cegos).
+    * `Invulnerable` / `Untargetable` / `Stealth`: Regras defensivas absolutas.
