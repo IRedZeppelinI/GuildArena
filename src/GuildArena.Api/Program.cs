@@ -1,6 +1,9 @@
+using GuildArena.Api.Hubs;
 using GuildArena.Api.Services;
+using GuildArena.Api.Services.Notifications;
 using GuildArena.Application;
 using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Core;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Infrastructure;
@@ -29,6 +32,12 @@ builder.Services.AddCoreServices();
 //API services 
 builder.Services.AddHttpContextAccessor(); 
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<ICombatNotifier, SignalRCombatNotifier>();
+
+
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -68,5 +77,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<CombatHub>("/hubs/combat");
 
 app.Run();
