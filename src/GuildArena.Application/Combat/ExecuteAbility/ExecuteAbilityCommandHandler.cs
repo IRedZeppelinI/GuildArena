@@ -1,4 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Entities;
@@ -8,13 +9,14 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Application.Combat.ExecuteAbility;
 
-public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityCommand, List<string>>
+public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityCommand>
 {
     private readonly ICombatStateRepository _combatStateRepo;
     private readonly ICurrentUserService _currentUser;
     private readonly IAbilityDefinitionRepository _abilityRepo;
     private readonly ICombatEngine _combatEngine;
     private readonly IBattleLogService _battleLog;
+    private readonly ICombatNotifier _notifier; 
     private readonly ILogger<ExecuteAbilityCommandHandler> _logger;
 
     public ExecuteAbilityCommandHandler(
@@ -23,6 +25,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         IAbilityDefinitionRepository abilityRepo,
         ICombatEngine combatEngine,
         IBattleLogService battleLog,
+        ICombatNotifier notifier, 
         ILogger<ExecuteAbilityCommandHandler> logger)
     {
         _combatStateRepo = combatStateRepo;
@@ -30,10 +33,11 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         _abilityRepo = abilityRepo;
         _combatEngine = combatEngine;
         _battleLog = battleLog;
+        _notifier = notifier; 
         _logger = logger;
     }
 
-    public async Task<List<string>> Handle(ExecuteAbilityCommand request, CancellationToken cancellationToken)
+    public async Task Handle(ExecuteAbilityCommand request, CancellationToken cancellationToken)
     {
         // 1. Validate User
         var userId = _currentUser.UserId;
@@ -53,31 +57,25 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         var sourceCombatant = gameState.Combatants.FirstOrDefault(c => c.Id == request.SourceId);
         if (sourceCombatant == null)
         {
-            throw new ArgumentException
-                ($"Source combatant {request.SourceId} not found in this combat.");
+            throw new ArgumentException($"Source combatant {request.SourceId} not found in this combat.");
         }
 
-        //validacao combatant pertence ao player que executa a habilidade
         if (sourceCombatant.OwnerId != userId)
         {
-            _logger.LogWarning(
-                "User {UserId} tried to control combatant {SourceId} owned by {OwnerId}.",
-                userId,
-                request.SourceId,
-                sourceCombatant.OwnerId);
+            _logger.LogWarning("User {UserId} tried to control combatant {SourceId} owned by {OwnerId}.",
+                userId, request.SourceId, sourceCombatant.OwnerId);
             throw new InvalidOperationException("You do not own this combatant.");
         }
 
-        //validacao combatant possui a habilidade
         bool knowsAbility = sourceCombatant.Abilities.Any(a => a.Id == request.AbilityId) ||
                             sourceCombatant.SpecialAbility?.Id == request.AbilityId;
         if (!knowsAbility)
         {
             _logger.LogWarning("Combatant {Source} tried to use unknown ability {AbilityId}.",
                 sourceCombatant.Name, request.AbilityId);
-            throw new InvalidOperationException($"Combatant {sourceCombatant.Name} does not know ability {request.AbilityId}.");
+            throw new InvalidOperationException
+                ($"Combatant {sourceCombatant.Name} does not know ability {request.AbilityId}.");
         }
-
 
         // 5. Load Ability Definition
         if (!_abilityRepo.TryGetDefinition(request.AbilityId, out var abilityDef))
@@ -96,33 +94,30 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
             domainTargets,
             request.Payment);
 
-        // 8. Check Logic Success (IsSuccess)
-        // The first result corresponds to the main ability action.
+        // 8. Retrieve Logs
+        var logs = _battleLog.GetAndClearLogs();
+
+        // 9. Check Logic Success
         var rootResult = results.FirstOrDefault();
         if (rootResult == null || !rootResult.IsSuccess)
         {
-            // If the engine rejected the action (e.g. costs, cooldowns), we stop here.
-            // We treat this as a "Bad Request" logic-wise.
-            _logger.LogWarning(
-                "Ability execution failed for {AbilityId}. Source: {Source}",
-                request.AbilityId,
-                sourceCombatant.Name);
+            _logger.LogWarning("Ability execution failed for {AbilityId}. Source: {Source}",
+                request.AbilityId, sourceCombatant.Name);
 
-            // TODO:  De momento alterado apra devolver battleLogs
-            //throw new InvalidOperationException
-            //    ("Ability execution failed. Check logs for details (Cost, Cooldown, Status).");
-            return _battleLog.GetAndClearLogs();
+            // Se falhou (ex: não tem mana), avisamos os clientes com os logs do erro, 
+            // mas NÃO gravamos o estado, porque a jogada foi inválida.
+            await _notifier.SendBattleLogsAsync(request.CombatId, logs);
+            throw new InvalidOperationException("Ability execution failed. Check logs for details.");
         }
 
-        // 9. Persist State
+        // 10. Persist State
         await _combatStateRepo.SaveAsync(request.CombatId, gameState);
 
-        _logger.LogInformation
-            ("Ability {Ability} executed successfully by {Source} in Combat {CombatId}.",
-            request.AbilityId, sourceCombatant.Name, request.CombatId);
+        // 11. Broadcast Updates via SignalR
+        await _notifier.SendBattleLogsAsync(request.CombatId, logs);
+        await _notifier.SendGameStateUpdateAsync(request.CombatId, gameState);
 
-        // TODO: This return is temporary for development feedback.
-        // It retrieves logs from the scoped service to display in the API response.
-        return _battleLog.GetAndClearLogs();
+        _logger.LogInformation("Ability {Ability} executed successfully by {Source} in Combat {CombatId}.",
+            request.AbilityId, sourceCombatant.Name, request.CombatId);
     }
 }

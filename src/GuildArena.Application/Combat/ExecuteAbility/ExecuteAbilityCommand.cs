@@ -6,20 +6,16 @@ namespace GuildArena.Application.Combat.ExecuteAbility;
 /// <summary>
 /// Command to execute an ability within a combat session.
 /// </summary>
-public class ExecuteAbilityCommand : IRequest<List<string>> 
+public class ExecuteAbilityCommand : IRequest
 {
-    // TODO: The return type List<string> is temporary for development feedback without SignalR.
-    // In the final version, this Command should return void (Unit) or a success boolean, 
-    // and logs should be broadcasted via WebSockets.
-
     public required string CombatId { get; set; }
-    
+
     /// <summary>
     /// The ID of the combatant performing the action.
     /// Used to validate if the player owns this combatant.
     /// </summary>
     public int SourceId { get; set; }
-    
+
     public required string AbilityId { get; set; }
 
     /// <summary>
