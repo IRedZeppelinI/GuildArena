@@ -97,16 +97,15 @@ public class CombatController : ControllerBase
     }
 
     [HttpPost("{combatId}/execute-ability")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]     // Argumentos inválidos
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]   // Sem login
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]      // Turno errado / Boneco errado
-    [ProducesResponseType(StatusCodes.Status404NotFound)]       // Combate não encontrado
+    [ProducesResponseType(StatusCodes.Status200OK)] // Deixa de ter typeof(object)
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ExecuteAbility(
         string combatId,
         [FromBody] ExecuteAbilityRequest request)
     {
-        // Garantir consistência entre URL e Body
         if (request.CombatId != combatId)
         {
             return BadRequest(new { error = "Combat ID mismatch between URL and Body." });
@@ -123,10 +122,11 @@ public class CombatController : ControllerBase
 
         try
         {
-            // Recebemos os logs (temporariamente) para debug
-            var logs = await _mediator.Send(command);
+            // O Send agora não devolve nada (Task apenas)
+            await _mediator.Send(command);
 
-            return Ok(new { logs });
+            // Apenas retorna Ok(). Os logs foram via SignalR!
+            return Ok();
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -139,13 +139,10 @@ public class CombatController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            // Erros de input (Habilidade não existe, Source não encontrada)
             return BadRequest(new { error = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
-            // Erros de lógica de jogo (Turno errado, Sem mana, Stunned)
-            // Retornamos 400 ou 403 dependendo da nuance, mas 400 com mensagem clara serve.
             _logger.LogWarning("Ability execution logic error: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
