@@ -11,6 +11,22 @@ using GuildArena.Infrastructure.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// --- INÍCIO CONFIGURAÇÃO CORS ---
+var allowedOrigins = builder.Configuration.
+    GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorWasm", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); 
+    });
+});
+
+
 // ler e deserializar GameDataOptions do appsetings
 builder.Services.Configure<GameDataOptions>(builder.Configuration.GetSection(GameDataOptions.SectionName));
 
@@ -73,6 +89,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowBlazorWasm");
 
 app.UseAuthorization();
 
