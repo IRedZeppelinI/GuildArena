@@ -1,4 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Combat.ExecuteAbility;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Actions;
@@ -6,13 +7,13 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
-using GuildArena.Domain.ValueObjects.Targeting;
+using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Stats; 
+using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
 using Xunit;
-using GuildArena.Domain.Gameplay;
 
 namespace GuildArena.Application.UnitTests.Combat.ExecuteAbility;
 
@@ -24,6 +25,7 @@ public class ExecuteAbilityCommandHandlerTests
     private readonly ICombatEngine _engineMock;
     private readonly IBattleLogService _battleLogMock;
     private readonly ILogger<ExecuteAbilityCommandHandler> _loggerMock;
+    private readonly ICombatNotifier _notifierMock;
     private readonly ExecuteAbilityCommandHandler _handler;
 
     public ExecuteAbilityCommandHandlerTests()
@@ -34,6 +36,7 @@ public class ExecuteAbilityCommandHandlerTests
         _engineMock = Substitute.For<ICombatEngine>();
         _battleLogMock = Substitute.For<IBattleLogService>();
         _loggerMock = Substitute.For<ILogger<ExecuteAbilityCommandHandler>>();
+        _notifierMock = Substitute.For<ICombatNotifier>();
 
         _handler = new ExecuteAbilityCommandHandler(
             _combatRepoMock,
@@ -41,6 +44,7 @@ public class ExecuteAbilityCommandHandlerTests
             _abilityRepoMock,
             _engineMock,
             _battleLogMock,
+            _notifierMock,
             _loggerMock
         );
     }
@@ -116,6 +120,9 @@ public class ExecuteAbilityCommandHandlerTests
         // ASSERT
         // Deve ter guardado o estado atualizado
         await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
+
+        await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
+        await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }
 
     [Fact]
@@ -254,12 +261,13 @@ public class ExecuteAbilityCommandHandlerTests
     //}
 
     [Fact]
-    public async Task Handle_ShouldReturnLogs_WhenEngineReturnsFailure()
+    public async Task Handle_ShouldSendLogsAndThrow_WhenEngineReturnsFailure()
     {
         // ARRANGE
         var userId = 1;
         var sourceId = 10;
         var abilityId = "ABIL_FAIL";
+        var combatId = "C1";
 
         _userMock.UserId.Returns(userId);
 
@@ -281,21 +289,18 @@ public class ExecuteAbilityCommandHandlerTests
             Combatants = new List<Combatant> { combatant }
         };
 
-        _combatRepoMock.GetAsync("C1").Returns(gameState);
+        _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
-            .Returns(x => { x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
-                return true; });
+            .Returns(x => {
+                x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
+                return true;
+            });
 
         _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Not enough mana." });
 
         // O Engine diz que falhou logicamente
-        _engineMock.ExecuteAbility
-            (default!,
-            default!,
-            default!,
-            default!,
-            default!)
+        _engineMock.ExecuteAbility(default!, default!, default!, default!, default!)
             .ReturnsForAnyArgs(new List<CombatActionResult>
             {
                 new CombatActionResult { IsSuccess = false }
@@ -303,19 +308,27 @@ public class ExecuteAbilityCommandHandlerTests
 
         var command = new ExecuteAbilityCommand
         {
-            CombatId = "C1",
+            CombatId = combatId,
             SourceId = sourceId,
             AbilityId = abilityId
         };
 
-        // ACT
-        var result = await _handler.Handle(command, CancellationToken.None);
+        // ACT & ASSERT
+        // Como o handler agora lança uma exceção quando falha logicamente (vê o passo 9 do teu handler), 
+        // temos de capturar a exceção no teste.
+        await Should.ThrowAsync<InvalidOperationException>(() =>
+            _handler.Handle(command, CancellationToken.None));
 
-        // ASSERT
-        result.ShouldNotBeEmpty();
-        result.First().ShouldBe("Not enough mana.");
+        // ASSERT INTERAÇÕES (A Magia do NSubstitute)
+        // 1. Verificamos se o Notifier foi chamado e lhe enviou a lista com o erro "Not enough mana."
+        await _notifierMock.Received(1).SendBattleLogsAsync(
+            combatId,
+            Arg.Is<List<string>>(logs => logs.Contains("Not enough mana.")));
 
-        // Garantimos que NÃO guardou o estado (porque a ação falhou)
+        // 2. Garantimos que NÃO guardou o estado (porque a ação falhou)
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
+
+        // 3. Garantimos que NÃO enviou atualização de GameState (só enviou os logs do erro)
+        await _notifierMock.DidNotReceiveWithAnyArgs().SendGameStateUpdateAsync(default!, default!);
     }
 }

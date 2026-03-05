@@ -1,4 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Gameplay;
@@ -14,6 +15,8 @@ public class EndTurnCommandHandlerTests
     private readonly ITurnManagerService _turnManagerMock;
     private readonly ICombatStateRepository _combatRepoMock;
     private readonly ICurrentUserService _currentUserMock;
+    private readonly IBattleLogService _battleLogMock;
+    private readonly ICombatNotifier _notifierMock;
     private readonly ILogger<EndTurnCommandHandler> _loggerMock;
     private readonly EndTurnCommandHandler _handler;
 
@@ -22,12 +25,16 @@ public class EndTurnCommandHandlerTests
         _turnManagerMock = Substitute.For<ITurnManagerService>();
         _combatRepoMock = Substitute.For<ICombatStateRepository>();
         _currentUserMock = Substitute.For<ICurrentUserService>();
+        _battleLogMock = Substitute.For<IBattleLogService>();
+        _notifierMock = Substitute.For<ICombatNotifier>();
         _loggerMock = Substitute.For<ILogger<EndTurnCommandHandler>>();
 
         _handler = new EndTurnCommandHandler(
             _turnManagerMock,
             _combatRepoMock,
             _currentUserMock,
+            _notifierMock,
+            _battleLogMock,
             _loggerMock
         );
     }
@@ -55,6 +62,9 @@ public class EndTurnCommandHandlerTests
         // ASSERT
         _turnManagerMock.Received(1).AdvanceTurn(gameState);
         await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
+
+        await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
+        await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }
 
     [Fact]

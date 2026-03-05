@@ -1,10 +1,11 @@
 ﻿using GuildArena.Application;
 using GuildArena.Application.Abstractions;
+using GuildArena.Application.Abstractions.Notifications; 
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Core;
-using GuildArena.Domain.Abstractions.Repositories; // Necessário para as interfaces
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Infrastructure.Options;
-using GuildArena.Infrastructure.Persistence.Json; // Necessário para os repos JSON
+using GuildArena.Infrastructure.Persistence.Json;
 using GuildArena.IntegrationTests.TestInfrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -45,13 +46,12 @@ public abstract class IntegrationTestBase
         services.AddApplicationServices();
 
         // 4. REGISTAR INFRAESTRUTURA 
-
         services.AddSingleton<IModifierDefinitionRepository, JsonModifierDefinitionRepository>();
         services.AddSingleton<IAbilityDefinitionRepository, JsonAbilityDefinitionRepository>();
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
-        
+
         var playerRepoMock = Substitute.For<IPlayerRepository>();
         services.AddSingleton(playerRepoMock);
 
@@ -59,19 +59,16 @@ public abstract class IntegrationTestBase
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
 
         // 6. SIMULAR UTILIZADOR (Player 1)
-        //services.AddScoped<ICurrentUserService>(sp =>
-        //{
-        //    var mock = Substitute.For<ICurrentUserService>();
-        //    mock.UserId.Returns(1);
-        //    return mock;
-        //});
-        //Como singleton para alterar durante testes
         var userMock = Substitute.For<ICurrentUserService>();
-        userMock.UserId.Returns(1); // Default Player 1        
+        userMock.UserId.Returns(1);
         services.AddSingleton(userMock);
 
+        // 7. SIMULAR NOTIFICADOR 
+        // Para  não tentar enviar SignalR real nos testes
+        var notifierMock = Substitute.For<ICombatNotifier>();
+        services.AddSingleton(notifierMock);
 
-        // 7. CONSTRUIR
+        // 8. CONSTRUIR
         Provider = services.BuildServiceProvider();
     }
 

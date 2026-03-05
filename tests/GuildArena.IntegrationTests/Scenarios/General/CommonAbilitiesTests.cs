@@ -81,16 +81,14 @@ public class CommonAbilitiesTests : IntegrationTestBase
         };
 
         // ACT
-        var logs = await mediator.Send(command, CancellationToken.None);
+        await mediator.Send(command, CancellationToken.None);
 
         // ASSERT
         var state = await repo.GetAsync(combatId);
         var target = state!.Combatants.First(c => c.Id == -1);
 
         // Cálculo: Base 5 + (Attack 10 * 1.0 Scaling) = 15 Dano
-        target.CurrentHP.ShouldBe(85); // 100 - 15
-
-        logs.ShouldContain(s => s.Contains("used Slash"));
+        target.CurrentHP.ShouldBe(85); // 100 - 15        
     }
 
     [Fact]
