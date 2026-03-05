@@ -2,7 +2,9 @@
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Gameplay;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -15,8 +17,9 @@ public class EndTurnCommandHandlerTests
     private readonly ITurnManagerService _turnManagerMock;
     private readonly ICombatStateRepository _combatRepoMock;
     private readonly ICurrentUserService _currentUserMock;
-    private readonly IBattleLogService _battleLogMock;
     private readonly ICombatNotifier _notifierMock;
+    private readonly IBattleLogService _battleLogMock;
+    private readonly IServiceScopeFactory _scopeFactoryMock; 
     private readonly ILogger<EndTurnCommandHandler> _loggerMock;
     private readonly EndTurnCommandHandler _handler;
 
@@ -25,8 +28,9 @@ public class EndTurnCommandHandlerTests
         _turnManagerMock = Substitute.For<ITurnManagerService>();
         _combatRepoMock = Substitute.For<ICombatStateRepository>();
         _currentUserMock = Substitute.For<ICurrentUserService>();
-        _battleLogMock = Substitute.For<IBattleLogService>();
         _notifierMock = Substitute.For<ICombatNotifier>();
+        _battleLogMock = Substitute.For<IBattleLogService>();
+        _scopeFactoryMock = Substitute.For<IServiceScopeFactory>(); 
         _loggerMock = Substitute.For<ILogger<EndTurnCommandHandler>>();
 
         _handler = new EndTurnCommandHandler(
@@ -35,6 +39,7 @@ public class EndTurnCommandHandlerTests
             _currentUserMock,
             _notifierMock,
             _battleLogMock,
+            _scopeFactoryMock, 
             _loggerMock
         );
     }
@@ -47,10 +52,15 @@ public class EndTurnCommandHandlerTests
         var userId = 100;
 
         var command = new EndTurnCommand { CombatId = combatId };
+
         var gameState = new GameState
         {
             CurrentTurnNumber = 1,
-            CurrentPlayerId = userId // It matches the logged user
+            CurrentPlayerId = userId, // It matches the logged user            
+            Players = new List<CombatPlayer>
+            {
+                new CombatPlayer { PlayerId = userId, Type = CombatPlayerType.Human }
+            }
         };
 
         _currentUserMock.UserId.Returns(userId);
@@ -63,6 +73,7 @@ public class EndTurnCommandHandlerTests
         _turnManagerMock.Received(1).AdvanceTurn(gameState);
         await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
 
+        // Verifica se enviou os updates via SignalR
         await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
         await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }

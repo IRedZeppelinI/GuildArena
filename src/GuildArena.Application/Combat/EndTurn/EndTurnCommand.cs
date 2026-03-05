@@ -3,14 +3,13 @@
 namespace GuildArena.Application.Combat.EndTurn;
 
 /// <summary>
-/// Represents the user's intent to end their current turn in a specific combat.
+/// Represents a human player's intent to end their current turn in an active combat session.
+/// Triggers end-of-turn effects, turn advancement, and potentially AI execution.
 /// </summary>
-public class EndTurnCommand : IRequest 
+public class EndTurnCommand : IRequest
 {
     /// <summary>
-    /// The ID (GUID) of the combat where the turn is being ended.
+    /// The unique identifier (GUID) of the combat session where the turn is being ended.
     /// </summary>
     public required string CombatId { get; set; }
-
-    //TODO: Adicionar ID do Jogador para validação de segurança
 }
