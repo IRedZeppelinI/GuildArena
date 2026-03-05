@@ -1,0 +1,10 @@
+﻿namespace GuildArena.Application.Combat.StartCombat;
+
+/// <summary>
+/// Encapsulates the result of initializing a new combat session.
+/// </summary>
+public class StartCombatResult
+{
+    public required string CombatId { get; set; }
+    public required List<string> InitialLogs { get; set; }
+}

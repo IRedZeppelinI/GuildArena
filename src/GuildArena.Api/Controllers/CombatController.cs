@@ -1,6 +1,6 @@
 ﻿using GuildArena.Application.Combat.EndTurn;
-using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Shared.Requests;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +12,7 @@ namespace GuildArena.Api.Controllers;
 public class CombatController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ILogger<CombatController> _logger; 
+    private readonly ILogger<CombatController> _logger;
 
     public CombatController(IMediator mediator, ILogger<CombatController> logger)
     {
@@ -20,14 +20,16 @@ public class CombatController : ControllerBase
         _logger = logger;
     }
 
-    [HttpPost("start-pve")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    /// <summary>
+    /// Initializes a new PvE combat session.
+    /// </summary>[HttpPost("start-pve")]
+    [ProducesResponseType(typeof(StartCombatResult), StatusCodes.Status200OK)] 
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> StartPveCombat([FromBody] StartPveRequest request)
     {
-        _logger.LogInformation
-            ("Request received to start PvE Combat. Encounter: {EncounterId}", request.EncounterId);
+        _logger.LogInformation(
+            "Request received to start PvE Combat. Encounter: {EncounterId}", request.EncounterId);
 
         var command = new StartPveCombatCommand
         {
@@ -36,10 +38,14 @@ public class CombatController : ControllerBase
         };
 
         try
-        {
-            var combatId = await _mediator.Send(command);
-            _logger.LogInformation("PvE Combat started successfully. ID: {CombatId}", combatId);
-            return Ok(new { combatId });
+        {            
+            var result = await _mediator.Send(command);
+
+            _logger.LogInformation(
+                "PvE Combat started successfully. ID: {CombatId}. Waiting for client to connect to SignalR.",
+                result.CombatId);
+
+            return Ok(result);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -58,6 +64,9 @@ public class CombatController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Ends the current player's turn and triggers the next phase (e.g., AI turn).
+    /// </summary>
     [HttpPost("{combatId}/end-turn")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -71,7 +80,7 @@ public class CombatController : ControllerBase
         try
         {
             await _mediator.Send(command);
-            _logger.LogInformation("Turn ended successfully for Combat: {CombatId}", combatId);
+            _logger.LogInformation("Turn ended successfully for Combat: {CombatId}. Updates sent via SignalR.", combatId);
             return Ok();
         }
         catch (UnauthorizedAccessException ex)
@@ -96,9 +105,11 @@ public class CombatController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Executes a combat ability.
+    /// </summary>
     [HttpPost("{combatId}/execute-ability")]
-    [ProducesResponseType(StatusCodes.Status200OK)] // Deixa de ter typeof(object)
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status200OK)] 
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -106,8 +117,14 @@ public class CombatController : ControllerBase
         string combatId,
         [FromBody] ExecuteAbilityRequest request)
     {
+        // Log explícito da intenção recebida
+        _logger.LogInformation(
+            "Request received: Execute Ability {AbilityId} from Source {SourceId} in Combat {CombatId}.",
+            request.AbilityId, request.SourceId, combatId);
+
         if (request.CombatId != combatId)
         {
+            _logger.LogWarning("Combat ID mismatch: URL {UrlId} vs Body {BodyId}.", combatId, request.CombatId);
             return BadRequest(new { error = "Combat ID mismatch between URL and Body." });
         }
 
@@ -121,12 +138,14 @@ public class CombatController : ControllerBase
         };
 
         try
-        {
-            // O Send agora não devolve nada (Task apenas)
+        {            
             await _mediator.Send(command);
 
-            // Apenas retorna Ok(). Os logs foram via SignalR!
-            return Ok();
+            _logger.LogInformation(
+                "Ability {AbilityId} processed successfully for Combat {CombatId}. Updates sent via SignalR.",
+                request.AbilityId, combatId);
+
+            return Ok(); 
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -135,20 +154,23 @@ public class CombatController : ControllerBase
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning("Combat session {CombatId} not found.", combatId);
             return NotFound(new { error = ex.Message });
         }
         catch (ArgumentException ex)
         {
+            _logger.LogWarning("Invalid argument for ability execution: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
+            // Erros de lógica de jogo (Turno errado, Sem mana, Stunned)
             _logger.LogWarning("Ability execution logic error: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error executing ability.");
+            _logger.LogError(ex, "Unexpected error executing ability {AbilityId} in combat {CombatId}.", request.AbilityId, combatId);
             return StatusCode(500, new { error = "An unexpected error occurred." });
         }
     }

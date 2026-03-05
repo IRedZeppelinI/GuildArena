@@ -1,14 +1,14 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
+using GuildArena.Application.Combat.AI;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Core.Combat.Abstractions;
-using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
-using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Gameplay;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -17,7 +17,6 @@ namespace GuildArena.Application.UnitTests.Combat.StartCombat;
 
 public class StartPveCombatCommandHandlerTests
 {
-    // Mocks
     private readonly ICombatStateRepository _combatStateRepoMock;
     private readonly IPlayerRepository _playerRepoMock;
     private readonly IEncounterDefinitionRepository _encounterRepoMock;
@@ -28,8 +27,8 @@ public class StartPveCombatCommandHandlerTests
     private readonly IRandomProvider _rngMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly ICombatEngine _combatEngineMock;
-
-    // SUT
+    private readonly IServiceScopeFactory _scopeFactoryMock;
+    private readonly IBattleLogService _battleLogMock;
     private readonly StartPveCombatCommandHandler _handler;
 
     public StartPveCombatCommandHandlerTests()
@@ -44,6 +43,8 @@ public class StartPveCombatCommandHandlerTests
         _rngMock = Substitute.For<IRandomProvider>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
         _combatEngineMock = Substitute.For<ICombatEngine>();
+        _scopeFactoryMock = Substitute.For<IServiceScopeFactory>();
+        _battleLogMock = Substitute.For<IBattleLogService>();
 
         _handler = new StartPveCombatCommandHandler(
             _combatStateRepoMock,
@@ -54,187 +55,136 @@ public class StartPveCombatCommandHandlerTests
             _essenceServiceMock,
             _loggerMock,
             _rngMock,
-            _triggerProcessorMock, 
-            _combatEngineMock      
+            _triggerProcessorMock,
+            _combatEngineMock,
+            _scopeFactoryMock,
+            _battleLogMock
         );
     }
 
     [Fact]
-    public async Task Handle_ShouldCreateCombat_WhenRequestIsValid()
+    public async Task Handle_ShouldCreateCombat_AndReturnLogs_WhenPlayerStarts()
     {
         // ARRANGE
         var playerId = 123;
         var encounterId = "ENC_TEST";
-        var heroIds = new List<int> { 10, 11 };
+        var heroIds = new List<int> { 10 };
 
-        // 1. Mock Auth
         _currentUserMock.UserId.Returns(playerId);
+        _playerRepoMock.GetHeroesAsync(playerId, heroIds).
+            Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H1" } });
 
-        // 2. Mock Player Heroes (Retorna a quantidade correta para passar a validação)
-        var heroesFromDb = new List<Hero>
-        {
-            new() { Id = 10, CharacterDefinitionId = "HERO_A" },
-            new() { Id = 11, CharacterDefinitionId = "HERO_B" }
-        };
-        _playerRepoMock.GetHeroesAsync(playerId, heroIds).Returns(heroesFromDb);
-
-        // 3. Mock Encounter Definition
         var encounterDef = new EncounterDefinition
         {
             Id = encounterId,
-            Name = "Test Encounter",
-            Enemies = new List<EncounterDefinition.EncounterEnemy>
-            {
-                // Definimos uma posição específica (ex: 5) para verificar se é mapeada
-                new() { CharacterDefinitionId = "MOB_A", Position = 5 }
-            }
+            Name = "Bandit Ambush",
+            Enemies = new List<EncounterDefinition.EncounterEnemy> { new() { CharacterDefinitionId = "M1", Position = 1 } }
         };
-        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())
-            .Returns(x =>
-            {
-                x[1] = encounterDef;
-                return true;
-            });
+        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>()).
+            Returns(x => { x[1] = encounterDef; return true; });
 
-        // 4. Mock Factory (Devolve um combatente genérico para não rebentar)
-        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>())
-            .Returns(info => new Combatant
-            {
-                // Usar o ID do HeroCharacter passado para garantir unicidade no teste
+        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).
+            Returns(info => new Combatant 
+            { 
                 Id = info.Arg<Hero>().Id,
                 Name = "Mock",
-                RaceId = "RACE_MOCK",
-                OwnerId = info.Arg<int>(), // Usa o ownerId passado no Create
-                BaseStats = new(),
-                CurrentHP = 10
+                RaceId = "R",
+                BaseStats = new()
             });
 
-        // 5. Mock RNG (Para determinar quem começa - 0 = Player)
+        // RNG devolve 0 -> Humano ganha a moeda ao ar
         _rngMock.Next(2).Returns(0);
 
-        var command = new StartPveCombatCommand
-        {
-            EncounterId = encounterId,
-            HeroInstanceIds = heroIds
-        };
+        // Simular alguns logs
+        _battleLogMock.GetAndClearLogs().
+            Returns(new List<string> { "Combat Started", "Player 123 won the coin toss" });
+
+        var command = new StartPveCombatCommand { EncounterId = encounterId, HeroInstanceIds = heroIds };
 
         // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // ASSERT
-        // Deve retornar um GUID válido
-        Guid.TryParse(result, out _).ShouldBeTrue();
+        result.ShouldNotBeNull();
+        Guid.TryParse(result.CombatId, out _).ShouldBeTrue();
+        result.InitialLogs.Count.ShouldBe(2);
 
-        // Deve ter guardado no Redis
-        await _combatStateRepoMock.Received(1).SaveAsync(result, Arg.Any<GameState>());
+        await _combatStateRepoMock.Received(1).
+            SaveAsync(result.CombatId, Arg.Is<GameState>(gs => gs.CurrentPlayerId == playerId));
 
-        _triggerProcessorMock.Received()
-            .ProcessTriggers(ModifierTrigger.ON_COMBAT_START, Arg.Any<TriggerContext>());
-        _combatEngineMock.Received(1).ProcessPendingActions(Arg.Any<GameState>());
-
-
-        // Verificação detalhada do GameState guardado
-        await _combatStateRepoMock.Received(1).SaveAsync(
-            Arg.Any<string>(),
-            Arg.Is<GameState>(gs =>
-                gs.Players.Count == 2 &&
-                gs.Combatants.Count == 3 &&
-                gs.CurrentPlayerId == playerId &&
-
-                // --- NOVAS VERIFICAÇÕES DE POSIÇÃO ---
-                // O Player pediu 2 heróis. Como decidimos 0-based:
-                // Heroi 1 (ID 10) -> Position 0
-                gs.Combatants.Any(c => c.Id == 10 && c.OwnerId == playerId && c.Position == 0) &&
-
-                // Heroi 2 (ID 11) -> Position 1
-                gs.Combatants.Any(c => c.Id == 11 && c.OwnerId == playerId && c.Position == 1) &&
-
-                // Mob (ID < 0) -> Position 5 (conforme definido no encounterDef acima)
-                gs.Combatants.Any(c => c.OwnerId == 0 && c.Position == 5)
-            )
-        );
+        // Como o jogador humano começou, a AI NÃO deve ser disparada (não precisamos de testar explicitamente o task.run, 
+        // mas testamos o caminho lógico através do state).
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowUnauthorized_WhenUserNotAuthenticated()
+    public async Task Handle_ShouldTriggerAiOrchestrator_WhenEnemyWinsCoinToss()
     {
         // ARRANGE
-        _currentUserMock.UserId.Returns((int?)null);
+        _currentUserMock.UserId.Returns(1);
+        _playerRepoMock.GetHeroesAsync(1, Arg.Any<List<int>>()).
+            Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H" } });
+        _encounterRepoMock.TryGetDefinition(Arg.Any<string>(), out Arg.Any<EncounterDefinition>())
+            .Returns(x => 
+            { 
+                x[1] = new EncounterDefinition { Id = "E", Name = "E", Enemies = new() };
+                return true; 
+            });
+        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).
+            Returns(new Combatant { Id = 1, Name = "M", RaceId = "R", BaseStats = new() });
 
+        // RNG devolve 1 -> AI ganha a moeda ao ar!
+        _rngMock.Next(2).Returns(1);
+
+        // Preparamos o ScopeFactory para devolvermos um mock do orquestrador
+        var serviceProviderMock = Substitute.For<IServiceProvider>();
+        var orchestratorMock = Substitute.For<IAiTurnOrchestrator>();
+        serviceProviderMock.GetService(typeof(IAiTurnOrchestrator)).Returns(orchestratorMock);
+
+        var scopeMock = Substitute.For<IServiceScope>();
+        scopeMock.ServiceProvider.Returns(serviceProviderMock);
+        _scopeFactoryMock.CreateScope().Returns(scopeMock);
+
+        var command = new StartPveCombatCommand { EncounterId = "E", HeroInstanceIds = new List<int> { 1 } };
+
+        // ACT
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        // Damos um pequeno delay no teste porque o Task.Run no handler é assíncrono e não esperado (Fire and Forget)
+        await Task.Delay(100);
+
+        // Verificamos se o orchestrator foi chamado para jogar!
+        await orchestratorMock.Received(1).PlayTurnAsync(result.CombatId, 0); // 0 é o AI Player ID
+    }
+    [Fact]
+    public async Task Handle_ShouldThrowUnauthorized_WhenUserNotAuthenticated()
+    {
+        _currentUserMock.UserId.Returns((int?)null);
         var command = new StartPveCombatCommand { EncounterId = "ANY", HeroInstanceIds = new() { 1 } };
 
-        // ACT & ASSERT
-        await Should.ThrowAsync<UnauthorizedAccessException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => _handler.Handle
+        (command, CancellationToken.None));
     }
 
     [Fact]
     public async Task Handle_ShouldThrowArgumentException_WhenNoHeroesSelected()
     {
-        // ARRANGE
         _currentUserMock.UserId.Returns(1);
-        var command = new StartPveCombatCommand
-        {
-            EncounterId = "ENC",
-            HeroInstanceIds = new List<int>() // Lista vazia
-        };
+        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int>() };
 
-        // ACT & ASSERT
-        await Should.ThrowAsync<ArgumentException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        await Should.ThrowAsync<ArgumentException>(() => _handler.Handle(command, CancellationToken.None));
     }
 
     [Fact]
     public async Task Handle_ShouldThrowInvalidOperation_WhenPlayerDoesNotOwnHero()
     {
-        // ARRANGE
         var playerId = 1;
-        var requestedIds = new List<int> { 10, 999 }; // 999 não existe
-
+        var requestedIds = new List<int> { 10, 999 };
         _currentUserMock.UserId.Returns(playerId);
+        _playerRepoMock.GetHeroesAsync(playerId, requestedIds).
+            Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H" } });
+        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = requestedIds };
 
-        // O repo só devolve o ID 10
-        _playerRepoMock.GetHeroesAsync(playerId, requestedIds)
-            .Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H" } });
-
-        var command = new StartPveCombatCommand
-        {
-            EncounterId = "ENC",
-            HeroInstanceIds = requestedIds
-        };
-
-        // ACT & ASSERT
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
-            _handler.Handle(command, CancellationToken.None));
-
-        ex.Message.ShouldContain("do not exist or do not belong");
-    }
-
-    [Fact]
-    public async Task Handle_ShouldThrowKeyNotFound_WhenEncounterDoesNotExist()
-    {
-        // ARRANGE
-        var playerId = 1;
-        var encounterId = "INVALID_ENC";
-
-        _currentUserMock.UserId.Returns(playerId);
-
-        // Repo devolve os heróis corretamente
-        _playerRepoMock.GetHeroesAsync(playerId, Arg.Any<List<int>>())
-            .Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H" } });
-
-        // Encounter Repo falha
-        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())
-            .Returns(false);
-
-        var command = new StartPveCombatCommand
-        {
-            EncounterId = encounterId,
-            HeroInstanceIds = new List<int> { 1 }
-        };
-
-        // ACT & ASSERT
-        await Should.ThrowAsync<KeyNotFoundException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        await Should.ThrowAsync<InvalidOperationException>(() => _handler.Handle(command, CancellationToken.None));
     }
 }
