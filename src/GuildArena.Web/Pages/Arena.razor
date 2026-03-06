@@ -1,0 +1,188 @@
+﻿@page "/arena"
+@using Microsoft.AspNetCore.SignalR.Client
+@using GuildArena.Shared.Requests
+@using GuildArena.Shared.Responses
+@using GuildArena.Shared.DTOs.Combat
+@inject HttpClient Http
+@implements IAsyncDisposable
+
+<PageTitle>Battle Arena</PageTitle>
+
+<div class="container-fluid mt-3">
+    @if (string.IsNullOrEmpty(_combatId))
+    {
+        <div class="alert alert-info text-center">
+            <h3>Ready to enter the Arena?</h3>
+            <p>Click below to initialize a debug PvE encounter.</p>
+            <button class="btn btn-primary btn-lg mt-2" @onclick="StartCombatAsync" disabled="@_isConnecting">
+                @if (_isConnecting)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Connecting...</span>
+                }
+                else
+                {
+                    <span>Start Encounter (Bandit Ambush)</span>
+                }
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <!-- LADO ESQUERDO: O Tabuleiro de Jogo -->
+            <div class="col-md-8">
+                <div class="card bg-dark text-white border-secondary mb-3" style="min-height: 60vh;">
+                    <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                        <span class="text-warning">Combat ID: @_combatId</span>
+                        <span class="badge @(_isConnected ? "bg-success" : "bg-danger")">
+                            SignalR: @(_isConnected ? "Connected" : "Disconnected")
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        @if (_gameState != null)
+                        {
+                            <h4 class="text-center text-info">Turn @_gameState.CurrentTurnNumber</h4>
+                            <p class="text-center">Current Player ID: @_gameState.CurrentPlayerId</p>
+
+                            <!-- No próximo passo vamos desenhar os Heróis aqui! -->
+                            <div class="alert alert-secondary text-dark text-center mt-5">
+                                <em>The Game Board will be rendered here in Phase 2.2</em>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-center text-muted mt-5">Waiting for game state sync...</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- LADO DIREITO: Battle Logs -->
+            <div class="col-md-4">
+                <div class="card bg-dark text-white border-secondary" style="height: 60vh; display: flex; flex-direction: column;">
+                    <div class="card-header border-secondary text-center font-weight-bold">
+                        Battle Logs
+                    </div>
+                    <!-- O overflow-y: auto permite fazer scroll na lista se ficar muito grande -->
+                    <div class="card-body p-0" style="overflow-y: auto; flex-grow: 1;">
+                        <ul class="list-group list-group-flush text-dark">
+                            @foreach (var log in _battleLogs)
+                            {
+                                <li class="list-group-item bg-light border-bottom">@log</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // === ESTADO DO COMPONENTE ===
+    private string? _combatId;
+    private HubConnection? _hubConnection;
+    private GameStateDto? _gameState;
+    private List<string> _battleLogs = new();
+
+    private bool _isConnecting = false;
+    private bool _isConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+    // === MÉTODOS ===
+
+    // 1. Pedido HTTP para criar o combate
+    private async Task StartCombatAsync()
+    {
+        _isConnecting = true;
+        try
+        {
+            var request = new StartPveRequest
+            {
+                EncounterId = "ENC_TUTORIAL_01",
+                HeroInstanceIds = new List<int> { 101 } // Garret (Hardcoded ID provisório do repositório)
+            };
+
+            // Fazemos o POST para a API
+            var response = await Http.PostAsJsonAsync("api/combat/start-pve", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Lemos a resposta com os Logs Iniciais
+                var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
+                if (result != null)
+                {
+                    _combatId = result.CombatId;
+                    _battleLogs.AddRange(result.InitialLogs);
+
+                    // Inicia WebSockets!
+                    await ConnectToSignalRAsync(_combatId);
+                }
+            }
+            else
+            {
+                _battleLogs.Add($"HTTP Error: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _battleLogs.Add($"Error: {ex.Message}");
+        }
+        finally
+        {
+            _isConnecting = false;
+            // O Blazor atualiza o ecrã automaticamente em eventos de cliques,
+            // mas StateHasChanged() garante o refresh.
+            StateHasChanged();
+        }
+    }
+
+    // 2. Estabelecer Ligação SignalR
+    private async Task ConnectToSignalRAsync(string combatId)
+    {
+        // Constrói a ligação apontando para o URL base do HttpClient + a rota do Hub
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(Http.BaseAddress + "hubs/combat")
+            .WithAutomaticReconnect()
+            .Build();
+
+        // Subscrição: O que fazer quando o servidor enviar um GameState?
+        _hubConnection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
+        {
+            _gameState = state;
+            StateHasChanged(); // Força o ecrã a atualizar
+        });
+
+        // Subscrição: O que fazer quando o servidor enviar novos Logs?
+        _hubConnection.On<List<string>>("ReceiveBattleLogs", (logs) =>
+        {
+            _battleLogs.AddRange(logs);
+            StateHasChanged();
+        });
+
+        try
+        {
+            await _hubConnection.StartAsync();
+            // Avisar o Hub que queremos entrar no "Grupo" específico deste combate
+            await _hubConnection.InvokeAsync("JoinCombat", combatId);
+            _battleLogs.Add("--- SignalR Connected! Waiting for actions... ---");
+        }
+        catch (Exception ex)
+        {
+            _battleLogs.Add($"SignalR Connection Error: {ex.Message}");
+        }
+    }
+
+    // 3. Limpeza de Memória (Destrutor)
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            if (!string.IsNullOrEmpty(_combatId))
+            {
+                await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
+            }
+            await _hubConnection.DisposeAsync();
+        }
+    }
+}

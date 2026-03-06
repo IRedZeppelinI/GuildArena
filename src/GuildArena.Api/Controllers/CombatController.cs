@@ -2,6 +2,7 @@
 using GuildArena.Application.Combat.ExecuteAbility;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Shared.Requests;
+using GuildArena.Shared.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,54 +21,65 @@ public class CombatController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Initializes a new PvE combat session.
-    /// </summary>[HttpPost("start-pve")]
-    [ProducesResponseType(typeof(StartCombatResult), StatusCodes.Status200OK)] 
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> StartPveCombat([FromBody] StartPveRequest request)
-    {
-        _logger.LogInformation(
-            "Request received to start PvE Combat. Encounter: {EncounterId}", request.EncounterId);
+/// <summary>
+/// Initializes a new PvE combat session.
+/// </summary>    
+[HttpPost("start-pve")]
+[ProducesResponseType(typeof(StartCombatResponse), StatusCodes.Status200OK)] 
+[ProducesResponseType(StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(StatusCodes.Status400BadRequest)]
+public async Task<IActionResult> StartPveCombat([FromBody] StartPveRequest request)
+{
+    _logger.LogInformation(
+        "Request received to start PvE Combat. Encounter: {EncounterId}", request.EncounterId);
 
-        var command = new StartPveCombatCommand
+    var command = new StartPveCombatCommand
+    {
+        EncounterId = request.EncounterId,
+        HeroInstanceIds = request.HeroInstanceIds
+    };
+
+    try
+    {
+        // 1. Recebe o resultado da camada Application (StartCombatResult)
+        var result = await _mediator.Send(command);
+
+        _logger.LogInformation(
+            "PvE Combat started successfully. ID: {CombatId}. Waiting for client to connect to SignalR.",
+            result.CombatId);
+
+        // 2. Mapeia para o contrato público do projeto Shared (StartCombatResponse)
+        var response = new StartCombatResponse
         {
-            EncounterId = request.EncounterId,
-            HeroInstanceIds = request.HeroInstanceIds
+            CombatId = result.CombatId,
+            InitialLogs = result.InitialLogs
         };
 
-        try
-        {            
-            var result = await _mediator.Send(command);
-
-            _logger.LogInformation(
-                "PvE Combat started successfully. ID: {CombatId}. Waiting for client to connect to SignalR.",
-                result.CombatId);
-
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogWarning("Unauthorized attempt to start combat: {Message}", ex.Message);
-            return Unauthorized();
-        }
-        catch (KeyNotFoundException ex)
-        {
-            _logger.LogWarning("Start combat failed (Not Found): {Message}", ex.Message);
-            return NotFound(new { error = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error starting combat.");
-            return BadRequest(new { error = ex.Message });
-        }
+        // 3. Devolve ao Blazor
+        return Ok(response);
     }
+    catch (UnauthorizedAccessException ex)
+    {
+        _logger.LogWarning("Unauthorized attempt to start combat: {Message}", ex.Message);
+        return Unauthorized();
+    }
+    catch (KeyNotFoundException ex)
+    {
+        _logger.LogWarning("Start combat failed (Not Found): {Message}", ex.Message);
+        return NotFound(new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Unexpected error starting combat.");
+        return BadRequest(new { error = ex.Message });
+    }
+}
 
-    /// <summary>
-    /// Ends the current player's turn and triggers the next phase (e.g., AI turn).
-    /// </summary>
-    [HttpPost("{combatId}/end-turn")]
+
+/// <summary>
+/// Ends the current player's turn and triggers the next phase (e.g., AI turn).
+/// </summary>
+[HttpPost("{combatId}/end-turn")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

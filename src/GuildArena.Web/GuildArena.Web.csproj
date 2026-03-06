@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.13" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GuildArena.Shared\GuildArena.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
