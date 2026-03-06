@@ -22,8 +22,7 @@
       "MaxActions": 0,
       "MaxHP": 5
     },
-    "BasicAttackAbilityId": "ABIL_COMMON_SLASH",
-    "AbilityIds": []
+    "AbilityIds": [ "ABIL_COMMON_SLASH" ] 
   },
   {
     "Id": "MOB_STONE_SENTINEL",
@@ -48,7 +47,6 @@
       "MaxActions": 0,
       "MaxHP": 10
     },
-    "BasicAttackAbilityId": "ABIL_COMMON_SMASH",
-    "AbilityIds": []
+    "AbilityIds": [ "ABIL_COMMON_SMASH" ]
   }
 ]
