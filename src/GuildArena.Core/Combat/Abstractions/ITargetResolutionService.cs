@@ -23,4 +23,14 @@ public interface ITargetResolutionService
         Combatant source,
         GameState gameState,
         AbilityTargets playerInput);
+
+
+    /// <summary>
+    /// Gets all valid candidates for a rule, ignoring player selection strategies. 
+    /// Used by the AI to evaluate who it can legally target before committing to an action.
+    /// </summary>
+    List<Combatant> GetValidCandidates(
+        TargetingRule rule,
+        Combatant source,
+        GameState gameState);
 }
