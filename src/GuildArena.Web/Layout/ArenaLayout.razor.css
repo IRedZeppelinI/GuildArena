@@ -1,0 +1,21 @@
+﻿.arena-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Ocupa 100% da altura do ecrã do telemóvel/monitor */
+    width: 100vw;
+    background-color: #1a1a1a; /* Fundo escuro de jogo */
+    overflow: hidden; /* Impede scroll indesejado da página inteira */
+}
+
+.arena-header {
+    height: 3rem;
+    background-color: #0d0d0d;
+    border-bottom: 1px solid #333;
+}
+
+.arena-main {
+    flex-grow: 1; /* Ocupa o resto do espaço disponível */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}

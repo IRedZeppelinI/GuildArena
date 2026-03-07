@@ -1,0 +1,19 @@
+﻿@inherits LayoutComponentBase
+
+<div class="arena-wrapper">
+    <!-- Header minimalista do combate -->
+    <header class="arena-header d-flex justify-content-between align-items-center px-3">
+        <div class="arena-brand text-warning fw-bold">
+            GuildArena
+        </div>
+        <div class="arena-actions">
+            <button class="btn btn-sm btn-outline-light me-2">Options</button>
+            <button class="btn btn-sm btn-outline-danger">Surrender</button>
+        </div>
+    </header>
+
+    <!-- O conteúdo da página Arena vai ser injetado aqui -->
+    <main class="arena-main">
+        @Body
+    </main>
+</div>
