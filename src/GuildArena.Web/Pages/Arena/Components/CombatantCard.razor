@@ -37,5 +37,6 @@
     public required CombatantDto Combatant { get; set; }
 
     // Calcula a percentagem de vida para o CSS da barra verde
-    private double HpPercentage => Combatant.MaxHP == 0 ? 0 : Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
+    private int HpPercentage => 
+        Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
 }
