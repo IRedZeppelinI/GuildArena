@@ -1,84 +1,104 @@
 ﻿@page "/arena"
-@layout GuildArena.Web.Layout.ArenaLayout 
+@layout GuildArena.Web.Layout.ArenaLayout
 @using Microsoft.AspNetCore.SignalR.Client
 @using GuildArena.Shared.Requests
 @using GuildArena.Shared.Responses
 @using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Pages.Arena.Components <!-- NOVO -->
 @inject HttpClient Http
 @implements IAsyncDisposable
 
 <PageTitle>Battle Arena</PageTitle>
 
-<div class="container-fluid mt-3">
-    @if (string.IsNullOrEmpty(_combatId))
-    {
-        <div class="alert alert-info text-center">
-            <h3>Ready to enter the Arena?</h3>
-            <p>Click below to initialize a debug PvE encounter.</p>
-            <button class="btn btn-primary btn-lg mt-2" @onclick="StartCombatAsync" disabled="@_isConnecting">
+@if (string.IsNullOrEmpty(_combatId))
+{
+    <!-- Centrado no ecrã para não parecer feio -->
+    <div class="startup-screen">
+        <div class="startup-box">
+            <h3 class="text-warning">GuildArena</h3>
+            <p class="text-light">Prepare for battle.</p>
+            <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@_isConnecting">
                 @if (_isConnecting)
                 {
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span>Connecting...</span>
+                    <span>Entering Arena...</span>
                 }
                 else
                 {
-                    <span>Start Encounter (Bandit Ambush)</span>
+
+                    <span>Start Match</span>
                 }
             </button>
         </div>
-    }
-    else
-    {
-        <div class="row">
-            <!-- LADO ESQUERDO: O Tabuleiro de Jogo -->
-            <div class="col-md-8">
-                <div class="card bg-dark text-white border-secondary mb-3" style="min-height: 60vh;">
-                    <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                        <span class="text-warning">Combat ID: @_combatId</span>
-                        <span class="badge @(_isConnected ? "bg-success" : "bg-danger")">
-                            SignalR: @(_isConnected ? "Connected" : "Disconnected")
-                        </span>
-                    </div>
-                    <div class="card-body">
-                        @if (_gameState != null)
-                        {
-                            <h4 class="text-center text-info">Turn @_gameState.CurrentTurnNumber</h4>
-                            <p class="text-center">Current Player ID: @_gameState.CurrentPlayerId</p>
+    </div>
+}
+else
+{
+    <div class="arena-board">
+        <!-- LADO ESQUERDO: Equipa do Jogador -->
+        <div class="team-side player-team">
+            @if (_gameState != null)
+            {
+                var me = _gameState.Players.FirstOrDefault(p => p.PlayerId == 1);
+                if (me != null)
+                {
+                    <PlayerResourceBar Player="me" />
+                }
 
-                            <!-- No próximo passo vamos desenhar os Heróis aqui! -->
-                            <div class="alert alert-secondary text-dark text-center mt-5">
-                                <em>The Game Board will be rendered here in Phase 2.2</em>
-                            </div>
-                        }
-                        else
-                        {
-                            <p class="text-center text-muted mt-5">Waiting for game state sync...</p>
-                        }
-                    </div>
+                <div class="combatants-column">
+                    @foreach (var hero in _gameState.Combatants.Where(c => c.OwnerId == 1))
+                    {
+                        <CombatantCard Combatant="hero" />
+                    }
                 </div>
-            </div>
-
-            <!-- LADO DIREITO: Battle Logs -->
-            <div class="col-md-4">
-                <div class="card bg-dark text-white border-secondary" style="height: 60vh; display: flex; flex-direction: column;">
-                    <div class="card-header border-secondary text-center font-weight-bold">
-                        Battle Logs
-                    </div>
-                    <!-- O overflow-y: auto permite fazer scroll na lista se ficar muito grande -->
-                    <div class="card-body p-0" style="overflow-y: auto; flex-grow: 1;">
-                        <ul class="list-group list-group-flush text-dark">
-                            @foreach (var log in _battleLogs)
-                            {
-                                <li class="list-group-item bg-light border-bottom">@log</li>
-                            }
-                        </ul>
-                    </div>
-                </div>
-            </div>
+            }
         </div>
-    }
-</div>
+
+        <!-- CENTRO: Espaço vazio / Animações -->
+        <div class="arena-center">
+            @if (_gameState != null)
+            {
+                <div class="turn-indicator">
+                    Turn @_gameState.CurrentTurnNumber
+                </div>
+            }
+        </div>
+
+        <!-- LADO DIREITO: Inimigos (Grid 2x3) -->
+        <div class="team-side enemy-team">
+            @if (_gameState != null)
+            {
+                var enemyPlayer = _gameState.Players.FirstOrDefault(p => p.PlayerId != 1);
+                if (enemyPlayer != null)
+                {
+                    // A AI também tem Essence, mostramos para saber o que o boss pode castar!
+                    <PlayerResourceBar Player="enemyPlayer" />
+                }
+
+                <div class="enemy-grid">
+                    @foreach (var mob in _gameState.Combatants.Where(c => c.OwnerId != 1))
+                    {
+                        // O método GetGridClass converte o 'Position' para uma classe CSS
+                        <div class="@GetGridClass(mob.Position)">
+                            <CombatantCard Combatant="mob" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- FUNDO: BATTLE LOGS -->
+    <div class="battle-logs-panel">
+        <ul class="log-list">
+            @foreach (var log in _battleLogs)
+            {
+                <li>@log</li>
+            }
+        </ul>
+    </div>
+}
+
+
 
 @code {
     // === ESTADO DO COMPONENTE ===
@@ -185,5 +205,22 @@
             }
             await _hubConnection.DisposeAsync();
         }
+    }
+
+
+    private string GetGridClass(int position)
+    {
+        // Grid 2x3. Coluna 1 = Frente, Coluna 2 = Trás.
+        // Linhas 1, 2, 3 = Topo, Meio, Fundo.
+        return position switch
+        {
+            0 => "grid-front-top",
+            1 => "grid-front-mid",
+            2 => "grid-front-bot",
+            3 => "grid-back-top",
+            4 => "grid-back-mid",
+            5 => "grid-back-bot",
+            _ => "grid-back-mid" // Default boss position
+        };
     }
 }

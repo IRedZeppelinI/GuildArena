@@ -1,0 +1,18 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+
+<div class="resource-bar">
+    <div class="player-name">@Player.Name</div>
+    <div class="essence-pool">
+        @foreach (var kvp in Player.EssencePool.Where(e => e.Value > 0))
+        {
+            <div class="essence-bubble @kvp.Key.ToString().ToLower()" title="@kvp.Key">
+                @kvp.Value
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required CombatPlayerDto Player { get; set; }
+}

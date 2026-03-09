@@ -1,0 +1,41 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+
+<div class="combatant-card @(Combatant.IsAlive ? "" : "dead")">
+
+    <!-- Retângulo de imagem provisório -->
+    <div class="portrait-placeholder">
+        <span class="portrait-text">@Combatant.Name[0]</span>
+    </div>
+
+    <div class="card-info">
+        <div class="name-row">
+            <span class="name">@Combatant.Name</span>
+        </div>
+
+        <!-- Barra de Vida (HP) Dinâmica -->
+        <div class="hp-container">
+            <div class="hp-fill" style="width: @(HpPercentage)%"></div>
+            <span class="hp-text">@Combatant.CurrentHP / @Combatant.MaxHP</span>
+        </div>
+
+        <!-- Zonas para Fase 2.3 -->
+        <div class="modifiers-zone">
+            @if (Combatant.ActiveModifiers.Any())
+            {
+                <span class="badge bg-info text-dark">@Combatant.ActiveModifiers.Count Buffs</span>
+            }
+        </div>
+
+        <div class="abilities-zone">
+            <span class="badge bg-secondary">@(Combatant.Abilities.Count + (Combatant.SpecialAbility != null ? 1 : 0)) Skills</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required CombatantDto Combatant { get; set; }
+
+    // Calcula a percentagem de vida para o CSS da barra verde
+    private double HpPercentage => Combatant.MaxHP == 0 ? 0 : Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
+}
