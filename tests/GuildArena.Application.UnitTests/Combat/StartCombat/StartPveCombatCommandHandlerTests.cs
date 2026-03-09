@@ -109,11 +109,11 @@ public class StartPveCombatCommandHandlerTests
         Guid.TryParse(result.CombatId, out _).ShouldBeTrue();
         result.InitialLogs.Count.ShouldBe(2);
 
-        await _combatStateRepoMock.Received(1).
-            SaveAsync(result.CombatId, Arg.Is<GameState>(gs => gs.CurrentPlayerId == playerId));
+        result.InitialState.ShouldNotBeNull();
+        result.InitialState.Players.Count.ShouldBe(2);
 
-        // Como o jogador humano começou, a AI NÃO deve ser disparada (não precisamos de testar explicitamente o task.run, 
-        // mas testamos o caminho lógico através do state).
+        await _combatStateRepoMock.Received(1).
+            SaveAsync(result.CombatId, Arg.Is<GameState>(gs => gs.CurrentPlayerId == playerId));        
     }
 
     [Fact]
@@ -149,9 +149,12 @@ public class StartPveCombatCommandHandlerTests
         // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
+        // ASSERT                
         // Damos um pequeno delay no teste porque o Task.Run no handler é assíncrono e não esperado (Fire and Forget)
         await Task.Delay(100);
+
+        result.ShouldNotBeNull();
+        result.InitialState.ShouldNotBeNull();
 
         // Verificamos se o orchestrator foi chamado para jogar!
         await orchestratorMock.Received(1).PlayTurnAsync(result.CombatId, 0); // 0 é o AI Player ID

@@ -1,4 +1,5 @@
-﻿using GuildArena.Application.Combat.EndTurn;
+﻿using GuildArena.Api.Mappers;
+using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Application.Combat.ExecuteAbility;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Shared.Requests;
@@ -48,15 +49,16 @@ public async Task<IActionResult> StartPveCombat([FromBody] StartPveRequest reque
             "PvE Combat started successfully. ID: {CombatId}. Waiting for client to connect to SignalR.",
             result.CombatId);
 
-        // 2. Mapeia para o contrato público do projeto Shared (StartCombatResponse)
-        var response = new StartCombatResponse
-        {
-            CombatId = result.CombatId,
-            InitialLogs = result.InitialLogs
-        };
+            // 2. Mapeia para o contrato público do projeto Shared (StartCombatResponse)
+            var response = new StartCombatResponse
+            {
+                CombatId = result.CombatId,
+                InitialLogs = result.InitialLogs,
+                InitialState = CombatStateMapper.MapToDto(result.InitialState)
+            };
 
-        // 3. Devolve ao Blazor
-        return Ok(response);
+            // 3. Devolve ao Blazor
+            return Ok(response);
     }
     catch (UnauthorizedAccessException ex)
     {

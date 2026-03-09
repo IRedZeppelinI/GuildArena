@@ -170,7 +170,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         return new StartCombatResult
         {
             CombatId = combatId,
-            InitialLogs = initialLogs
+            InitialLogs = initialLogs,
+            InitialState = gameState
         };
     }
 

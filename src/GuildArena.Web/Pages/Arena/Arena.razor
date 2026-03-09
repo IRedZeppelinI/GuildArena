@@ -135,6 +135,7 @@ else
                 {
                     _combatId = result.CombatId;
                     _battleLogs.AddRange(result.InitialLogs);
+                    _gameState = result.InitialState;
 
                     // Inicia WebSockets!
                     await ConnectToSignalRAsync(_combatId);
