@@ -82,3 +82,54 @@
     margin-top: 4px;
     font-size: 0.8rem;
 }
+
+
+/* --- RESPONSIVIDADE MOBILE LANDSCAPE --- */
+@media (max-height: 650px) {
+    .combatant-card {
+        padding: 4px;
+        border-width: 1px; /* Borda mais fina */
+    }
+
+    /* Retrato ultra pequeno */
+    .portrait-placeholder {
+        width: 40px;
+        height: 40px;
+        margin-right: 6px;
+    }
+
+    .portrait-text {
+        font-size: 1.2rem;
+    }
+
+    .card-info {
+        justify-content: center; /* Aperta o texto todo */
+    }
+
+    .name {
+        font-size: 0.8rem;
+        margin-bottom: 0;
+        line-height: 1;
+    }
+
+    /* Barra de vida ultra fina */
+    .hp-container {
+        height: 12px;
+        margin-top: 3px;
+    }
+
+    .hp-text {
+        font-size: 0.6rem;
+        line-height: 12px;
+    }
+
+    .modifiers-zone, .abilities-zone {
+        margin-top: 2px;
+    }
+
+    /* Encolhe as badges (caixinhas de 1 Buff / 5 Skills) */
+    .badge {
+        padding: 0.2em 0.4em;
+        font-size: 0.6rem;
+    }
+}

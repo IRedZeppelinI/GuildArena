@@ -61,3 +61,23 @@
     background-color: #aaaaaa;
 }
 /* Cinzento */
+
+
+/* --- RESPONSIVIDADE MOBILE LANDSCAPE --- */
+@media (max-height: 650px) {
+    .resource-bar {
+        padding: 2px 8px; /* Reduz brutalmente o padding */
+        margin-bottom: 4px; /* Encosta mais às cartas */
+    }
+
+    .player-name {
+        font-size: 0.85rem;
+    }
+
+    .essence-bubble {
+        width: 20px; /* Bolinhas muito mais pequenas */
+        height: 20px;
+        font-size: 0.75rem;
+        border-width: 1px;
+    }
+}

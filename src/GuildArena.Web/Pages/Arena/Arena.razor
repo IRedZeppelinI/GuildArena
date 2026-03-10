@@ -4,7 +4,7 @@
 @using GuildArena.Shared.Requests
 @using GuildArena.Shared.Responses
 @using GuildArena.Shared.DTOs.Combat
-@using GuildArena.Web.Pages.Arena.Components <!-- NOVO -->
+@using GuildArena.Web.Pages.Arena.Components
 @inject HttpClient Http
 @implements IAsyncDisposable
 
@@ -12,7 +12,6 @@
 
 @if (string.IsNullOrEmpty(_combatId))
 {
-    <!-- Centrado no ecrã para não parecer feio -->
     <div class="startup-screen">
         <div class="startup-box">
             <h3 class="text-warning">GuildArena</h3>
@@ -33,6 +32,25 @@
 }
 else
 {
+    <!-- MODAL DE LOGS PARA MOBILE (Só aparece se _showMobileLogs for true) -->
+    @if (_showMobileLogs)
+    {
+        <div class="mobile-logs-modal" @onclick="ToggleMobileLogs">
+            <div class="mobile-logs-content" @onclick:stopPropagation="true">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                    <h5 class="text-warning m-0">Battle Logs</h5>
+                    <button class="btn btn-sm btn-outline-light" @onclick="ToggleMobileLogs">Close</button>
+                </div>
+                <ul class="log-list text-start">
+                    @foreach (var log in _battleLogs)
+                    {
+                        <li>@log</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
     <div class="arena-board">
         <!-- LADO ESQUERDO: Equipa do Jogador -->
         <div class="team-side player-team">
@@ -53,7 +71,7 @@ else
             }
         </div>
 
-        <!-- CENTRO: Espaço vazio / Animações -->
+        <!-- CENTRO: Indicador de Turno -->
         <div class="arena-center">
             @if (_gameState != null)
             {
@@ -63,21 +81,19 @@ else
             }
         </div>
 
-        <!-- LADO DIREITO: Inimigos (Grid 2x3) -->
+        <!-- LADO DIREITO: Inimigos -->
         <div class="team-side enemy-team">
             @if (_gameState != null)
             {
                 var enemyPlayer = _gameState.Players.FirstOrDefault(p => p.PlayerId != 1);
                 if (enemyPlayer != null)
                 {
-                    // A AI também tem Essence, mostramos para saber o que o boss pode castar!
                     <PlayerResourceBar Player="enemyPlayer" />
                 }
 
                 <div class="enemy-grid">
                     @foreach (var mob in _gameState.Combatants.Where(c => c.OwnerId != 1))
                     {
-                        // O método GetGridClass converte o 'Position' para uma classe CSS
                         <div class="@GetGridClass(mob.Position)">
                             <CombatantCard Combatant="mob" />
                         </div>
@@ -87,21 +103,46 @@ else
         </div>
     </div>
 
-    <!-- FUNDO: BATTLE LOGS -->
-    <div class="battle-logs-panel">
-        <ul class="log-list">
-            @foreach (var log in _battleLogs)
+    <!-- FUNDO: RODAPÉ DO COMBATE -->
+    <div class="arena-footer">
+        <!-- Secção Esquerda: Botão de Logs para Mobile -->
+        <div class="footer-section footer-left">
+            <button class="btn btn-outline-info mobile-logs-btn" @onclick="ToggleMobileLogs">
+                📜 View Logs
+            </button>
+        </div>
+
+        <!-- Secção Central: Logs de Desktop -->
+        <div class="footer-section footer-center desktop-logs">
+            <div class="battle-logs-panel">
+                <ul class="log-list">
+                    @foreach (var log in _battleLogs)
+                    {
+                        <li>@log</li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <!-- Secção Direita: End Turn -->
+        <div class="footer-section footer-right">
+            @if (_gameState != null && _gameState.CurrentPlayerId == 1)
             {
-                <li>@log</li>
+                <button class="btn btn-danger btn-lg end-turn-btn" @onclick="EndTurnAsync">
+                    End Turn
+                </button>
             }
-        </ul>
+            else if (_gameState != null)
+            {
+                <button class="btn btn-secondary btn-lg end-turn-btn" disabled>
+                    Enemy Turn...
+                </button>
+            }
+        </div>
     </div>
 }
 
-
-
 @code {
-    // === ESTADO DO COMPONENTE ===
     private string? _combatId;
     private HubConnection? _hubConnection;
     private GameStateDto? _gameState;
@@ -110,9 +151,14 @@ else
     private bool _isConnecting = false;
     private bool _isConnected => _hubConnection?.State == HubConnectionState.Connected;
 
-    // === MÉTODOS ===
+    // ESTADO DO MODAL MOBILE
+    private bool _showMobileLogs = false;
 
-    // 1. Pedido HTTP para criar o combate
+    private void ToggleMobileLogs()
+    {
+        _showMobileLogs = !_showMobileLogs;
+    }
+
     private async Task StartCombatAsync()
     {
         _isConnecting = true;
@@ -121,15 +167,13 @@ else
             var request = new StartPveRequest
             {
                 EncounterId = "ENC_TUTORIAL_01",
-                HeroInstanceIds = new List<int> { 101 } // Garret (Hardcoded ID provisório do repositório)
+                HeroInstanceIds = new List<int> { 101, 103, 104 }
             };
 
-            // Fazemos o POST para a API
             var response = await Http.PostAsJsonAsync("api/combat/start-pve", request);
 
             if (response.IsSuccessStatusCode)
             {
-                // Lemos a resposta com os Logs Iniciais
                 var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
                 if (result != null)
                 {
@@ -137,7 +181,6 @@ else
                     _battleLogs.AddRange(result.InitialLogs);
                     _gameState = result.InitialState;
 
-                    // Inicia WebSockets!
                     await ConnectToSignalRAsync(_combatId);
                 }
             }
@@ -153,29 +196,25 @@ else
         finally
         {
             _isConnecting = false;
-            // O Blazor atualiza o ecrã automaticamente em eventos de cliques,
-            // mas StateHasChanged() garante o refresh.
             StateHasChanged();
         }
     }
 
-    // 2. Estabelecer Ligação SignalR
     private async Task ConnectToSignalRAsync(string combatId)
     {
-        // Constrói a ligação apontando para o URL base do HttpClient + a rota do Hub
+        var apiBaseUrl = Http.BaseAddress?.ToString() ?? "";
+
         _hubConnection = new HubConnectionBuilder()
-            .WithUrl(Http.BaseAddress + "hubs/combat")
+            .WithUrl(apiBaseUrl + "hubs/combat")
             .WithAutomaticReconnect()
             .Build();
 
-        // Subscrição: O que fazer quando o servidor enviar um GameState?
         _hubConnection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
         {
             _gameState = state;
-            StateHasChanged(); // Força o ecrã a atualizar
+            StateHasChanged();
         });
 
-        // Subscrição: O que fazer quando o servidor enviar novos Logs?
         _hubConnection.On<List<string>>("ReceiveBattleLogs", (logs) =>
         {
             _battleLogs.AddRange(logs);
@@ -185,7 +224,6 @@ else
         try
         {
             await _hubConnection.StartAsync();
-            // Avisar o Hub que queremos entrar no "Grupo" específico deste combate
             await _hubConnection.InvokeAsync("JoinCombat", combatId);
             _battleLogs.Add("--- SignalR Connected! Waiting for actions... ---");
         }
@@ -195,7 +233,28 @@ else
         }
     }
 
-    // 3. Limpeza de Memória (Destrutor)
+    private async Task EndTurnAsync()
+    {
+        if (string.IsNullOrEmpty(_combatId)) return;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/combat/{_combatId}/end-turn", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _battleLogs.Add($"Error: {error}");
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            _battleLogs.Add($"Error: {ex.Message}");
+            StateHasChanged();
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (_hubConnection is not null)
@@ -208,11 +267,8 @@ else
         }
     }
 
-
     private string GetGridClass(int position)
     {
-        // Grid 2x3. Coluna 1 = Frente, Coluna 2 = Trás.
-        // Linhas 1, 2, 3 = Topo, Meio, Fundo.
         return position switch
         {
             0 => "grid-front-top",
@@ -221,7 +277,7 @@ else
             3 => "grid-back-top",
             4 => "grid-back-mid",
             5 => "grid-back-bot",
-            _ => "grid-back-mid" // Default boss position
+            _ => "grid-back-mid"
         };
     }
 }

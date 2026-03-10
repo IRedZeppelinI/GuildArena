@@ -9,12 +9,17 @@
       {
         "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
         "Level": 1,
-        "Position": 1
+        "Position": 3
       },
       {
         "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
         "Level": 1,
-        "Position": 2
+        "Position": 4
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 5
       }
     ]
   }
