@@ -2,32 +2,41 @@
 
 <div class="combatant-card @(Combatant.IsAlive ? "" : "dead")">
 
-    <!-- Retângulo de imagem provisório -->
-    <div class="portrait-placeholder">
-        <span class="portrait-text">@Combatant.Name[0]</span>
-    </div>
-
-    <div class="card-info">
-        <div class="name-row">
-            <span class="name">@Combatant.Name</span>
+    <!-- COLUNA ESQUERDA: Retrato e Modifiers -->
+    <div class="card-left">
+        <div class="portrait-placeholder">
+            <span class="portrait-text">@Combatant.Name[0]</span>
         </div>
 
-        <!-- Barra de Vida (HP) Dinâmica -->
-        <div class="hp-container">
-            <div class="hp-fill" style="width: @(HpPercentage)%"></div>
-            <span class="hp-text">@Combatant.CurrentHP / @Combatant.MaxHP</span>
-        </div>
-
-        <!-- Zonas para Fase 2.3 -->
         <div class="modifiers-zone">
-            @if (Combatant.ActiveModifiers.Any())
+            <!-- Ciclo dinâmico para desenhar apenas os buffs que existem -->
+            @foreach (var mod in Combatant.ActiveModifiers)
             {
-                <span class="badge bg-info text-dark">@Combatant.ActiveModifiers.Count Buffs</span>
+                <div class="modifier-icon placeholder" title="@mod.DefinitionId">
+                    <!-- Um dia será o icon, por agora é uma bolinha -->
+                </div>
             }
         </div>
+    </div>
 
+    <!-- COLUNA DIREITA: Info e Habilidades -->
+    <div class="card-right">
+        <!-- Topo da Direita: Nome e Vida -->
+        <div class="info-top">
+            <div class="name">@Combatant.Name</div>
+            <div class="hp-container">
+                <div class="hp-fill" style="width: @(HpPercentage)%"></div>
+                <span class="hp-text">@Combatant.CurrentHP / @Combatant.MaxHP</span>
+            </div>
+        </div>
+
+        <!-- Fundo da Direita: Habilidades -->
         <div class="abilities-zone">
-            <span class="badge bg-secondary">@(Combatant.Abilities.Count + (Combatant.SpecialAbility != null ? 1 : 0)) Skills</span>
+            <!-- Este método "AllAbilities" junta o Special com os Normais para o ciclo ser fácil -->
+            @foreach (var ability in AllAbilities)
+            {
+                <AbilityButton Ability="ability" OnAbilityClicked="HandleAbilityClick" />
+            }
         </div>
     </div>
 </div>
@@ -36,7 +45,23 @@
     [Parameter, EditorRequired]
     public required CombatantDto Combatant { get; set; }
 
-    // Calcula a percentagem de vida para o CSS da barra verde
-    private int HpPercentage => 
-        Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
+    private int HpPercentage => Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
+
+    // Propriedade Helper que junta a Special Ability (se existir) com a lista de habilidades normais
+    private IEnumerable<AbilitySummaryDto> AllAbilities
+    {
+        get
+        {
+            if (Combatant.SpecialAbility != null) yield return Combatant.SpecialAbility;
+            foreach (var ab in Combatant.Abilities) yield return ab;
+        }
+    }
+
+    // O que acontece quando o botão grita "Fui clicado"?
+    private void HandleAbilityClick(string abilityId)
+    {
+        // Por enquanto, apenas imprimimos na consola do browser para ver se funciona!
+        // Na Fase 2.3 vamos ligar isto ao pedido HTTP real.
+        Console.WriteLine($"Jogador clicou na habilidade {abilityId} do herói {Combatant.Name}");
+    }
 }

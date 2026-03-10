@@ -1,0 +1,42 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+
+<!-- O contentor principal. Se estiver em cooldown, adiciona uma classe CSS extra -->
+<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "")" @onclick="OnClick">
+
+    <!-- 1. A moldura (Border Sprite) -->
+    <div class="ability-border"></div>
+
+    <!-- 2. O ícone da habilidade (Para já, um placeholder com a inicial do nome) -->
+    <div class="ability-icon-placeholder">
+        @Ability.Name.Substring(0, 1)
+    </div>
+
+    <!-- 3. Se estiver em cooldown, a película escura por cima -->
+    @if (IsOnCooldown)
+    {
+        <div class="cooldown-overlay">
+            <span>@Ability.CurrentCooldownTurns</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required AbilitySummaryDto Ability { get; set; }
+
+    // O "evento" que este botão vai disparar para avisar o Pai (a Carta) que foi clicado
+    [Parameter]
+    public EventCallback<string> OnAbilityClicked { get; set; }
+
+    private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
+
+    private async Task OnClick()
+    {
+        // Se estiver em cooldown, não faz nada.
+        // Se não estiver, grita para o pai: "Fui clicado e o meu ID é este!"
+        if (!IsOnCooldown)
+        {
+            await OnAbilityClicked.InvokeAsync(Ability.Id);
+        }
+    }
+}

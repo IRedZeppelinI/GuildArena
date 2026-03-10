@@ -1,0 +1,81 @@
+﻿/* O GameObject Pai (Relativo) */
+.ability-slot {
+    position: relative;
+    width: 36px; /* Tamanho base do ícone */
+    height: 36px;
+    cursor: pointer;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: transform 0.1s ease;
+}
+
+    .ability-slot:hover {
+        transform: scale(1.1); /* Dá um efeitito 3D quando passas o rato */
+    }
+
+/* A Moldura (Absoluta) */
+.ability-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid #aaa; /* Fallback até teres a imagem da Sprite */
+    z-index: 2; /* Fica por cima do ícone */
+    pointer-events: none; /* Para não bloquear o clique */
+}
+
+/* O Ícone Falso (Absoluto, Fica por baixo da moldura) */
+.ability-icon-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #444, #222);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    color: #ffd800;
+    z-index: 1;
+}
+
+/* A película de Cooldown (Absoluta, Fica por cima de tudo) */
+.cooldown-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75); /* Escurece o ícone */
+    z-index: 3;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+    text-shadow: 0 0 5px red;
+}
+
+/* Se estiver em cooldown, tira a mãozinha de clique */
+.on-cooldown {
+    cursor: not-allowed;
+}
+
+/* RESPONSIVIDADE MOBILE */
+@media (max-height: 650px) {
+    .ability-slot {
+        width: 24px; /* Mais pequeno em telemóveis */
+        height: 24px;
+    }
+
+    .ability-icon-placeholder {
+        font-size: 0.8rem;
+    }
+
+    .cooldown-overlay {
+        font-size: 0.9rem;
+    }
+}
