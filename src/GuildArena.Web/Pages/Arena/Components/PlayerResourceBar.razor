@@ -5,8 +5,15 @@
     <div class="essence-pool">
         @foreach (var kvp in Player.EssencePool.Where(e => e.Value > 0))
         {
-            <div class="essence-bubble @kvp.Key.ToString().ToLower()" title="@kvp.Key">
-                @kvp.Value
+            <div class="essence-slot" title="@kvp.Key">
+
+                <!-- 1. O Ícone da Essence (Orbe/Cristal) -->
+                <!-- Futuramente, a class css será substituída/complementada por uma tag <img> ou background-image -->
+                <div class="essence-icon @kvp.Key.ToString().ToLower()"></div>
+
+                <!-- 2. O Badge numérico com a quantidade -->
+                <div class="essence-count">@kvp.Value</div>
+
             </div>
         }
     </div>

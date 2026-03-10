@@ -18,66 +18,102 @@
 
 .essence-pool {
     display: flex;
-    gap: 8px;
+    gap: 12px; /* Aumentei um pouco o gap para os crachás numéricos não se tocarem */
 }
 
-/* Bolinhas de Mana. Cores provisórias até usarmos as tuas imagens */
-.essence-bubble {
-    width: 30px;
-    height: 30px;
+/* O contentor base da Essence */
+.essence-slot {
+    position: relative;
+    width: 32px;
+    height: 32px;
+}
+
+/* O Ícone Visual (Fundo Redondo) */
+.essence-icon {
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.7);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    /* PREPARAÇÃO PARA AS TUAS SPRITES: 
+       Quando tiveres as imagens, podes adicioná-las dinamicamente, ex:
+       background-image: url('images/essence/vigor.png');
+       background-size: cover;
+    */
+}
+
+/* O Emblema/Badge com a quantidade */
+.essence-count {
+    position: absolute;
+    bottom: -4px; /* Empurra ligeiramente para fora do círculo principal */
+    right: -4px;
+    background-color: #222;
+    color: #fff;
+    border: 1px solid #aaa;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 0.75rem;
+    font-weight: bold;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-weight: bold;
-    color: black;
-    border: 2px solid rgba(255,255,255,0.5);
-    box-shadow: 0 0 5px rgba(0,0,0,0.8);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.9);
+    z-index: 2; /* Garante que fica por cima do ícone */
 }
 
+/* Cores Fallback (Até introduzirmos as imagens reais) */
 .vigor {
     background-color: #ff6a00;
 }
-/* Laranja */
+
 .mind {
     background-color: #00e5ff;
 }
-/* Ciano */
+
 .light {
     background-color: #ffd800;
 }
-/* Dourado */
+
 .shadow {
     background-color: #aa00ff;
-    color: white;
 }
-/* Roxo */
+
 .flux {
     background-color: #ff0055;
-    color: white;
 }
-/* Vermelho Vivo */
+
 .neutral {
     background-color: #aaaaaa;
 }
-/* Cinzento */
-
 
 /* --- RESPONSIVIDADE MOBILE LANDSCAPE --- */
 @media (max-height: 650px) {
     .resource-bar {
-        padding: 2px 8px; /* Reduz brutalmente o padding */
-        margin-bottom: 4px; /* Encosta mais às cartas */
+        padding: 2px 8px;
+        margin-bottom: 4px;
     }
 
     .player-name {
         font-size: 0.85rem;
     }
 
-    .essence-bubble {
-        width: 20px; /* Bolinhas muito mais pequenas */
-        height: 20px;
-        font-size: 0.75rem;
-        border-width: 1px;
+    .essence-pool {
+        gap: 8px;
+    }
+
+    /* Encolhe a base */
+    .essence-slot {
+        width: 24px;
+        height: 24px;
+    }
+
+    /* Encolhe o número e ajusta a posição */
+    .essence-count {
+        width: 14px;
+        height: 14px;
+        font-size: 0.6rem;
+        bottom: -2px;
+        right: -2px;
     }
 }

@@ -5,7 +5,7 @@
     "Description": "A group of bandits jumps from the bushes!",
     "DifficultyRating": 1,
     "BackgroundId": "BG_FOREST",
-    "Enemies": [
+    "Enemies": [      
       {
         "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
         "Level": 1,
