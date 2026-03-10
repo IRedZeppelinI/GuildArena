@@ -23,7 +23,7 @@
     background-color: #222;
     background-size: cover;
     background-position: center;
-    overflow: hidden; /* Evita scrolls dentro do tabuleiro */
+    overflow: hidden;
 }
 
 .team-side {
@@ -50,11 +50,11 @@
     border: 1px solid #ffd800;
 }
 
-/* FIX DE ALINHAMENTO: Agora o lado do jogador também é uma Grelha de 3 Linhas! */
+/* Grelha do Jogador (1 Coluna, 3 Linhas) */
 .combatants-column {
     display: grid;
-    grid-template-rows: 1fr 1fr 1fr; /* 3 Fatias Iguais */
-    align-items: center; /* Centra a carta na vertical dentro da sua fatia */
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
     gap: 10px;
     height: 100%;
 }
@@ -63,8 +63,8 @@
 .enemy-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr 1fr; /* 3 Fatias Iguais (Simetria perfeita com o lado esquerdo) */
-    align-items: center; /* Centra a carta na vertical */
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
     gap: 10px;
     height: 100%;
 }
@@ -99,7 +99,6 @@
     grid-row: 3;
 }
 
-
 /* --- RODAPÉ DA ARENA (DESKTOP) --- */
 .arena-footer {
     height: 25vh;
@@ -109,7 +108,7 @@
     background: rgba(0, 0, 0, 0.85);
     border-top: 2px solid #555;
     padding: 10px 20px;
-    transition: height 0.3s ease; /* Animação suave se o ecrã encolher */
+    transition: height 0.3s ease;
 }
 
 .footer-section {
@@ -140,31 +139,12 @@
     font-weight: bold;
 }
 
-.battle-logs-panel {
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    color: #ddd;
-    font-family: monospace;
-    background: rgba(20, 20, 20, 0.9);
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: inset 0 0 10px #000;
+/* Ticker invisível no Desktop */
+.mobile-ticker {
+    display: none;
 }
 
-.log-list {
-    list-style-type: none;
-    padding-left: 0;
-    margin: 0;
-    text-align: center;
-}
-
-    .log-list li {
-        padding: 4px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
+/* Botão End Turn */
 .end-turn-btn {
     font-weight: bold;
     font-size: 1.5rem;
@@ -185,7 +165,7 @@
     width: 100vw;
     height: 100vh;
     background: rgba(0,0,0,0.85);
-    z-index: 2000; /* Fica por cima de absolutamente tudo */
+    z-index: 2000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -200,58 +180,61 @@
     padding: 15px;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    color: #ddd;
-    font-family: monospace;
 }
 
 /* =========================================================
-   MEDIA QUERIES (A Magia do Mobile Landscape)
-   Ativa-se em ecrãs com menos de 650px de altura
+   MEDIA QUERIES (MOBILE LANDSCAPE / Ecrãs Pequenos)
 ========================================================= */
 @media (max-height: 650px) {
-    /* 1. O Rodapé encolhe para o mínimo necessário só para caberem os botões */
-    .arena-footer {
-        height: auto;
-        padding: 5px 15px;
-    }
-
-    /* 2. O botão de End Turn fica mais pequeno para não tapar o jogo */
-    .end-turn-btn {
-        font-size: 1.1rem;
-        padding: 8px 15px;
-    }
-
-    /* 3. A caixa gigante de Logs do Desktop DESAPARECE */
-    .desktop-logs {
-        display: none;
-    }
-
-    /* 4. O botão de "View Logs" do Mobile APARECE no canto esquerdo */
-    .mobile-logs-btn {
-        display: block;
-    }
-
-    /* 5. As barras de equipa esticam-se para aproveitar o ecrã agora limpo */
-    .team-side {
-        width: 40%;
-    }
-
-    /* NOVO: Reduz o padding geral da arena para as cartas poderem encostar aos cantos */
     .arena-board {
         padding: 5px 10px;
     }
 
-    /* NOVO: Reduz o espaço vazio entre as cartas (o buraco entre o Garret e a Elysia) */
     .combatants-column, .enemy-grid {
         gap: 4px;
     }
 
-    /* NOVO: Encolhe o indicador de Turno do centro */
     .turn-indicator {
         font-size: 0.9rem;
         padding: 2px 10px;
     }
 
-}
+    .team-side {
+        width: 40%;
+    }
 
+    .arena-footer {
+        height: auto;
+        padding: 5px 15px;
+    }
+
+    .end-turn-btn {
+        font-size: 1.1rem;
+        padding: 8px 15px;
+    }
+
+    /* ESCONDE A CAIXA DO DESKTOP */
+    .desktop-logs-wrapper {
+        display: none;
+    }
+
+    .mobile-logs-btn {
+        display: block;
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+
+    .mobile-ticker {
+        display: block;
+        width: 100%;
+        text-align: center;
+        color: #ffd800;
+        font-family: monospace;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 0 10px;
+        align-self: center;
+    }
+}

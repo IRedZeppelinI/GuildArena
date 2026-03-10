@@ -1,0 +1,34 @@
+﻿@inject IJSRuntime JS
+
+<div id="@ContainerId" class="battle-logs-panel @CustomCssClass">
+    <ul class="log-list">
+        @foreach (var log in Logs)
+        {
+            <li>@log</li>
+        }
+    </ul>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required List<string> Logs { get; set; }
+
+    [Parameter]
+    public string ContainerId { get; set; } = "battle-logs-container";
+
+    [Parameter]
+    public string CustomCssClass { get; set; } = "";
+
+    private int _previousLogCount = 0;
+
+    // Método nativo do Blazor que corre sempre que o HTML termina de ser desenhado no ecrã
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Faz scroll se a caixa for aberta pela primeira vez OU se a lista de logs aumentou
+        if (firstRender || Logs.Count > _previousLogCount)
+        {
+            _previousLogCount = Logs.Count;
+            await JS.InvokeVoidAsync("scrollToBottom", ContainerId);
+        }
+    }
+}

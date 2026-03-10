@@ -32,7 +32,7 @@
 }
 else
 {
-    <!-- MODAL DE LOGS PARA MOBILE (Só aparece se _showMobileLogs for true) -->
+    <!-- MODAL DE LOGS PARA MOBILE -->
     @if (_showMobileLogs)
     {
         <div class="mobile-logs-modal" @onclick="ToggleMobileLogs">
@@ -41,12 +41,11 @@ else
                     <h5 class="text-warning m-0">Battle Logs</h5>
                     <button class="btn btn-sm btn-outline-light" @onclick="ToggleMobileLogs">Close</button>
                 </div>
-                <ul class="log-list text-start">
-                    @foreach (var log in _battleLogs)
-                    {
-                        <li>@log</li>
-                    }
-                </ul>
+
+                <!-- Usamos o componente aqui para o Mobile -->
+                <div style="flex-grow: 1; overflow: hidden; position: relative;">
+                    <BattleLogPanel Logs="_battleLogs" ContainerId="mobile-logs-container" />
+                </div>
             </div>
         </div>
     }
@@ -105,22 +104,25 @@ else
 
     <!-- FUNDO: RODAPÉ DO COMBATE -->
     <div class="arena-footer">
-        <!-- Secção Esquerda: Botão de Logs para Mobile -->
+
+        <!-- Secção Esquerda: Botão Mobile Logs -->
         <div class="footer-section footer-left">
-            <button class="btn btn-outline-info mobile-logs-btn" @onclick="ToggleMobileLogs">
-                📜 View Logs
+            <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="ToggleMobileLogs">
+                📜 BattleLogs
             </button>
         </div>
 
-        <!-- Secção Central: Logs de Desktop -->
-        <div class="footer-section footer-center desktop-logs">
-            <div class="battle-logs-panel">
-                <ul class="log-list">
-                    @foreach (var log in _battleLogs)
-                    {
-                        <li>@log</li>
-                    }
-                </ul>
+        <!-- Secção Central: Logs Desktop / Ticker Mobile -->
+        <div class="footer-section footer-center">
+
+            <!-- Wrapper necessário por causa do CSS Isolation do Blazor -->
+            <div class="desktop-logs-wrapper w-100 h-100">
+                <BattleLogPanel Logs="_battleLogs" ContainerId="desktop-logs-container" />
+            </div>
+
+            <!-- Ticker Mobile (Só visível no Telemóvel) -->
+            <div class="mobile-ticker">
+                @(_battleLogs.LastOrDefault() ?? "Waiting for actions...")
             </div>
         </div>
 
@@ -150,8 +152,6 @@ else
 
     private bool _isConnecting = false;
     private bool _isConnected => _hubConnection?.State == HubConnectionState.Connected;
-
-    // ESTADO DO MODAL MOBILE
     private bool _showMobileLogs = false;
 
     private void ToggleMobileLogs()
@@ -184,10 +184,6 @@ else
                     await ConnectToSignalRAsync(_combatId);
                 }
             }
-            else
-            {
-                _battleLogs.Add($"HTTP Error: {response.StatusCode}");
-            }
         }
         catch (Exception ex)
         {
@@ -215,42 +211,25 @@ else
             StateHasChanged();
         });
 
-        _hubConnection.On<List<string>>("ReceiveBattleLogs", (logs) =>
+        _hubConnection.On<List<string>>("ReceiveBattleLogs", async (logs) =>
         {
             _battleLogs.AddRange(logs);
-            StateHasChanged();
+            await InvokeAsync(StateHasChanged);
         });
 
-        try
-        {
-            await _hubConnection.StartAsync();
-            await _hubConnection.InvokeAsync("JoinCombat", combatId);
-            _battleLogs.Add("--- SignalR Connected! Waiting for actions... ---");
-        }
-        catch (Exception ex)
-        {
-            _battleLogs.Add($"SignalR Connection Error: {ex.Message}");
-        }
+        await _hubConnection.StartAsync();
+        await _hubConnection.InvokeAsync("JoinCombat", combatId);
     }
 
     private async Task EndTurnAsync()
     {
         if (string.IsNullOrEmpty(_combatId)) return;
 
-        try
+        var response = await Http.PostAsync($"api/combat/{_combatId}/end-turn", null);
+        if (!response.IsSuccessStatusCode)
         {
-            var response = await Http.PostAsync($"api/combat/{_combatId}/end-turn", null);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                _battleLogs.Add($"Error: {error}");
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            _battleLogs.Add($"Error: {ex.Message}");
+            var error = await response.Content.ReadAsStringAsync();
+            _battleLogs.Add($"Error: {error}");
             StateHasChanged();
         }
     }
@@ -259,10 +238,7 @@ else
     {
         if (_hubConnection is not null)
         {
-            if (!string.IsNullOrEmpty(_combatId))
-            {
-                await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
-            }
+            if (!string.IsNullOrEmpty(_combatId)) await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
             await _hubConnection.DisposeAsync();
         }
     }
