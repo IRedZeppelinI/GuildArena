@@ -44,10 +44,11 @@
 
 .modifiers-zone {
     display: flex;
-    flex-wrap: wrap; /* Se tiver muitos buffs, passam para a linha de baixo */
+    flex-wrap: wrap;
     gap: 2px;
-    justify-content: center;
-    width: 60px; /* Mesma largura do retrato */
+    justify-content: flex-start; /*  Alinha à esquerda */
+    width: 100%; /* Ocupa a largura toda por baixo do retrato */
+    padding-left: 2px;
 }
 
 .modifier-icon.placeholder {
