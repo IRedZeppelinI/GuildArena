@@ -18,34 +18,26 @@
 
 .essence-pool {
     display: flex;
-    gap: 12px; /* Aumentei um pouco o gap para os crachás numéricos não se tocarem */
+    gap: 12px;
 }
 
-/* O contentor base da Essence */
 .essence-slot {
     position: relative;
     width: 32px;
     height: 32px;
 }
 
-/* O Ícone Visual (Fundo Redondo) */
 .essence-icon {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.7);
     box-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    /* PREPARAÇÃO PARA AS TUAS SPRITES: 
-       Quando tiveres as imagens, podes adicioná-las dinamicamente, ex:
-       background-image: url('images/essence/vigor.png');
-       background-size: cover;
-    */
 }
 
-/* O Emblema/Badge com a quantidade */
 .essence-count {
     position: absolute;
-    bottom: -4px; /* Empurra ligeiramente para fora do círculo principal */
+    bottom: -4px;
     right: -4px;
     background-color: #222;
     color: #fff;
@@ -59,10 +51,9 @@
     justify-content: center;
     align-items: center;
     box-shadow: 0 1px 3px rgba(0,0,0,0.9);
-    z-index: 2; /* Garante que fica por cima do ícone */
+    z-index: 2;
 }
 
-/* Cores Fallback (Até introduzirmos as imagens reais) */
 .vigor {
     background-color: #ff6a00;
 }
@@ -87,7 +78,18 @@
     background-color: #aaaaaa;
 }
 
-/* --- RESPONSIVIDADE MOBILE LANDSCAPE --- */
+.exchange-btn {
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0;
+    font-size: 1.1rem;
+    box-shadow: 0 0 5px rgba(255, 216, 0, 0.5);
+}
+
 @media (max-height: 650px) {
     .resource-bar {
         padding: 2px 8px;
@@ -102,18 +104,22 @@
         gap: 8px;
     }
 
-    /* Encolhe a base */
     .essence-slot {
         width: 24px;
         height: 24px;
     }
 
-    /* Encolhe o número e ajusta a posição */
     .essence-count {
         width: 14px;
         height: 14px;
         font-size: 0.6rem;
         bottom: -2px;
         right: -2px;
+    }
+
+    .exchange-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
     }
 }

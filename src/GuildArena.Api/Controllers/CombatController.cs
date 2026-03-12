@@ -194,7 +194,8 @@ public class CombatController : ControllerBase
 
     /// <summary>
     /// Exchanges two existing essences for one essence of the player's choice.
-    /// </summary>[HttpPost("{combatId}/exchange-essence")]
+    /// </summary>
+    [HttpPost("{combatId}/exchange-essence")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

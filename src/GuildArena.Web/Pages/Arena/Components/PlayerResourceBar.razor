@@ -2,19 +2,23 @@
 
 <div class="resource-bar">
     <div class="player-name">@Player.Name</div>
-    <div class="essence-pool">
-        @foreach (var kvp in Player.EssencePool.Where(e => e.Value > 0))
+
+    <div class="d-flex align-items-center">
+        <div class="essence-pool me-3">
+            @foreach (var kvp in Player.EssencePool.Where(e => e.Value > 0))
+            {
+                <div class="essence-slot" title="@kvp.Key">
+                    <div class="essence-icon @kvp.Key.ToString().ToLower()"></div>
+                    <div class="essence-count">@kvp.Value</div>
+                </div>
+            }
+        </div>
+
+        @if (ShowExchangeButton)
         {
-            <div class="essence-slot" title="@kvp.Key">
-
-                <!-- 1. O Ícone da Essence (Orbe/Cristal) -->
-                <!-- Futuramente, a class css será substituída/complementada por uma tag <img> ou background-image -->
-                <div class="essence-icon @kvp.Key.ToString().ToLower()"></div>
-
-                <!-- 2. O Badge numérico com a quantidade -->
-                <div class="essence-count">@kvp.Value</div>
-
-            </div>
+            <button class="btn btn-sm btn-outline-warning exchange-btn" @onclick="OnExchangeClicked" title="Exchange Essence (2 for 1)">
+                ⇄
+            </button>
         }
     </div>
 </div>
@@ -22,4 +26,10 @@
 @code {
     [Parameter, EditorRequired]
     public required CombatPlayerDto Player { get; set; }
+
+    [Parameter]
+    public bool ShowExchangeButton { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnExchangeClicked { get; set; }
 }

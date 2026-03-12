@@ -1,4 +1,4 @@
-﻿@page "/arena"
+﻿@* @page "/arena"
 @layout GuildArena.Web.Layout.ArenaLayout
 @using Microsoft.AspNetCore.SignalR.Client
 @using GuildArena.Shared.Requests
@@ -230,6 +230,316 @@ else
         {
             var error = await response.Content.ReadAsStringAsync();
             _battleLogs.Add($"Error: {error}");
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+        {
+            if (!string.IsNullOrEmpty(_combatId)) await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
+            await _hubConnection.DisposeAsync();
+        }
+    }
+
+    private string GetGridClass(int position)
+    {
+        return position switch
+        {
+            0 => "grid-front-top",
+            1 => "grid-front-mid",
+            2 => "grid-front-bot",
+            3 => "grid-back-top",
+            4 => "grid-back-mid",
+            5 => "grid-back-bot",
+            _ => "grid-back-mid"
+        };
+    }
+} *@
+
+
+@page "/arena"
+@layout GuildArena.Web.Layout.ArenaLayout
+@using Microsoft.AspNetCore.SignalR.Client
+@using GuildArena.Shared.Requests
+@using GuildArena.Shared.Responses
+@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Pages.Arena.Components
+@using GuildArena.Domain.Enums.Resources
+@inject HttpClient Http
+@inject ILogger<Arena> Logger
+@implements IAsyncDisposable
+
+<PageTitle>Battle Arena</PageTitle>
+
+@if (string.IsNullOrEmpty(_combatId))
+{
+    <div class="startup-screen">
+        <div class="startup-box">
+            <h3 class="text-warning">GuildArena</h3>
+            <p class="text-light">Prepare for battle.</p>
+            <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@_isConnecting">
+                @if (_isConnecting)
+                {
+                    <span>Entering Arena...</span>
+                }
+                else
+                {
+
+                    <span>Start Match</span>
+                }
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <!-- MODAL MOBILE LOGS -->
+    @if (_showMobileLogs)
+    {
+        <div class="mobile-logs-modal" @onclick="ToggleMobileLogs">
+            <div class="mobile-logs-content" @onclick:stopPropagation="true">
+                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                    <h5 class="text-warning m-0">Battle Logs</h5>
+                    <button class="btn btn-sm btn-outline-light" @onclick="ToggleMobileLogs">Close</button>
+                </div>
+                <div style="flex-grow: 1; overflow: hidden; position: relative;">
+                    <BattleLogPanel Logs="_battleLogs" ContainerId="mobile-logs-container" />
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- MODAL EXCHANGE -->
+    @if (_showExchangeModal)
+    {
+        var me = _gameState!.Players.First(p => p.PlayerId == 1);
+        <ExchangeEssenceModal PlayerEssencePool="me.EssencePool"
+                              OnConfirmExchange="ExecuteExchangeAsync"
+                              OnCancel="() => _showExchangeModal = false" />
+    }
+
+    <div class="arena-board">
+        <!-- LADO ESQUERDO -->
+        <div class="team-side player-team">
+            @if (_gameState != null)
+            {
+                var me = _gameState.Players.FirstOrDefault(p => p.PlayerId == 1);
+                if (me != null)
+                {
+                    <PlayerResourceBar Player="me"
+                                       ShowExchangeButton="@(_gameState.CurrentPlayerId == 1)"
+                                       OnExchangeClicked="() => _showExchangeModal = true" />
+                }
+
+                <div class="combatants-column">
+                    @foreach (var hero in _gameState.Combatants.Where(c => c.OwnerId == 1))
+                    {
+                        <CombatantCard Combatant="hero" />
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- CENTRO -->
+        <div class="arena-center">
+            @if (_gameState != null)
+            {
+                <div class="turn-indicator">
+                    Turn @_gameState.CurrentTurnNumber
+                </div>
+            }
+        </div>
+
+        <!-- LADO DIREITO -->
+        <div class="team-side enemy-team">
+            @if (_gameState != null)
+            {
+                var enemyPlayer = _gameState.Players.FirstOrDefault(p => p.PlayerId != 1);
+                if (enemyPlayer != null)
+                {
+                    <PlayerResourceBar Player="enemyPlayer" />
+                }
+
+                <div class="enemy-grid">
+                    @foreach (var mob in _gameState.Combatants.Where(c => c.OwnerId != 1))
+                    {
+                        <div class="@GetGridClass(mob.Position)">
+                            <CombatantCard Combatant="mob" />
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="arena-footer">
+        <div class="footer-section footer-left">
+            <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="ToggleMobileLogs">
+                📜 BattleLogs
+            </button>
+        </div>
+
+        <div class="footer-section footer-center">
+            <div class="desktop-logs-wrapper w-100 h-100">
+                <BattleLogPanel Logs="_battleLogs" ContainerId="desktop-logs-container" />
+            </div>
+            <div class="mobile-ticker">
+                @(_battleLogs.LastOrDefault() ?? "Waiting for actions...")
+            </div>
+        </div>
+
+        <div class="footer-section footer-right">
+            @if (_gameState != null && _gameState.CurrentPlayerId == 1)
+            {
+                <button class="btn btn-danger btn-lg end-turn-btn" @onclick="EndTurnAsync">
+                    End Turn
+                </button>
+            }
+            else if (_gameState != null)
+            {
+                <button class="btn btn-secondary btn-lg end-turn-btn" disabled>
+                    Enemy Turn...
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string? _combatId;
+    private HubConnection? _hubConnection;
+    private GameStateDto? _gameState;
+    private List<string> _battleLogs = new();
+
+    private bool _isConnecting = false;
+    private bool _isConnected => _hubConnection?.State == HubConnectionState.Connected;
+    private bool _showMobileLogs = false;
+    private bool _showExchangeModal = false;
+
+    private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
+
+    private async Task StartCombatAsync()
+    {
+        _isConnecting = true;
+        try
+        {
+            var request = new StartPveRequest
+            {
+                EncounterId = "ENC_TUTORIAL_01",
+                HeroInstanceIds = new List<int> { 101, 103, 104 }
+            };
+
+            var response = await Http.PostAsJsonAsync("api/combat/start-pve", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
+                if (result != null)
+                {
+                    _combatId = result.CombatId;
+                    _battleLogs.AddRange(result.InitialLogs);
+                    _gameState = result.InitialState;
+
+                    await ConnectToSignalRAsync(_combatId);
+                }
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();                
+                Logger.LogWarning
+                    ("Failed to start combat. API returned {StatusCode}: {Error}", response.StatusCode, error);
+            }
+        }
+        catch (Exception ex)
+        {            
+            Logger.LogError(ex, "An unexpected error occurred while attempting to start the combat session.");
+        }
+        finally
+        {
+            _isConnecting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConnectToSignalRAsync(string combatId)
+    {
+        var apiBaseUrl = Http.BaseAddress?.ToString() ?? "";
+
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(apiBaseUrl + "hubs/combat")
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hubConnection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
+        {
+            _gameState = state;
+            StateHasChanged();
+        });
+
+        _hubConnection.On<List<string>>("ReceiveBattleLogs", async (logs) =>
+        {
+            _battleLogs.AddRange(logs);
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await _hubConnection.StartAsync();
+        await _hubConnection.InvokeAsync("JoinCombat", combatId);
+    }
+
+    private async Task EndTurnAsync()
+    {
+        if (string.IsNullOrEmpty(_combatId)) return;
+
+        try
+        {
+            var response = await Http.PostAsync($"api/combat/{_combatId}/end-turn", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Logger.LogWarning("End turn request failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "An unexpected error occurred while attempting to end the turn.");
+        }
+    }
+
+    private async Task ExecuteExchangeAsync(
+        (Dictionary<EssenceType, int> Spent, EssenceType Gained) payload)
+    {
+        if (string.IsNullOrEmpty(_combatId)) return;
+
+        var request = new ExchangeEssenceRequest
+        {
+            CombatId = _combatId,
+            EssenceToSpend = payload.Spent,
+            EssenceToGain = payload.Gained
+        };
+
+        try
+        {
+            // Padrão nativo do JSON do .NET reposto aqui!
+            var response = await Http.PostAsJsonAsync($"api/combat/{_combatId}/exchange-essence", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _showExchangeModal = false;
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Logger.LogWarning("Exchange request failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "An unexpected error occurred while attempting to exchange essence.");
             StateHasChanged();
         }
     }

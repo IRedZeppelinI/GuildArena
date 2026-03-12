@@ -1,0 +1,107 @@
+﻿@using GuildArena.Domain.Enums.Resources
+
+<div class="custom-modal-backdrop" @onclick="Cancel">
+    <div class="custom-modal-content" @onclick:stopPropagation="true">
+        <h4 class="text-warning text-center border-bottom border-secondary pb-2">Exchange Essence</h4>
+
+        <div class="row mt-3 text-center">
+            <!-- ESQUERDA: Sacrificar 2 -->
+            <div class="col-6 border-end border-secondary">
+                <h6>Sacrifice (Select 2)</h6>
+                <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
+                    @foreach (var kvp in PlayerEssencePool.Where(e => e.Value > 0))
+                    {
+                        int selectedCount = _spentList.Count(x => x == kvp.Key);
+                        int availableCount = kvp.Value - selectedCount;
+
+                        if (availableCount > 0)
+                        {
+                            <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
+                                    @onclick="() => SelectToSpend(kvp.Key)"
+                                    disabled="@(_spentList.Count >= 2)">
+                                @kvp.Key
+                            </button>
+                        }
+                    }
+                </div>
+                <div class="mt-2 text-muted small">
+                    Selected: @string.Join(", ", _spentList)
+                    @if (_spentList.Count > 0)
+                    {
+                        <a href="#" class="text-danger ms-2" @onclick:preventDefault @onclick="ResetSelection">Clear</a>
+                    }
+                </div>
+            </div>
+
+            <!-- DIREITA: Obter 1 -->
+            <div class="col-6">
+                <h6>Gain (Select 1)</h6>
+                <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
+                    @foreach (var type in _allEssenceTypes)
+                    {
+                        <button class="btn btn-dark essence-btn @type.ToString().ToLower() @(_gainedType == type ? "selected-outline" : "")"
+                                @onclick="() => _gainedType = type">
+                            @type
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4 pt-3 border-top border-secondary gap-2">
+            <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+            <button class="btn btn-warning" disabled="@(!CanConfirm)" @onclick="Confirm">Transmute</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required Dictionary<EssenceType, int> PlayerEssencePool { get; set; }
+
+    [Parameter]
+    public EventCallback<(Dictionary<EssenceType, int> Spent, EssenceType Gained)> OnConfirmExchange { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private List<EssenceType> _spentList = new();
+    private EssenceType? _gainedType = null;
+
+    private readonly EssenceType[] _allEssenceTypes = new[]
+    {
+        EssenceType.Vigor, EssenceType.Mind, EssenceType.Light,
+        EssenceType.Shadow, EssenceType.Flux
+    };
+
+    private bool CanConfirm => _spentList.Count == 2 && _gainedType != null;
+
+    private void SelectToSpend(EssenceType type)
+    {
+        if (_spentList.Count < 2) _spentList.Add(type);
+    }
+
+    private void ResetSelection()
+    {
+        _spentList.Clear();
+    }
+
+    private async Task Confirm()
+    {
+        if (!CanConfirm) return;
+
+        var spentDict = new Dictionary<EssenceType, int>();
+        foreach (var type in _spentList)
+        {
+            if (!spentDict.ContainsKey(type)) spentDict[type] = 0;
+            spentDict[type]++;
+        }
+
+        await OnConfirmExchange.InvokeAsync((spentDict, _gainedType!.Value));
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}
