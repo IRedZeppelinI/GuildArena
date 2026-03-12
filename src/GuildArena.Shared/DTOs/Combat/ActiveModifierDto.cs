@@ -9,16 +9,12 @@ public class ActiveModifierDto
 {
     public required string DefinitionId { get; set; }
 
-    /// <summary>
-    /// How many turns this modifier will last. -1 indicates permanent/passive.
-    /// </summary>
-    public int TurnsRemaining { get; set; }
+    // NOVO: Necessário para a UI saber quem aplicou o Taunt, ou outras mecânicas de "Link"
+    public int CasterId { get; set; }
 
+    public int TurnsRemaining { get; set; }
     public int StackCount { get; set; }
     public float CurrentBarrierValue { get; set; }
 
-    /// <summary>
-    /// List of visual status effects (e.g., Stun, Silence) for UI icons.
-    /// </summary>
     public List<StatusEffectType> ActiveStatusEffects { get; set; } = new();
 }

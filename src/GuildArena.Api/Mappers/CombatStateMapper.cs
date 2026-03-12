@@ -51,6 +51,7 @@ public static class CombatStateMapper
             ActiveModifiers = c.ActiveModifiers.Select(m => new ActiveModifierDto
             {
                 DefinitionId = m.DefinitionId,
+                CasterId = m.CasterId, 
                 TurnsRemaining = m.TurnsRemaining,
                 StackCount = m.StackCount,
                 CurrentBarrierValue = m.CurrentBarrierValue,
@@ -70,7 +71,15 @@ public static class CombatStateMapper
             BaseCooldown = def.BaseCooldown,
             HPCost = def.HPCost,
             Costs = def.Costs.ToDictionary(k => k.Type, v => v.Amount),
-            CurrentCooldownTurns = cd?.TurnsRemaining ?? 0
+            CurrentCooldownTurns = cd?.TurnsRemaining ?? 0,
+
+            TargetingRules = def.TargetingRules.Select(r => new TargetingRuleDto
+            {
+                RuleId = r.RuleId,
+                Type = r.Type,
+                Count = r.Count,
+                Strategy = r.Strategy
+            }).ToList()
         };
     }
 }
