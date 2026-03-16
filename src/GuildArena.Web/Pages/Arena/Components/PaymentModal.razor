@@ -1,0 +1,88 @@
+﻿@using GuildArena.Domain.Enums.Resources
+
+<div class="custom-modal-backdrop" @onclick="Cancel">
+    <div class="custom-modal-content" @onclick:stopPropagation="true">
+        <h5 class="text-warning text-center border-bottom border-secondary pb-2">
+            Pay Neutral Cost: <span class="text-white">@RequiredAmount</span>
+        </h5>
+
+        <div class="mt-3 text-center">
+            <p class="text-muted small">Select essences to pay the remaining neutral cost.</p>
+
+            <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
+                @foreach (var kvp in AvailableEssence.Where(e => e.Value > 0))
+                {
+                    int selectedCount = _selectedToPay.Count(x => x == kvp.Key);
+                    int availableCount = kvp.Value - selectedCount;
+
+                    if (availableCount > 0)
+                    {
+                        <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
+                                @onclick="() => SelectEssence(kvp.Key)"
+                                disabled="@(_selectedToPay.Count >= RequiredAmount)">
+                            @kvp.Key
+                        </button>
+                    }
+                }
+            </div>
+
+            <div class="mt-3 text-light">
+                <strong>Allocated:</strong> @string.Join(", ", _selectedToPay)
+                @if (_selectedToPay.Count > 0)
+                {
+                    <a href="#" class="text-danger ms-2" @onclick:preventDefault @onclick="ResetSelection">Clear</a>
+                }
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4 pt-3 border-top border-secondary gap-2">
+            <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+            <button class="btn btn-warning" disabled="@(!CanConfirm)" @onclick="Confirm">Pay & Execute</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The essence pool available specifically for paying the neutral cost
+    /// (already subtracted the mandatory colored costs).
+    /// </summary>
+    [Parameter, EditorRequired]
+    public required Dictionary<EssenceType, int> AvailableEssence { get; set; }
+
+    [Parameter, EditorRequired]
+    public int RequiredAmount { get; set; }
+
+    [Parameter]
+    public EventCallback<List<EssenceType>> OnConfirmPayment { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private List<EssenceType> _selectedToPay = new();
+
+    private bool CanConfirm => _selectedToPay.Count == RequiredAmount;
+
+    private void SelectEssence(EssenceType type)
+    {
+        if (_selectedToPay.Count < RequiredAmount) _selectedToPay.Add(type);
+    }
+
+    private void ResetSelection()
+    {
+        _selectedToPay.Clear();
+    }
+
+    private async Task Confirm()
+    {
+        if (CanConfirm)
+        {
+            await OnConfirmPayment.InvokeAsync(_selectedToPay);
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

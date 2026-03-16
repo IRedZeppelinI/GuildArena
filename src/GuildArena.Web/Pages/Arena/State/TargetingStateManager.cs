@@ -42,7 +42,7 @@ public class TargetingStateManager
     {
         if (!IsActive) return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual))
+        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type)))
         {
             int currentSelectedCount = SelectedTargets.TryGetValue(rule.RuleId, out var list) ? list.Count : 0;
 
@@ -67,7 +67,7 @@ public class TargetingStateManager
         if (!IsActive || !IsValidTarget(target) || IsSelected(target.Id))
             return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual))
+        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type)))
         {
             if (!SelectedTargets.TryGetValue(rule.RuleId, out var targetList))
             {
@@ -87,5 +87,11 @@ public class TargetingStateManager
             .All(r => SelectedTargets.TryGetValue(r.RuleId, out var list) && list.Count == r.Count);
 
         return true;
+    }
+
+    private bool IsAoE(TargetType type)
+    {
+        return type == TargetType.All || type == TargetType.AllEnemies ||
+               type == TargetType.AllAllies || type == TargetType.AllFriendlies;
     }
 }

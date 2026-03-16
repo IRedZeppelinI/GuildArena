@@ -1,7 +1,7 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
 
 <!-- Adicionada a classe 'unaffordable' dinamicamente -->
-<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")" @onclick="OnClick">
+<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")" @onclick="OnClick" title="@Ability.Name">
 
     <div class="ability-border"></div>
     <div class="ability-icon-placeholder">@Ability.Name.Substring(0, 1)</div>

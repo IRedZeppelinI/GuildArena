@@ -101,7 +101,8 @@
         "ScalingStat": "Magic",
         "ScalingFactor": 1.5,
         "TargetRuleId": "TGT",
-        "Tags": [ "Light" ]
+        "Tags": [ "Light" ],
+        "CanBeEvaded": false
       }
     ]
   },
@@ -136,7 +137,8 @@
         "ScalingStat": "Magic",
         "ScalingFactor": 1.2,
         "TargetRuleId": "TGT_ALL",
-        "Tags": [ "Light" ]
+        "Tags": [ "Light" ],
+        "CanBeEvaded": false
       }
     ]
   },

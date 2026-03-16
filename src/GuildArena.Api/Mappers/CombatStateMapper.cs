@@ -75,11 +75,16 @@ public class CombatStateMapper : ICombatStateMapper
         var cd = source.ActiveCooldowns.FirstOrDefault(x => x.AbilityId == def.Id);
 
         var ownerPlayer = state.Players.FirstOrDefault(p => p.PlayerId == source.OwnerId);
+
+        // Verifica se o turno atual pertence ao dono desta carta
+        bool isMyTurn = state.CurrentPlayerId == source.OwnerId;
+
         bool hasEssence = ownerPlayer != null && _essenceService.HasEnoughEssence(ownerPlayer, def.Costs);
         bool hasHP = source.CurrentHP > def.HPCost;
         bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= source.BaseStats.MaxActions;
 
-        bool isAffordable = hasEssence && hasHP && hasAP;
+        //  A habilidae só é "Affordable" se for o turno deste jogador
+        bool isAffordable = isMyTurn && hasEssence && hasHP && hasAP;
 
         return new AbilitySummaryDto
         {
@@ -90,7 +95,7 @@ public class CombatStateMapper : ICombatStateMapper
             HPCost = def.HPCost,
             Costs = def.Costs.ToDictionary(k => k.Type, v => v.Amount),
             CurrentCooldownTurns = cd?.TurnsRemaining ?? 0,
-            IsAffordable = isAffordable,
+            IsAffordable = isAffordable, 
 
             TargetingRules = def.TargetingRules.Select(r => new TargetingRuleDto
             {

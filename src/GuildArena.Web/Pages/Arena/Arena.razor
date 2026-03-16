@@ -1,6 +1,7 @@
 ﻿@page "/arena"
 @layout GuildArena.Web.Layout.ArenaLayout
 @using Microsoft.AspNetCore.SignalR.Client
+@using GuildArena.Domain.Enums.Resources
 @using GuildArena.Shared.Requests
 @using GuildArena.Shared.Responses
 @using GuildArena.Shared.DTOs.Combat
@@ -50,13 +51,22 @@ else
         </div>
     }
 
-    <!-- MODAL DE EXCHANGE -->
+    <!-- MODAL DE EXCHANGE (TRANSMUTAÇÃO) -->
     @if (_showExchangeModal)
     {
         var me = _gameState!.Players.First(p => p.PlayerId == LocalPlayerId);
         <ExchangeEssenceModal PlayerEssencePool="me.EssencePool"
                               OnConfirmExchange="ExecuteExchangeAsync"
                               OnCancel="() => _showExchangeModal = false" />
+    }
+
+    <!-- MODAL DE PAGAMENTO (CUSTOS NEUTROS) -->
+    @if (_showPaymentModal && _availableEssenceForPayment != null)
+    {
+        <PaymentModal AvailableEssence="_availableEssenceForPayment"
+                      RequiredAmount="_neutralCostPending"
+                      OnConfirmPayment="ProcessManualPaymentAndExecute"
+                      OnCancel="CancelPayment" />
     }
 
     <!-- O clique no fundo da arena cancela a mira (Targeting) -->
@@ -109,7 +119,6 @@ else
                 }
 
                 <div class="enemy-grid">
-                    <!-- HTML Limpo usando a propriedade computada -->
                     @foreach (var enemy in EnemyTeam)
                     {
                         <div class="@GetGridClass(enemy.Position)">
@@ -146,7 +155,6 @@ else
         <div class="footer-section footer-right">
             @if (_gameState != null && _gameState.CurrentPlayerId == LocalPlayerId)
             {
-                // Se estivermos a mirar, o botão permite cancelar em vez de passar o turno
                 if (_targetingState.IsActive)
                 {
                     <button class="btn btn-secondary btn-lg end-turn-btn" @onclick="CancelTargeting">
@@ -180,10 +188,12 @@ else
     private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
 
-    // ==========================================
-    // PROPRIEDADES COMPUTADAS (Substituem Hardcodes)
-    // ==========================================
-    // TODO (Auth): In the future, this will be fetched from the AuthenticationStateProvider
+    // --- ESTADO DO PAYMENT MODAL ---
+    private bool _showPaymentModal = false;
+    private int _neutralCostPending = 0;
+    private Dictionary<EssenceType, int>? _availableEssenceForPayment;
+
+    // --- PROPRIEDADES COMPUTADAS ---
     private int LocalPlayerId => 1;
 
     private IEnumerable<CombatantDto> MyTeam =>
@@ -192,9 +202,7 @@ else
     private IEnumerable<CombatantDto> EnemyTeam =>
         _gameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
 
-    // ==========================================
-    // MÁQUINA DE ESTADOS DO TARGETING
-    // ==========================================
+    // --- MÁQUINA DE ESTADOS DO TARGETING E PAGAMENTO ---
     private TargetingStateManager _targetingState = new();
 
     private void StartTargeting((int SourceId, string AbilityId) payload)
@@ -204,31 +212,32 @@ else
         var source = _gameState.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
         var ability = source?.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId) ?? source?.SpecialAbility;
 
-        if (ability == null) return;
+        if (ability == null || !ability.IsAffordable) return;
 
         _targetingState.StartTargeting(payload.SourceId, ability);
 
-        // Se a habilidade não requer seleção manual, avança para a próxima etapa imediatamente
-        if (!ability.TargetingRules.Any(r => r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual))
+        // Verifica se a habilidade requer seleção manual E se não é uma magia de Área (AoE)
+        bool requiresManualClicks = ability.TargetingRules.Any(r =>
+            r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual &&
+            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.All &&
+            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllEnemies &&
+            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllAllies &&
+            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllFriendlies);
+
+        if (!requiresManualClicks)
         {
-            Logger.LogInformation("Ability {AbilityName} does not require manual targets. Proceeding to payment.", ability.Name);
-            // PRÓXIMA FASE: Abrir modal de Pagamento de Essence aqui
-            _targetingState.Cancel();
+            // Se for AoE (ex: Ulti da Elysia) ou TargetType.Self, salta logo para o pagamento
+            TransitionToPaymentOrExecute();
         }
     }
 
     private void SelectTarget(CombatantDto target)
     {
-        // Removido o LocalPlayerId daqui também!
         if (_targetingState.TrySelectTarget(target, out bool allRulesSatisfied))
         {
-            Logger.LogInformation("Target {TargetName} selected.", target.Name);
-
             if (allRulesSatisfied)
             {
-                Logger.LogInformation("All targets selected. Proceeding to payment.");
-                // PRÓXIMA ETAPA: Modal de Pagamento
-                _targetingState.Cancel();
+                TransitionToPaymentOrExecute();
             }
         }
     }
@@ -238,11 +247,91 @@ else
         _targetingState.Cancel();
     }
 
+    private void TransitionToPaymentOrExecute()
+    {
+        var ability = _targetingState.ActiveAbility!;
+        int neutralCost = ability.Costs.ContainsKey(EssenceType.Neutral) ? ability.Costs[EssenceType.Neutral] : 0;
 
-    // ==========================================
-    // HTTP E SIGNALR
-    // ==========================================
+        if (neutralCost > 0)
+        {
+            _neutralCostPending = neutralCost;
 
+            var me = _gameState!.Players.First(p => p.PlayerId == LocalPlayerId);
+            _availableEssenceForPayment = new Dictionary<EssenceType, int>(me.EssencePool);
+
+            foreach (var cost in ability.Costs.Where(c => c.Key != EssenceType.Neutral))
+            {
+                _availableEssenceForPayment[cost.Key] -= cost.Value;
+            }
+
+            _showPaymentModal = true;
+        }
+        else
+        {
+            var finalPayment = ability.Costs.ToDictionary(k => k.Key, v => v.Value);
+            _ = ExecuteAbilityAsync(finalPayment);
+        }
+    }
+
+    private void CancelPayment()
+    {
+        _showPaymentModal = false;
+        _targetingState.Cancel();
+    }
+
+    private async Task ProcessManualPaymentAndExecute(List<EssenceType> neutralPaymentChoices)
+    {
+        _showPaymentModal = false;
+
+        var finalPayment = _targetingState.ActiveAbility!.Costs
+            .Where(c => c.Key != EssenceType.Neutral)
+            .ToDictionary(k => k.Key, v => v.Value);
+
+        foreach (var choice in neutralPaymentChoices)
+        {
+            if (!finalPayment.ContainsKey(choice)) finalPayment[choice] = 0;
+            finalPayment[choice]++;
+        }
+
+        await ExecuteAbilityAsync(finalPayment);
+    }
+
+    private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)
+    {
+        if (string.IsNullOrEmpty(_combatId) || !_targetingState.IsActive) return;
+
+        var request = new ExecuteAbilityRequest
+        {
+            CombatId = _combatId,
+            SourceId = _targetingState.SourceId!.Value,
+            AbilityId = _targetingState.ActiveAbility!.Id,
+            // FIX: Fazer uma cópia real do dicionário e das listas para que o Cancel não as apague!
+            TargetSelections = _targetingState.SelectedTargets.ToDictionary(
+                entry => entry.Key,
+                entry => new List<int>(entry.Value)),
+            Payment = payment
+        };
+
+        _targetingState.Cancel();
+        StateHasChanged();
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync($"api/combat/{_combatId}/execute-ability", request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Logger.LogWarning("Ability execution failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "An unexpected error occurred while attempting to execute the ability.");
+        }
+    }
+
+    // --- HTTP E SIGNALR ---
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
 
     private async Task StartCombatAsync()
@@ -331,8 +420,7 @@ else
         }
     }
 
-    private async Task ExecuteExchangeAsync(
-        (Dictionary<GuildArena.Domain.Enums.Resources.EssenceType, int> Spent, GuildArena.Domain.Enums.Resources.EssenceType Gained) payload)
+    private async Task ExecuteExchangeAsync((Dictionary<EssenceType, int> Spent, EssenceType Gained) payload)
     {
         if (string.IsNullOrEmpty(_combatId)) return;
 
