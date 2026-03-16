@@ -64,6 +64,61 @@
     cursor: not-allowed;
 }
 
+/* --- CUSTOS DA HABILIDADE (Mini-Essences) --- */
+.ability-costs {
+    position: absolute;
+    bottom: -4px; /* Sai ligeiramente para fora do botão pela base */
+    left: 50%;
+    transform: translateX(-50%); /* Centra o grupo de bolinhas perfeitamente */
+    display: flex;
+    gap: 1px;
+    z-index: 4; /* Fica por cima de tudo, até do cooldown */
+}
+
+.mini-essence {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.8);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.9);
+}
+
+/* Cores das mini-essences */
+.vigor {
+    background-color: #ff6a00;
+}
+
+.mind {
+    background-color: #00e5ff;
+}
+
+.light {
+    background-color: #ffd800;
+}
+
+.shadow {
+    background-color: #aa00ff;
+}
+
+.flux {
+    background-color: #ff0055;
+}
+
+.neutral {
+    background-color: #aaaaaa;
+}
+
+/* Se não puder pagar a habilidade, escurece e remove o cursor */
+.unaffordable {
+    filter: brightness(0.4) grayscale(80%);
+    cursor: not-allowed;
+}
+
+    .unaffordable:hover {
+        transform: none; /* Desativa o efeito de zoom */
+    }
+
+
 /* RESPONSIVIDADE MOBILE */
 @media (max-height: 650px) {
     .ability-slot {

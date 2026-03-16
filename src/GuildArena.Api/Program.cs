@@ -1,4 +1,5 @@
 using GuildArena.Api.Hubs;
+using GuildArena.Api.Mappers;
 using GuildArena.Api.Services;
 using GuildArena.Api.Services.Notifications;
 using GuildArena.Application;
@@ -53,7 +54,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<ICombatNotifier, SignalRCombatNotifier>();
 
-
+builder.Services.AddScoped<ICombatStateMapper, CombatStateMapper>();
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi

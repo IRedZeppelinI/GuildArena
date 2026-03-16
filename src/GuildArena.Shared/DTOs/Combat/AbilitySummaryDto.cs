@@ -3,8 +3,7 @@
 namespace GuildArena.Shared.DTOs.Combat;
 
 /// <summary>
-/// A lightweight representation of an ability, containing only the data 
-/// required by the UI to render action buttons, tooltips, and handle targeting logic.
+/// A lightweight representation of an ability for the UI.
 /// </summary>
 public class AbilitySummaryDto
 {
@@ -16,6 +15,11 @@ public class AbilitySummaryDto
     public Dictionary<EssenceType, int> Costs { get; set; } = new();
 
     public int CurrentCooldownTurns { get; set; }
+
+    /// <summary>
+    /// Pre-calculated by the server: true if the player has enough AP, HP, and Essence to cast this.
+    /// </summary>
+    public bool IsAffordable { get; set; }
 
     public List<TargetingRuleDto> TargetingRules { get; set; } = new();
 }

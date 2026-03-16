@@ -1,21 +1,28 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
 
-<!-- O contentor principal. Se estiver em cooldown, adiciona uma classe CSS extra -->
-<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "")" @onclick="OnClick">
+<!-- Adicionada a classe 'unaffordable' dinamicamente -->
+<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")" @onclick="OnClick">
 
-    <!-- 1. A moldura (Border Sprite) -->
     <div class="ability-border"></div>
+    <div class="ability-icon-placeholder">@Ability.Name.Substring(0, 1)</div>
 
-    <!-- 2. O ícone da habilidade (Para já, um placeholder com a inicial do nome) -->
-    <div class="ability-icon-placeholder">
-        @Ability.Name.Substring(0, 1)
-    </div>
-
-    <!-- 3. Se estiver em cooldown, a película escura por cima -->
     @if (IsOnCooldown)
     {
         <div class="cooldown-overlay">
             <span>@Ability.CurrentCooldownTurns</span>
+        </div>
+    }
+
+    @if (Ability.Costs.Any())
+    {
+        <div class="ability-costs">
+            @foreach (var cost in Ability.Costs.Where(c => c.Value > 0))
+            {
+                @for (int i = 0; i < cost.Value; i++)
+                {
+                    <div class="mini-essence @cost.Key.ToString().ToLower()" title="@cost.Key"></div>
+                }
+            }
         </div>
     }
 </div>
@@ -24,17 +31,17 @@
     [Parameter, EditorRequired]
     public required AbilitySummaryDto Ability { get; set; }
 
-    // O "evento" que este botão vai disparar para avisar o Pai (a Carta) que foi clicado
     [Parameter]
     public EventCallback<string> OnAbilityClicked { get; set; }
 
     private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
 
+    // NOVO: Só pode castar se não estiver em cooldown E se puder pagar!
+    private bool CanCast => !IsOnCooldown && Ability.IsAffordable;
+
     private async Task OnClick()
     {
-        // Se estiver em cooldown, não faz nada.
-        // Se não estiver, grita para o pai: "Fui clicado e o meu ID é este!"
-        if (!IsOnCooldown)
+        if (CanCast)
         {
             await OnAbilityClicked.InvokeAsync(Ability.Id);
         }

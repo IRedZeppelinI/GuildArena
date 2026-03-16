@@ -1,6 +1,7 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
 
-<div class="combatant-card @(Combatant.IsAlive ? "" : "dead")">
+<div class="combatant-card @(Combatant.IsAlive ? "" : "dead") @(IsTargetingMode ? "targeting-mode" : "") @(IsValidTarget ? "valid-target" : "") @(IsSelectedTarget ? "selected-target" : "")"
+     @onclick="OnCardClicked">
 
     <!-- COLUNA ESQUERDA: Retrato e Modifiers -->
     <div class="card-left">
@@ -9,19 +10,15 @@
         </div>
 
         <div class="modifiers-zone">
-            <!-- Ciclo dinâmico para desenhar apenas os buffs que existem -->
             @foreach (var mod in Combatant.ActiveModifiers)
             {
-                <div class="modifier-icon placeholder" title="@mod.DefinitionId">
-                    <!-- Um dia será o icon, por agora é uma bolinha -->
-                </div>
+                <div class="modifier-icon placeholder" title="@mod.DefinitionId"></div>
             }
         </div>
     </div>
 
     <!-- COLUNA DIREITA: Info e Habilidades -->
     <div class="card-right">
-        <!-- Topo da Direita: Nome e Vida -->
         <div class="info-top">
             <div class="name">@Combatant.Name</div>
             <div class="hp-container">
@@ -30,9 +27,7 @@
             </div>
         </div>
 
-        <!-- Fundo da Direita: Habilidades -->
         <div class="abilities-zone">
-            <!-- Este método "AllAbilities" junta o Special com os Normais para o ciclo ser fácil -->
             @foreach (var ability in AllAbilities)
             {
                 <AbilityButton Ability="ability" OnAbilityClicked="HandleAbilityClick" />
@@ -45,9 +40,23 @@
     [Parameter, EditorRequired]
     public required CombatantDto Combatant { get; set; }
 
+    [Parameter]
+    public bool IsTargetingMode { get; set; } = false;
+
+    [Parameter]
+    public bool IsValidTarget { get; set; } = false;
+
+    [Parameter]
+    public bool IsSelectedTarget { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<CombatantDto> OnCombatantClicked { get; set; }
+
+    [Parameter]
+    public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
+
     private int HpPercentage => Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
 
-    // Propriedade Helper que junta a Special Ability (se existir) com a lista de habilidades normais
     private IEnumerable<AbilitySummaryDto> AllAbilities
     {
         get
@@ -57,11 +66,17 @@
         }
     }
 
-    // O que acontece quando o botão grita "Fui clicado"?
-    private void HandleAbilityClick(string abilityId)
+    private async Task OnCardClicked()
     {
-        // Por enquanto, apenas imprimimos na consola do browser para ver se funciona!
-        // Na Fase 2.3 vamos ligar isto ao pedido HTTP real.
-        Console.WriteLine($"Jogador clicou na habilidade {abilityId} do herói {Combatant.Name}");
+        if (IsTargetingMode && IsValidTarget && !IsSelectedTarget)
+        {
+            // Passa o objeto completo para a Arena o poder processar
+            await OnCombatantClicked.InvokeAsync(Combatant);
+        }
+    }
+
+    private async Task HandleAbilityClick(string abilityId)
+    {
+        await OnAbilityActivated.InvokeAsync((Combatant.Id, abilityId));
     }
 }

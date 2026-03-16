@@ -16,11 +16,13 @@ public class CombatController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ILogger<CombatController> _logger;
+    private readonly Mappers.ICombatStateMapper _mapper;
 
-    public CombatController(IMediator mediator, ILogger<CombatController> logger)
+    public CombatController(IMediator mediator, ILogger<CombatController> logger, ICombatStateMapper mapper)
     {
         _mediator = mediator;
         _logger = logger;
+        _mapper = mapper;
     }
 
     /// <summary>
@@ -55,7 +57,7 @@ public class CombatController : ControllerBase
                 {
                     CombatId = result.CombatId,
                     InitialLogs = result.InitialLogs,
-                    InitialState = CombatStateMapper.MapToDto(result.InitialState)
+                    InitialState = _mapper.MapToDto(result.InitialState)
                 };
 
                 // 3. Devolve ao Blazor

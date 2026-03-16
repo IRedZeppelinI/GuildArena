@@ -1,4 +1,5 @@
-﻿using GuildArena.Domain.Definitions;
+﻿using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.State;
@@ -6,16 +7,20 @@ using GuildArena.Shared.DTOs.Combat;
 
 namespace GuildArena.Api.Mappers;
 
-/// <summary>
-/// Responsible for mapping the internal domain game state into the secure DTO consumed by the Blazor client.
-/// Ensures sensitive logic and unneeded data are not exposed over the network.
-/// </summary>
-public static class CombatStateMapper
+public class CombatStateMapper : ICombatStateMapper
 {
-    /// <summary>
-    /// Maps the root GameState to a GameStateDto.
-    /// </summary>
-    public static GameStateDto MapToDto(GameState state)
+    private readonly ITargetResolutionService _targetService;
+    private readonly IEssenceService _essenceService;
+
+    public CombatStateMapper(
+        ITargetResolutionService targetService,
+        IEssenceService essenceService)
+    {
+        _targetService = targetService;
+        _essenceService = essenceService;
+    }
+
+    public GameStateDto MapToDto(GameState state)
     {
         return new GameStateDto
         {
@@ -29,11 +34,11 @@ public static class CombatStateMapper
                 MaxTotalEssence = p.MaxTotalEssence,
                 EssencePool = new Dictionary<EssenceType, int>(p.EssencePool)
             }).ToList(),
-            Combatants = state.Combatants.Select(MapCombatantToDto).ToList()
+            Combatants = state.Combatants.Select(c => MapCombatantToDto(c, state)).ToList()
         };
     }
 
-    private static CombatantDto MapCombatantToDto(Combatant c)
+    private CombatantDto MapCombatantToDto(Combatant c, GameState state)
     {
         return new CombatantDto
         {
@@ -46,12 +51,17 @@ public static class CombatStateMapper
             ActionsTakenThisTurn = c.ActionsTakenThisTurn,
             MaxActions = (int)c.BaseStats.MaxActions,
             Position = c.Position,
-            SpecialAbility = c.SpecialAbility != null ? MapAbility(c.SpecialAbility, c.ActiveCooldowns) : null,
-            Abilities = c.Abilities.Select(a => MapAbility(a, c.ActiveCooldowns)).ToList(),
+
+            SpecialAbility = c.SpecialAbility != null
+                ? MapAbility(c.SpecialAbility, c, state) : null,
+
+            Abilities = c.Abilities
+                .Select(a => MapAbility(a, c, state)).ToList(),
+
             ActiveModifiers = c.ActiveModifiers.Select(m => new ActiveModifierDto
             {
                 DefinitionId = m.DefinitionId,
-                CasterId = m.CasterId, 
+                CasterId = m.CasterId,
                 TurnsRemaining = m.TurnsRemaining,
                 StackCount = m.StackCount,
                 CurrentBarrierValue = m.CurrentBarrierValue,
@@ -60,9 +70,17 @@ public static class CombatStateMapper
         };
     }
 
-    private static AbilitySummaryDto MapAbility(AbilityDefinition def, List<ActiveCooldown> activeCooldowns)
+    private AbilitySummaryDto MapAbility(AbilityDefinition def, Combatant source, GameState state)
     {
-        var cd = activeCooldowns.FirstOrDefault(x => x.AbilityId == def.Id);
+        var cd = source.ActiveCooldowns.FirstOrDefault(x => x.AbilityId == def.Id);
+
+        var ownerPlayer = state.Players.FirstOrDefault(p => p.PlayerId == source.OwnerId);
+        bool hasEssence = ownerPlayer != null && _essenceService.HasEnoughEssence(ownerPlayer, def.Costs);
+        bool hasHP = source.CurrentHP > def.HPCost;
+        bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= source.BaseStats.MaxActions;
+
+        bool isAffordable = hasEssence && hasHP && hasAP;
+
         return new AbilitySummaryDto
         {
             Id = def.Id,
@@ -72,13 +90,17 @@ public static class CombatStateMapper
             HPCost = def.HPCost,
             Costs = def.Costs.ToDictionary(k => k.Type, v => v.Amount),
             CurrentCooldownTurns = cd?.TurnsRemaining ?? 0,
+            IsAffordable = isAffordable,
 
             TargetingRules = def.TargetingRules.Select(r => new TargetingRuleDto
             {
                 RuleId = r.RuleId,
                 Type = r.Type,
                 Count = r.Count,
-                Strategy = r.Strategy
+                Strategy = r.Strategy,
+                ValidTargetIds = _targetService.GetValidCandidates(r, source, state)
+                                               .Select(t => t.Id)
+                                               .ToList()
             }).ToList()
         };
     }
