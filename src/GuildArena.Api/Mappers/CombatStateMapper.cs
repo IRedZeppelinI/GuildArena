@@ -26,6 +26,7 @@ public class CombatStateMapper : ICombatStateMapper
         {
             CurrentTurnNumber = state.CurrentTurnNumber,
             CurrentPlayerId = state.CurrentPlayerId,
+            BackgroundId = state.BackgroundId,
             Players = state.Players.Select(p => new CombatPlayerDto
             {
                 PlayerId = p.PlayerId,

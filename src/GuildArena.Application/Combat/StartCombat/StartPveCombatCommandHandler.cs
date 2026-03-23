@@ -77,9 +77,16 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
             throw new KeyNotFoundException($"Encounter '{request.EncounterId}' not found.");
 
         var combatId = Guid.NewGuid().ToString();
+
+        //Sortear backgroundImage
+        string selectedBg = encounterDef.BackgroundIds.Any()
+            ? encounterDef.BackgroundIds[_rng.Next(encounterDef.BackgroundIds.Count)]
+            : "bg_default";
+
         var gameState = new GameState
         {
             CurrentTurnNumber = 1,
+            BackgroundId = selectedBg,
             Combatants = new List<Combatant>(),
             Players = new List<CombatPlayer>()
         };

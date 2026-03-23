@@ -17,7 +17,7 @@ public class EncounterDefinition
     /// <summary>
     /// ID referencing the environment/background art asset.
     /// </summary>
-    public string? BackgroundId { get; set; } // Ex: "BG_FOREST_CLEARING"
+    public List<string> BackgroundIds { get; set; } = new();
 
     /// <summary>
     /// A rating (e.g., 1-5 stars) indicating the difficulty of this encounter.

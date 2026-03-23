@@ -12,4 +12,6 @@ public class GameStateDto
 
     public List<CombatPlayerDto> Players { get; set; } = new();
     public List<CombatantDto> Combatants { get; set; } = new();
+
+    public string BackgroundId { get; set; } = string.Empty;
 }

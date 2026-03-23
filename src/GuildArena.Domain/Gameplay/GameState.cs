@@ -21,4 +21,6 @@ public class GameState
     /// Current turn Player Id
     /// </summary>
     public int CurrentPlayerId { get; set; }
+
+    public string BackgroundId { get; set; } = string.Empty;
 }
