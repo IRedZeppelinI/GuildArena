@@ -7,6 +7,11 @@ namespace GuildArena.Domain.Gameplay;
 public class Combatant
 {
     public int Id { get; set; } // Pode ser o ID do Hero, ou um ID de Mob
+    /// <summary>
+    /// The original definition ID of the character (e.g., "HERO_GARRET", "MOB_BANDIT_RECRUIT").
+    /// </summary>
+    public required string DefinitionId { get; set; }
+
     public int OwnerId { get; set; } // ID do Player (ou 0 para "Mundo/AI")
     public required string Name { get; set; }
 
@@ -55,6 +60,8 @@ public class Combatant
     /// Must be reset to 0 at the start of the player's turn.
     /// </summary>
     public int ActionsTakenThisTurn { get; set; }
+
+    
 
     /// <summary>
     /// Visual position on the battlefield (e.g., 0, 1, 2...).

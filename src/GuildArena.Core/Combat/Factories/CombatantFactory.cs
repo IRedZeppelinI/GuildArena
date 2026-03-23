@@ -54,6 +54,7 @@ public class CombatantFactory : ICombatantFactory
         var combatant = new Combatant
         {
             Id = hero.Id,
+            DefinitionId = hero.CharacterDefinitionId,
             OwnerId = ownerId,
             Name = charDef.Name,
             RaceId = charDef.RaceId,
