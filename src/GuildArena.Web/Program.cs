@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using GuildArena.Web;
+using GuildArena.Web.Services;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -14,5 +15,8 @@ if (string.IsNullOrEmpty(apiBaseUrl))
 
 //builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+
+// Forma correta e robusta
+builder.Services.AddSingleton<IAssetService, AssetService>();
 
 await builder.Build().RunAsync();
