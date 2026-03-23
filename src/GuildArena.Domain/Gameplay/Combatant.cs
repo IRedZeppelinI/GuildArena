@@ -10,7 +10,7 @@ public class Combatant
     /// <summary>
     /// The original definition ID of the character (e.g., "HERO_GARRET", "MOB_BANDIT_RECRUIT").
     /// </summary>
-    public required string DefinitionId { get; set; }
+    public string DefinitionId { get; set; } = string.Empty;
 
     public int OwnerId { get; set; } // ID do Player (ou 0 para "Mundo/AI")
     public required string Name { get; set; }

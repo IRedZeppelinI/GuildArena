@@ -31,7 +31,7 @@ public class CombatantFactoryTests
     }
 
     [Fact]
-    public void Create_ShouldAssignRaceId_Correctly()
+    public void Create_ShouldAssignDefinitionId_And_RaceId_Correctly()
     {
         // ARRANGE
         var hero = new Hero { Id = 1, CharacterDefinitionId = "HERO_TEST", CurrentLevel = 1 };
@@ -50,15 +50,17 @@ public class CombatantFactoryTests
             .Returns(x => { x[1] = charDef; return true; });
         _raceRepo.TryGetDefinition("RACE_VALDRIN", out Arg.Any<RaceDefinition>())
             .Returns(x => { x[1] = raceDef; return true; });
-        _abilityRepo.TryGetDefinition(
-            Arg.Any<string>(), out Arg.Any<AbilityDefinition>()).Returns(true);
+        _abilityRepo.TryGetDefinition(Arg.Any<string>(), out Arg.Any<AbilityDefinition>()).Returns(true);
 
-        // ACT (Sem argumento position)
+        // ACT
         var combatant = _factory.Create(hero, ownerId: 1);
 
         // ASSERT
         combatant.RaceId.ShouldBe("RACE_VALDRIN");
         combatant.Name.ShouldBe("Stone Guard");
+
+        //Garante que o ID da BD original transitou para o combate
+        combatant.DefinitionId.ShouldBe("HERO_TEST");
     }
 
     [Fact]

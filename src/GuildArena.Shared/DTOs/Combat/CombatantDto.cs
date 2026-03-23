@@ -6,6 +6,7 @@
 public class CombatantDto
 {
     public int Id { get; set; }
+    public string DefinitionId { get; set; } = string.Empty;
     public int OwnerId { get; set; }
     public required string Name { get; set; }
     public required string RaceId { get; set; }

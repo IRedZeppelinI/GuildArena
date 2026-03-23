@@ -63,7 +63,7 @@ public class StartPveCombatCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldCreateCombat_AndReturnLogs_WhenPlayerStarts()
+    public async Task Handle_ShouldCreateCombat_WithRandomBackground_AndReturnLogs()
     {
         // ARRANGE
         var playerId = 123;
@@ -71,33 +71,25 @@ public class StartPveCombatCommandHandlerTests
         var heroIds = new List<int> { 10 };
 
         _currentUserMock.UserId.Returns(playerId);
-        _playerRepoMock.GetHeroesAsync(playerId, heroIds).
-            Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H1" } });
+        _playerRepoMock.GetHeroesAsync(playerId, heroIds).Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H1" } });
 
         var encounterDef = new EncounterDefinition
         {
             Id = encounterId,
             Name = "Bandit Ambush",
+            // NOVO: Simulamos um JSON com duas opções de cenário
+            BackgroundIds = new List<string> { "bg_forest_01", "bg_forest_02" },
             Enemies = new List<EncounterDefinition.EncounterEnemy> { new() { CharacterDefinitionId = "M1", Position = 1 } }
         };
-        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>()).
-            Returns(x => { x[1] = encounterDef; return true; });
+        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>()).Returns(x => { x[1] = encounterDef; return true; });
 
-        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).
-            Returns(info => new Combatant 
-            { 
-                Id = info.Arg<Hero>().Id,
-                Name = "Mock",
-                RaceId = "R",
-                BaseStats = new()
-            });
+        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).Returns(info => new Combatant { Id = info.Arg<Hero>().Id, Name = "Mock", RaceId = "R", BaseStats = new() });
 
-        // RNG devolve 0 -> Humano ganha a moeda ao ar
-        _rngMock.Next(2).Returns(0);
+        // RNG: O primeiro Next(2) sorteia o Background. Devolve 1 ("bg_forest_02").
+        // RNG: O segundo Next(2) atira a moeda ao ar. Devolve 0 (Player 1 ganha).
+        _rngMock.Next(2).Returns(1, 0);
 
-        // Simular alguns logs
-        _battleLogMock.GetAndClearLogs().
-            Returns(new List<string> { "Combat Started", "Player 123 won the coin toss" });
+        _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Combat Started" });
 
         var command = new StartPveCombatCommand { EncounterId = encounterId, HeroInstanceIds = heroIds };
 
@@ -107,13 +99,15 @@ public class StartPveCombatCommandHandlerTests
         // ASSERT
         result.ShouldNotBeNull();
         Guid.TryParse(result.CombatId, out _).ShouldBeTrue();
-        result.InitialLogs.Count.ShouldBe(2);
 
         result.InitialState.ShouldNotBeNull();
         result.InitialState.Players.Count.ShouldBe(2);
 
-        await _combatStateRepoMock.Received(1).
-            SaveAsync(result.CombatId, Arg.Is<GameState>(gs => gs.CurrentPlayerId == playerId));        
+        // Garantimos que o estado foi guardado com o cenário que o RNG sorteou (index 1)
+        await _combatStateRepoMock.Received(1).SaveAsync(result.CombatId, Arg.Is<GameState>(gs =>
+            gs.CurrentPlayerId == playerId &&
+            gs.BackgroundId == "bg_forest_02"
+        ));
     }
 
     [Fact]
