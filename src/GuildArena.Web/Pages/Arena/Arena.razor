@@ -7,6 +7,8 @@
 @using GuildArena.Shared.DTOs.Combat
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Web.Pages.Arena.State
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
 @inject HttpClient Http
 @inject ILogger<Arena> Logger
 @implements IAsyncDisposable
@@ -69,8 +71,10 @@ else
                       OnCancel="CancelPayment" />
     }
 
+
+
     <!-- O clique no fundo da arena cancela a mira (Targeting) -->
-    <div class="arena-board" @onclick="CancelTargeting">
+    <div class="arena-board" style="@GetBackgroundStyle()" @onclick="CancelTargeting">
 
         <!-- LADO ESQUERDO: Equipa do Jogador -->
         <div class="team-side player-team" @onclick:stopPropagation="true">
@@ -195,6 +199,16 @@ else
 
     // --- PROPRIEDADES COMPUTADAS ---
     private int LocalPlayerId => 1;
+
+    private string GetBackgroundStyle()
+    {
+        if (_gameState == null || string.IsNullOrEmpty(_gameState.BackgroundId))
+            return ""; // Retorna vazio, o CSS usa o #222 de fallback
+
+        var bgUrl = AssetService.GetBackgroundUrl(_gameState.BackgroundId);
+        return $"background-image: url('{bgUrl}');";
+    }
+
 
     private IEnumerable<CombatantDto> MyTeam =>
         _gameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();

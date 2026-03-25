@@ -4,7 +4,7 @@
     "Name": "Bandit Ambush",
     "Description": "A group of bandits jumps from the bushes!",
     "DifficultyRating": 1,
-    "BackgroundIds": [ "bg_forest_01", "bg_forest_02" ],
+    "BackgroundIds": [ "bg_forest", "bg_forest2" ],
     "Enemies": [
       {
         "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",

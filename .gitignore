@@ -63,7 +63,12 @@ $RECYCLE.BIN/
 *.log.*
 
 # Terraform
-set-vars.ps1
+/terraform/set-vars.ps1
+/terraform/.terraform/
+/terraform/*.tfstate
+/terraform/*.tfstate.*
+/terraform/crash.log
+/terraform/crash.*.log
 
 # Outros
 # -------------------------------------------------------------------

@@ -2,21 +2,36 @@
 
 namespace GuildArena.Web.Services;
 
-public class AssetService : IAssetService 
+public class AssetService : IAssetService
 {
     private readonly string _baseAssetUrl;
 
     public AssetService(IConfiguration config)
     {
-        _baseAssetUrl = config["AssetBaseUrl"] ?? "";
+        var url = config["AssetBaseUrl"] ?? "";
+
+        
+        if (!string.IsNullOrEmpty(url) && !url.EndsWith("/"))
+        {
+            url += "/";
+        }
+
+        _baseAssetUrl = url;
     }
 
-    public string GetBackgroundUrl(string backgroundId) => 
-        $"{_baseAssetUrl}images/backgrounds/{backgroundId.ToLower()}.jpg";
-    public string GetPortraitUrl(string definitionId) => 
-        $"{_baseAssetUrl}images/portraits/{definitionId.ToLower()}.png";
-    public string GetAbilityIconUrl(string abilityId) => 
-        $"{_baseAssetUrl}images/abilities/{abilityId.ToLower()}.png";
-    public string GetModifierIconUrl(string modifierId) => 
-        $"{_baseAssetUrl}images/modifiers/{modifierId.ToLower()}.png";
+    // backgrounds
+    public string GetBackgroundUrl(string backgroundId)
+        => $"{_baseAssetUrl}backgrounds/{backgroundId.ToLower()}.jpg";
+
+    // portraits
+    public string GetPortraitUrl(string definitionId)
+        => $"{_baseAssetUrl}portraits/{definitionId.ToLower()}.jpg";
+
+    // abilities
+    public string GetAbilityIconUrl(string abilityId)
+        => $"{_baseAssetUrl}abilities/{abilityId.ToLower()}.jpg";
+
+    // modifiers
+    public string GetModifierIconUrl(string modifierId)
+        => $"{_baseAssetUrl}modifiers/{modifierId.ToLower()}.jpg";
 }
