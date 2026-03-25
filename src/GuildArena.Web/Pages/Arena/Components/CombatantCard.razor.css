@@ -1,19 +1,19 @@
 ﻿.combatant-card {
-    display: flex; /* Divide a carta na horizontal (Esquerda e Direita) */
-    background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
-    border: 2px solid #555;
-    border-radius: 8px;
+    display: flex;
+    /* 1. Define o espaço da borda */
+    border-style: solid;
+    border-color: transparent;
+    border-width: 18px;
+    /* 2. Vai buscar a imagem à pasta wwwroot (usando a barra '/' inicial para não haver erros de pastas) */
+    border-image-source: url('/images/ui/card_frame.jpg');
+    /* 3. O CSS faz o corte automático (9-slice). Ajusta o '40' se os cantos ficarem deformados */
+    border-image-slice: 40 fill;
+    border-image-repeat: stretch;
     padding: 6px;
     width: 100%;
     max-width: 350px;
     color: white;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
     transition: all 0.3s ease;
-}
-
-.dead {
-    filter: grayscale(100%);
-    opacity: 0.5;
 }
 
 /* LADO ESQUERDO */
@@ -110,30 +110,30 @@
 }
 
 
-/* --- ESTILOS DE TARGETING --- */
-/* Quando a arena está em modo de mira, quem não for alvo válido fica desvanecido */
+/* --- ESTILOS DE TARGETING (MÁQUINA DE ESTADOS VISUAL) --- */
+
+/* Cartas que não são alvos válidos ficam escuras e sem brilho */
 .targeting-mode:not(.valid-target):not(.selected-target) {
     opacity: 0.4;
-    filter: grayscale(80%);
+    filter: grayscale(80%) drop-shadow(0 0 0 transparent);
 }
 
-/* Alvos que podes clicar ganham o cursor e uma borda suave */
+/* Alvos que podes clicar ganham o cursor de mira e uma Aura Ciano */
 .valid-target {
     cursor: crosshair;
-    border-color: #00e5ff;
-    box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+    filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.8));
 }
 
+    /* Quando passas o rato por cima do alvo válido, a Aura fica mais forte */
     .valid-target:hover {
-        border-color: #fff;
-        box-shadow: 0 0 15px rgba(0, 229, 255, 0.8);
+        filter: drop-shadow(0 0 15px rgba(0, 229, 255, 1));
+        transform: scale(1.02);
     }
 
-/* O alvo que já clicaste e selecionaste fica vermelho e bloqueado */
+/* O alvo que já selecionaste fica bloqueado e com Aura Vermelha */
 .selected-target {
-    border-color: #ff0055;
-    box-shadow: 0 0 15px rgba(255, 0, 85, 0.8);
     cursor: default;
+    filter: drop-shadow(0 0 15px rgba(255, 0, 85, 1));
 }
 
 
