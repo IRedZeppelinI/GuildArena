@@ -44,6 +44,7 @@ public class CombatStateMapper : ICombatStateMapper
         return new CombatantDto
         {
             Id = c.Id,
+            DefinitionId = c.DefinitionId,
             OwnerId = c.OwnerId,
             Name = c.Name,
             RaceId = c.RaceId,

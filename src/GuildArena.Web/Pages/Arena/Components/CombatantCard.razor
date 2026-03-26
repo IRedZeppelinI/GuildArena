@@ -1,12 +1,14 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
 
 <div class="combatant-card @(Combatant.IsAlive ? "" : "dead") @(IsTargetingMode ? "targeting-mode" : "") @(IsValidTarget ? "valid-target" : "") @(IsSelectedTarget ? "selected-target" : "")"
      @onclick="OnCardClicked">
 
     <!-- COLUNA ESQUERDA: Retrato e Modifiers -->
     <div class="card-left">
-        <div class="portrait-placeholder">
-            <span class="portrait-text">@Combatant.Name[0]</span>
+        <!-- O URL é gerado dinamicamente usando o DefinitionId (ex: HERO_GARRET) -->
+        <div class="portrait-placeholder" style="background-image: url('@AssetService.GetPortraitUrl(Combatant.DefinitionId)');">
         </div>
 
         <div class="modifiers-zone">

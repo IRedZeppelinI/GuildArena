@@ -27,19 +27,18 @@
 .portrait-placeholder {
     width: 60px;
     height: 60px;
-    background-color: #444;
-    border-radius: 4px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border: 1px solid #777;
+    background-size: 100% 100%; /* Estica a imagem perfeitamente para os 60x60 */
+    background-position: center;
+    background-repeat: no-repeat;
     margin-bottom: 4px; /* Espaço para separar dos buffs */
+    /* Se a tua imagem do retrato já tiver a moldura rúnica nos cantos, 
+       podes apagar este border-radius para ela ficar quadrada perfeita */
+    border-radius: 4px;
 }
 
+/* Como apagámos o texto no HTML, esta classe já não é usada, mas podes deixá-la assim por segurança */
 .portrait-text {
-    font-size: 1.8rem;
-    font-weight: bold;
-    color: #888;
+    display: none;
 }
 
 .modifiers-zone {
