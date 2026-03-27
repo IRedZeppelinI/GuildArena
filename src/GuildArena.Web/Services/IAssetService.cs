@@ -9,4 +9,5 @@ public interface IAssetService
     string GetPortraitUrl(string definitionId);
     string GetAbilityIconUrl(string abilityId);
     string GetModifierIconUrl(string modifierId);
+    string GetEssenceIconUrl(string essenceType);
 }

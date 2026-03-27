@@ -34,4 +34,9 @@ public class AssetService : IAssetService
     // modifiers
     public string GetModifierIconUrl(string modifierId)
         => $"{_baseAssetUrl}modifiers/{modifierId.ToLower()}.jpg";
+
+    // wwwroot
+    // essences 
+    public string GetEssenceIconUrl(string essenceType)
+        => $"images/essences/{essenceType.ToLower()}.jpg";
 }

@@ -1,4 +1,6 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
 
 <div class="resource-bar">
     <div class="player-name">@Player.Name</div>
@@ -8,7 +10,9 @@
             @foreach (var kvp in Player.EssencePool.Where(e => e.Value > 0))
             {
                 <div class="essence-slot" title="@kvp.Key">
-                    <div class="essence-icon @kvp.Key.ToString().ToLower()"></div>
+                    @* <div class="essence-icon @kvp.Key.ToString().ToLower()"></div>
+                    <div class="essence-count">@kvp.Value</div> *@
+                    <div class="essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(kvp.Key.ToString())');"></div>
                     <div class="essence-count">@kvp.Value</div>
                 </div>
             }

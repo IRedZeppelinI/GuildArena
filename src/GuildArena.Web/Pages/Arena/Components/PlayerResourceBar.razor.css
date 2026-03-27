@@ -27,11 +27,21 @@
     height: 32px;
 }
 
-.essence-icon {
+/*.essence-icon {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.7);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}*/
+
+.essence-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%; /* O CORTA-MASSAS: transforma o  JPG quadrado num círculo perfeito! */
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255,255,255,0.4);
     box-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
 
@@ -54,7 +64,7 @@
     z-index: 2;
 }
 
-.vigor {
+/*.vigor {
     background-color: #ff6a00;
 }
 
@@ -76,7 +86,7 @@
 
 .neutral {
     background-color: #aaaaaa;
-}
+}*/
 
 .exchange-btn {
     border-radius: 50%;
