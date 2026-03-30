@@ -1,4 +1,6 @@
 ﻿@using GuildArena.Domain.Enums.Resources
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
 
 <div class="custom-modal-backdrop" @onclick="Cancel">
     <div class="custom-modal-content" @onclick:stopPropagation="true">
@@ -16,10 +18,16 @@
 
                         if (availableCount > 0)
                         {
-                            <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
+                            @* <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
                                     @onclick="() => SelectToSpend(kvp.Key)"
                                     disabled="@(_spentList.Count >= 2)">
                                 @kvp.Key
+                            </button> *@
+                            <button class="essence-btn"
+                                    style="background-image: url('@AssetService.GetEssenceIconUrl(kvp.Key.ToString())');"
+                                    title="@kvp.Key"
+                                    @onclick="() => SelectToSpend(kvp.Key)"
+                                    disabled="@(_spentList.Count >= 2)">
                             </button>
                         }
                     }
@@ -39,9 +47,14 @@
                 <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
                     @foreach (var type in _allEssenceTypes)
                     {
-                        <button class="btn btn-dark essence-btn @type.ToString().ToLower() @(_gainedType == type ? "selected-outline" : "")"
+                        @* <button class="btn btn-dark essence-btn @type.ToString().ToLower() @(_gainedType == type ? "selected-outline" : "")"
                                 @onclick="() => _gainedType = type">
                             @type
+                        </button> *@
+                        <button class="essence-btn @(_gainedType == type ? "selected-outline" : "")"
+                                style="background-image: url('@AssetService.GetEssenceIconUrl(type.ToString())');"
+                                title="@type"
+                                @onclick="() => _gainedType = type">
                         </button>
                     }
                 </div>

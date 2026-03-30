@@ -1,4 +1,6 @@
 ﻿@using GuildArena.Domain.Enums.Resources
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
 
 <div class="custom-modal-backdrop" @onclick="Cancel">
     <div class="custom-modal-content" @onclick:stopPropagation="true">
@@ -17,10 +19,16 @@
 
                     if (availableCount > 0)
                     {
-                        <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
+                        @* <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
                                 @onclick="() => SelectEssence(kvp.Key)"
                                 disabled="@(_selectedToPay.Count >= RequiredAmount)">
                             @kvp.Key
+                        </button> *@
+                        <button class="essence-btn"
+                                style="background-image: url('@AssetService.GetEssenceIconUrl(kvp.Key.ToString())');"
+                                title="@kvp.Key"
+                                @onclick="() => SelectEssence(kvp.Key)"
+                                disabled="@(_selectedToPay.Count >= RequiredAmount)">
                         </button>
                     }
                 }

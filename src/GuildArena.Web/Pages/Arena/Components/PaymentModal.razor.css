@@ -22,15 +22,40 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.8);
 }
 
-.essence-btn {
+/*.essence-btn {
     border-radius: 8px;
     font-weight: bold;
     color: white;
     text-shadow: 1px 1px 2px black;
     border: 2px solid transparent;
+}*/
+
+/* O Botão Base (A Esfera) */
+.essence-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    transition: transform 0.1s ease, filter 0.2s;
+    padding: 0;
 }
 
-.vigor {
+    /* O efeito de passar o rato */
+    .essence-btn:hover:not(:disabled) {
+        transform: scale(1.1);
+    }
+
+    /* Quando o botão bloqueia (já atingiu o limite de pagamento) */
+    .essence-btn:disabled {
+        filter: grayscale(100%) opacity(0.3);
+        cursor: not-allowed;
+    }
+
+/*.vigor {
     background-color: #ff6a00;
 }
 
@@ -52,4 +77,4 @@
 
 .neutral {
     background-color: #aaaaaa;
-}
+}*/
