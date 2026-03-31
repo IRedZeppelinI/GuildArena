@@ -107,7 +107,7 @@
     ]
   },
   {
-    "Id": "ABIL_ELYSIA_ULTI",
+    "Id": "ABIL_ELYSIA_ASTRAL",
     "Name": "Astral Convergence",
     "Description": "Heals all allies.",
     "Tags": [ "Spell", "Ultimate", "Light", "Heal" ],

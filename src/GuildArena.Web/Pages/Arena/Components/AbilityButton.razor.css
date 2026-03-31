@@ -1,45 +1,32 @@
 ﻿/* O GameObject Pai (Relativo) */
 .ability-slot {
     position: relative;
-    width: 36px; /* Tamanho base do ícone */
+    width: 36px;
     height: 36px;
     cursor: pointer;
+    /* Se a tua moldura fundida tiver cantos redondos, mantém isto. Se for quadrada com bicos, muda para 0 */
     border-radius: 4px;
     overflow: hidden;
     transition: transform 0.1s ease;
 }
 
     .ability-slot:hover {
-        transform: scale(1.1); /* Dá um efeitito 3D quando passas o rato */
+        transform: scale(1.1);
     }
 
-/* A Moldura (Absoluta) */
-.ability-border {
+/* O teu Ícone Completo (Fica no fundo de tudo, z-index 1) */
+.ability-icon {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    border: 2px solid #aaa; /* Fallback até teres a imagem da Sprite */
-    z-index: 2; /* Fica por cima do ícone */
-    pointer-events: none; /* Para não bloquear o clique */
-}
-
-/* O Ícone Falso (Absoluto, Fica por baixo da moldura) */
-.ability-icon-placeholder {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, #444, #222);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: bold;
-    color: #ffd800;
+    background-size: 100% 100%;
+    background-position: center;
+    background-color: #222; /* Fundo enquanto a imagem carrega da cloud */
     z-index: 1;
 }
+
 
 /* A película de Cooldown (Absoluta, Fica por cima de tudo) */
 .cooldown-overlay {
@@ -75,13 +62,6 @@
     z-index: 4; /* Fica por cima de tudo, até do cooldown */
 }
 
-/*.mini-essence {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.8);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.9);
-}*/
 
 .mini-essence {
     width: 10px; /* talvez ajustar isto entre 8px e 12px  */
@@ -92,30 +72,6 @@
     border: 1px solid rgba(0,0,0,0.8);
 }
 
-/* Cores das mini-essences */
-/*.vigor {
-    background-color: #ff6a00;
-}
-
-.mind {
-    background-color: #00e5ff;
-}
-
-.light {
-    background-color: #ffd800;
-}
-
-.shadow {
-    background-color: #aa00ff;
-}
-
-.flux {
-    background-color: #ff0055;
-}
-
-.neutral {
-    background-color: #aaaaaa;
-}*/
 
 /* Se não puder pagar a habilidade, escurece e remove o cursor */
 .unaffordable {

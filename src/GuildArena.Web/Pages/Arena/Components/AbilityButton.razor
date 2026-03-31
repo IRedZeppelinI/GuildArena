@@ -2,12 +2,14 @@
 @using GuildArena.Web.Services
 @inject IAssetService AssetService
 
-<!-- Adicionada a classe 'unaffordable' dinamicamente -->
-<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")" @onclick="OnClick" title="@Ability.Name">
+<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
+     @onclick="OnClick"
+     title="@Ability.Name">
 
-    <div class="ability-border"></div>
-    <div class="ability-icon-placeholder">@Ability.Name.Substring(0, 1)</div>
+    <!-- A tua imagem FINAL (Ícone + Moldura já fundidos) vinda do Azure -->
+    <div class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></div>
 
+    <!-- A película de Cooldown -->
     @if (IsOnCooldown)
     {
         <div class="cooldown-overlay">
@@ -15,6 +17,7 @@
         </div>
     }
 
+    <!-- Os custos da Habilidade (Mini-Essences) -->
     @if (Ability.Costs.Any())
     {
         <div class="ability-costs">
@@ -22,7 +25,6 @@
             {
                 @for (int i = 0; i < cost.Value; i++)
                 {
-                    @* <div class="mini-essence @cost.Key.ToString().ToLower()" title="@cost.Key"></div> *@                    
                     <div class="mini-essence"
                          style="background-image: url('@AssetService.GetEssenceIconUrl(cost.Key.ToString())');"
                          title="@cost.Key">
@@ -41,8 +43,6 @@
     public EventCallback<string> OnAbilityClicked { get; set; }
 
     private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
-
-    // NOVO: Só pode castar se não estiver em cooldown E se puder pagar!
     private bool CanCast => !IsOnCooldown && Ability.IsAffordable;
 
     private async Task OnClick()

@@ -93,7 +93,7 @@
       "ABIL_ELYSIA_BOLT",
       "ABIL_ELYSIA_SHOCK",
       "ABIL_ELYSIA_MEND",
-      "ABIL_ELYSIA_ULTI"
+      "ABIL_ELYSIA_ASTRAL"
     ]
   },
   { // VEX
@@ -125,7 +125,7 @@
       "ABIL_VEX_RECKLESS",
       "ABIL_VEX_CHAOS",
       "ABIL_VEX_FUEL",
-      "ABIL_VEX_ULTI"
+      "ABIL_VEX_DECIMATE"
     ]
   },
   { //  NYX

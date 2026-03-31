@@ -98,7 +98,7 @@
     ]
   },
   {
-    "Id": "ABIL_VEX_ULTI",
+    "Id": "ABIL_VEX_DECIMATE",
     "Name": "Decimate",
     "Description": "Massive damage. Heals if something dies.",
     "Tags": [ "Physical", "Melee", "Ultimate" ],
