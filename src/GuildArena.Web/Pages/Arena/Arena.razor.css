@@ -1,4 +1,6 @@
-﻿/* --- STARTUP SCREEN --- */
+﻿/* =========================================================
+   1. STARTUP SCREEN (LOADING)
+========================================================= */
 .startup-screen {
     display: flex;
     justify-content: center;
@@ -14,12 +16,17 @@
     border: 2px solid #555;
 }
 
-/* --- TABULEIRO DE JOGO --- */
+/* =========================================================
+   2. MAIN ARENA LAYOUT
+========================================================= */
 .arena-board {
     flex-grow: 1;
     display: flex;
     justify-content: space-between;
-    padding: 20px;
+
+    /*padding: 20px;*/
+    padding: 20px 20px 50px 20px;
+
     background-color: #222;
     background-size: cover;
     background-position: center;
@@ -50,7 +57,10 @@
     border: 1px solid #ffd800;
 }
 
-/* Grelha do Jogador (1 Coluna, 3 Linhas) */
+/* =========================================================
+   3. GRID SYSTEMS (COMBATANTS PLACEMENT)
+========================================================= */
+/* Player Column */
 .combatants-column {
     display: grid;
     grid-template-rows: 1fr 1fr 1fr;
@@ -59,16 +69,33 @@
     height: 100%;
 }
 
-/* Grelha dos Inimigos (2 Colunas, 3 Linhas) */
+/* Enemy Grid Base */
 .enemy-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr 1fr;
     align-items: center;
     gap: 10px;
     height: 100%;
 }
 
+    /* Quando há inimigos em ambas as linhas (Frente e Trás) */
+    .enemy-grid.two-columns {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* Quando há inimigos em apenas UMA linha */
+    .enemy-grid.single-column {
+        grid-template-columns: 1fr;
+    }
+
+    /* Garante que a carta do inimigo mantém o tamanho gigante mas encosta à direita do ecrã */
+    .enemy-grid > div {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+/* Grid Mapping Classes (Duas Colunas) */
 .grid-front-top {
     grid-column: 1;
     grid-row: 1;
@@ -99,17 +126,56 @@
     grid-row: 3;
 }
 
-/* --- RODAPÉ DA ARENA (DESKTOP) --- */
+/* Grid Mapping Classes (Coluna Única) */
+.grid-single-col-row-1 {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.grid-single-col-row-2 {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.grid-single-col-row-3 {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+/* =========================================================
+   4. ARENA FOOTER (DESKTOP BASE)
+========================================================= */
 .arena-footer {
+    position: relative;
     height: 25vh;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(0, 0, 0, 0.85);
-    border-top: 2px solid #555;
+    background-color: #111;
+    background-image: url('/images/ui/footer_bg.jpg');
+    background-size: cover;
+    background-position: top center;
+    border-top: none;
     padding: 10px 20px;
     transition: height 0.3s ease;
 }
+
+    /* O SEPARADOR DE ARTE */
+    .arena-footer::before {
+        content: '';
+        position: absolute;
+        /* Pousa a imagem examente no topo do rodapé */
+        top: -40px;
+        height: 40px;
+        left: 0;
+        width: 100%;
+        background-image: url('/images/ui/footer_separator.jpg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        z-index: 10;
+        pointer-events: none;
+    }
 
 .footer-section {
     flex: 1;
@@ -133,18 +199,9 @@
     align-items: flex-end;
 }
 
-/* Botão Mobile Logs invisível no Desktop */
-.mobile-logs-btn {
-    display: none;
-    font-weight: bold;
-}
-
-/* Ticker invisível no Desktop */
-.mobile-ticker {
-    display: none;
-}
-
-/* Botão End Turn */
+/* =========================================================
+   5. UI CONTROLS & MODALS
+========================================================= */
 .end-turn-btn {
     font-weight: bold;
     font-size: 1.5rem;
@@ -157,7 +214,6 @@
         transform: scale(0.95);
     }
 
-/* --- MODAL MOBILE --- */
 .mobile-logs-modal {
     position: fixed;
     top: 0;
@@ -182,16 +238,22 @@
     flex-direction: column;
 }
 
+/* Hidden by default on Desktop */
+.mobile-logs-btn, .mobile-ticker {
+    display: none;
+}
+
 /* =========================================================
-   MEDIA QUERIES (MOBILE LANDSCAPE / Ecrãs Pequenos)
+   6. RESPONSIVE (MOBILE LANDSCAPE)
 ========================================================= */
 @media (max-height: 650px) {
     .arena-board {
-        padding: 5px 10px;
+        /*padding: 2px 10px;*/
+        padding: 5px 10px 25px 10px;
     }
 
     .combatants-column, .enemy-grid {
-        gap: 4px;
+        gap: 2px;
     }
 
     .turn-indicator {
@@ -200,7 +262,7 @@
     }
 
     .team-side {
-        width: 40%;
+        width: 42%;
     }
 
     .arena-footer {
@@ -208,12 +270,32 @@
         padding: 5px 15px;
     }
 
+        /* Encolhe o separador para não tapar o jogo no telemóvel */
+        .arena-footer::before {
+            height: 20px;
+            top: -20px;
+        }
+
+    ::deep .combatant-card {
+        border-width: 12px;
+        padding: 2px 4px;
+    }
+
+    ::deep .hp-container {
+        height: 10px;
+        margin-top: 1px;
+    }
+
+    ::deep .hp-text {
+        font-size: 0.5rem;
+        line-height: 10px;
+    }
+
     .end-turn-btn {
         font-size: 1.1rem;
         padding: 8px 15px;
     }
 
-    /* ESCONDE A CAIXA DO DESKTOP */
     .desktop-logs-wrapper {
         display: none;
     }

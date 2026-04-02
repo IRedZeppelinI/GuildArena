@@ -28,7 +28,6 @@
                 }
                 else
                 {
-
                     <span>Start Match</span>
                 }
             </button>
@@ -70,8 +69,6 @@ else
                       OnConfirmPayment="ProcessManualPaymentAndExecute"
                       OnCancel="CancelPayment" />
     }
-
-
 
     <!-- O clique no fundo da arena cancela a mira (Targeting) -->
     <div class="arena-board" style="@GetBackgroundStyle()" @onclick="CancelTargeting">
@@ -122,10 +119,11 @@ else
                     <PlayerResourceBar Player="enemyPlayer" />
                 }
 
-                <div class="enemy-grid">
+                <!-- Grelha Inimiga Dinâmica -->
+                <div class="enemy-grid @(IsSingleEnemyColumn ? "single-column" : "two-columns")">
                     @foreach (var enemy in EnemyTeam)
                     {
-                        <div class="@GetGridClass(enemy.Position)">
+                        <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)">
                             <CombatantCard Combatant="enemy"
                                            IsTargetingMode="_targetingState.IsActive"
                                            IsValidTarget="_targetingState.IsValidTarget(enemy)"
@@ -200,21 +198,45 @@ else
     // --- PROPRIEDADES COMPUTADAS ---
     private int LocalPlayerId => 1;
 
-    private string GetBackgroundStyle()
-    {
-        if (_gameState == null || string.IsNullOrEmpty(_gameState.BackgroundId))
-            return ""; // Retorna vazio, o CSS usa o #222 de fallback
-
-        var bgUrl = AssetService.GetBackgroundUrl(_gameState.BackgroundId);
-        return $"background-image: url('{bgUrl}');";
-    }
-
-
     private IEnumerable<CombatantDto> MyTeam =>
         _gameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
 
     private IEnumerable<CombatantDto> EnemyTeam =>
         _gameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
+
+    // Lógica para detetar se os inimigos ocupam apenas 1 coluna
+    private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
+    private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
+    private bool IsSingleEnemyColumn => HasFrontRowEnemies ^ HasBackRowEnemies;
+
+    private string GetBackgroundStyle()
+    {
+        if (_gameState == null || string.IsNullOrEmpty(_gameState.BackgroundId))
+            return "";
+
+        var bgUrl = AssetService.GetBackgroundUrl(_gameState.BackgroundId);
+        return $"background-image: url('{bgUrl}');";
+    }
+
+    private string GetGridClass(int position, bool isSingleColumn)
+    {
+        if (isSingleColumn)
+        {
+            int row = (position % 3) + 1;
+            return $"grid-single-col-row-{row}";
+        }
+
+        return position switch
+        {
+            0 => "grid-front-top",
+            1 => "grid-front-mid",
+            2 => "grid-front-bot",
+            3 => "grid-back-top",
+            4 => "grid-back-mid",
+            5 => "grid-back-bot",
+            _ => "grid-back-mid"
+        };
+    }
 
     // --- MÁQUINA DE ESTADOS DO TARGETING E PAGAMENTO ---
     private TargetingStateManager _targetingState = new();
@@ -230,7 +252,6 @@ else
 
         _targetingState.StartTargeting(payload.SourceId, ability);
 
-        // Verifica se a habilidade requer seleção manual E se não é uma magia de Área (AoE)
         bool requiresManualClicks = ability.TargetingRules.Any(r =>
             r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual &&
             r.Type != GuildArena.Domain.Enums.Targeting.TargetType.All &&
@@ -240,7 +261,6 @@ else
 
         if (!requiresManualClicks)
         {
-            // Se for AoE (ex: Ulti da Elysia) ou TargetType.Self, salta logo para o pagamento
             TransitionToPaymentOrExecute();
         }
     }
@@ -319,7 +339,6 @@ else
             CombatId = _combatId,
             SourceId = _targetingState.SourceId!.Value,
             AbilityId = _targetingState.ActiveAbility!.Id,
-            // FIX: Fazer uma cópia real do dicionário e das listas para que o Cancel não as apague!
             TargetSelections = _targetingState.SelectedTargets.ToDictionary(
                 entry => entry.Key,
                 entry => new List<int>(entry.Value)),
@@ -474,19 +493,5 @@ else
             if (!string.IsNullOrEmpty(_combatId)) await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
             await _hubConnection.DisposeAsync();
         }
-    }
-
-    private string GetGridClass(int position)
-    {
-        return position switch
-        {
-            0 => "grid-front-top",
-            1 => "grid-front-mid",
-            2 => "grid-front-bot",
-            3 => "grid-back-top",
-            4 => "grid-back-mid",
-            5 => "grid-back-bot",
-            _ => "grid-back-mid"
-        };
     }
 }
