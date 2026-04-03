@@ -152,31 +152,35 @@ else
             <div class="mobile-ticker">
                 @(_battleLogs.LastOrDefault() ?? "Waiting for actions...")
             </div>
-        </div>
+        </div>        
 
+        <!-- Secção Direita: End Turn / Cancel -->
         <div class="footer-section footer-right">
             @if (_gameState != null && _gameState.CurrentPlayerId == LocalPlayerId)
             {
                 if (_targetingState.IsActive)
                 {
-                    <button class="btn btn-secondary btn-lg end-turn-btn" @onclick="CancelTargeting">
+                    <!-- Classes do bootstrap removidas. Fica só a nossa end-turn-btn -->
+                    <button class="end-turn-btn" @onclick="CancelTargeting">
                         Cancel Action
                     </button>
                 }
                 else
                 {
-                    <button class="btn btn-danger btn-lg end-turn-btn" @onclick="EndTurnAsync">
+                    <button class="end-turn-btn" @onclick="EndTurnAsync">
                         End Turn
                     </button>
                 }
             }
             else if (_gameState != null)
             {
-                <button class="btn btn-secondary btn-lg end-turn-btn" disabled>
-                    Enemy Turn...
+                <!-- O atributo disabled vai ativar a magia do CSS para o turno do inimigo -->
+                <button class="end-turn-btn" disabled>
+                    Enemy Turn
                 </button>
             }
         </div>
+
     </div>
 }
 

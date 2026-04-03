@@ -202,16 +202,47 @@
 /* =========================================================
    5. UI CONTROLS & MODALS
 ========================================================= */
+
 .end-turn-btn {
+    /* Remove estilos nativos do browser */
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    /* A tua imagem de fundo! (Confirma se é .jpg ou .png) */
+    background-image: url('/images/ui/btn_action.jpg');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    /* Proporção e Alinhamento */
+    width: 220px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Tipografia (Sombra forte para ler bem por cima do fogo) */
+    font-family: inherit;
     font-weight: bold;
-    font-size: 1.5rem;
-    padding: 15px 30px;
+    font-size: 1.2rem;
+    color: #ffffff;
+    text-shadow: 2px 2px 4px #000, 0 0 10px #ff3300;
+    cursor: pointer;
     box-shadow: 0 4px 8px rgba(0,0,0,0.6);
-    transition: transform 0.1s ease;
+    transition: transform 0.1s ease, filter 0.3s ease;
 }
 
-    .end-turn-btn:active {
+    /* O efeito de afundar o botão ao clicar */
+    .end-turn-btn:active:not(:disabled) {
         transform: scale(0.95);
+    }
+
+    /* A MAGIA DO TURNO DO INIMIGO (Botão desativado) */
+    .end-turn-btn:disabled {
+        /* Retira toda a cor da imagem de fogo, e escurece-a (Parece pedra morta!) */
+        filter: grayscale(100%) brightness(0.6);
+        cursor: not-allowed;
+        /* Ajusta o texto para parecer inativo */
+        color: #ccc;
+        text-shadow: 2px 2px 4px #000; /* Tira o brilho vermelho da sombra */
     }
 
 .mobile-logs-modal {
@@ -289,11 +320,12 @@
     ::deep .hp-text {
         font-size: 0.5rem;
         line-height: 10px;
-    }
+    } 
 
     .end-turn-btn {
-        font-size: 1.1rem;
-        padding: 8px 15px;
+        width: 150px;
+        height: 45px;
+        font-size: 1rem;
     }
 
     .desktop-logs-wrapper {
