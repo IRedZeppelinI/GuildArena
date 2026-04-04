@@ -92,6 +92,7 @@ public class CombatStateMapper : ICombatStateMapper
         {
             Id = def.Id,
             Name = def.Name,
+            Description = def.Description ?? string.Empty,
             ActionPointCost = def.ActionPointCost,
             BaseCooldown = def.BaseCooldown,
             HPCost = def.HPCost,

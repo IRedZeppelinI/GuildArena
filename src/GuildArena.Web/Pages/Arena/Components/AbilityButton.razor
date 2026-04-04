@@ -4,12 +4,11 @@
 
 <div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
      @onclick="OnClick"
+     @onmouseenter="OnMouseEnter"     
      title="@Ability.Name">
 
-    <!-- A tua imagem FINAL (Ícone + Moldura já fundidos) vinda do Azure -->
     <div class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></div>
 
-    <!-- A película de Cooldown -->
     @if (IsOnCooldown)
     {
         <div class="cooldown-overlay">
@@ -17,7 +16,6 @@
         </div>
     }
 
-    <!-- Os custos da Habilidade (Mini-Essences) -->
     @if (Ability.Costs.Any())
     {
         <div class="ability-costs">
@@ -39,8 +37,8 @@
     [Parameter, EditorRequired]
     public required AbilitySummaryDto Ability { get; set; }
 
-    [Parameter]
-    public EventCallback<string> OnAbilityClicked { get; set; }
+    [Parameter] public EventCallback<string> OnAbilityClicked { get; set; }
+    [Parameter] public EventCallback<AbilitySummaryDto> OnInspectStart { get; set; }
 
     private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
     private bool CanCast => !IsOnCooldown && Ability.IsAffordable;
@@ -52,4 +50,10 @@
             await OnAbilityClicked.InvokeAsync(Ability.Id);
         }
     }
+
+    private async Task OnMouseEnter()
+    {
+        await OnInspectStart.InvokeAsync(Ability);
+    }
+    
 }

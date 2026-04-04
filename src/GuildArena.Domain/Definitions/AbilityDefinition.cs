@@ -10,6 +10,7 @@ public class AbilityDefinition
 {
     public required string Id { get; set; }
     public required string Name { get; set; }
+    public string? Description { get; set; }
 
     /// <summary>
     /// The cost in Action Points to execute this ability.

@@ -32,7 +32,9 @@
         <div class="abilities-zone">
             @foreach (var ability in AllAbilities)
             {
-                <AbilityButton Ability="ability" OnAbilityClicked="HandleAbilityClick" />
+                <AbilityButton Ability="ability"
+                               OnAbilityClicked="HandleAbilityClick"
+                               OnInspectStart="OnInspectAbility"/>
             }
         </div>
     </div>
@@ -56,6 +58,10 @@
 
     [Parameter]
     public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
+
+    [Parameter] 
+    public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
+    
 
     private int HpPercentage => Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
 

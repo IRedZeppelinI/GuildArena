@@ -274,6 +274,121 @@
     display: none;
 }
 
+
+/* =========================================================
+   7. TOOLTIPS (INFO PANEL)
+========================================================= */
+.desktop-tooltip {
+    width: 450px;
+    height: 85%;
+    margin-left: 40px;
+    align-self: center;
+    background-image: url('/images/ui/tooltip_bg.jpg');
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    /* AUMENTADO O PADDING: 35px no topo/base e 40px nos lados para fugir aos cristais dos cantos! */
+    padding: 35px 40px;
+    display: flex;
+    flex-direction: column;
+    /* justify-content mudou de center para flex-start para o conteúdo começar no topo */
+    justify-content: flex-start;
+    color: #eee;
+    font-family: sans-serif;
+    text-shadow: 1px 1px 2px black;
+}
+
+/* O Nome Centrado */
+.tooltip-title-row {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.tooltip-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+/* Linha com os Custos e o CD/AP */
+.tooltip-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tooltip-cd {
+    font-size: 0.85rem;
+    color: #bbb;
+}
+
+/* A Linha Horizontal */
+.tooltip-divider {
+    border-color: rgba(255, 255, 255, 0.3);
+    margin: 10px 0;
+}
+
+/* A Descrição */
+.tooltip-description {
+    font-size: 0.95rem;
+    color: #ddd;
+    line-height: 1.4;
+    text-align: left; /* Mantém o texto alinhado à esquerda para facilitar a leitura */
+}
+
+.tooltip-placeholder {
+    text-align: center;
+    color: #f8f9fa;
+    opacity: 0.8;
+    font-style: italic;
+    /* Empurra o texto placeholder um pouco para baixo para compensar o topo */
+    margin-top: 20px;
+}
+
+/* --- CUSTOS COM ÍCONES NA TOOLTIP --- */
+.tooltip-costs {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espaço entre cada tipo de custo (ex: entre Vigor e Neutral) */
+}
+
+.tooltip-cost-item {
+    display: flex;
+    align-items: center;
+    gap: 4px; /* Espaço entre o número e a esfera */
+    background: rgba(0, 0, 0, 0.6);
+    padding: 2px 6px 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #555;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.cost-number {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.tooltip-essence-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.tooltip-ability-icon {
+    width: 32px;
+    height: 32px;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+
 /* =========================================================
    6. RESPONSIVE (MOBILE LANDSCAPE)
 ========================================================= */
@@ -350,5 +465,9 @@
         text-overflow: ellipsis;
         padding: 0 10px;
         align-self: center;
+    }
+
+    .desktop-tooltip {
+        display: none;
     }
 }

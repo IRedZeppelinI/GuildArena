@@ -11,6 +11,7 @@
 @inject IAssetService AssetService
 @inject HttpClient Http
 @inject ILogger<Arena> Logger
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
 <PageTitle>Battle Arena</PageTitle>
@@ -28,6 +29,7 @@
                 }
                 else
                 {
+
                     <span>Start Match</span>
                 }
             </button>
@@ -93,7 +95,8 @@ else
                                        IsValidTarget="_targetingState.IsValidTarget(hero)"
                                        IsSelectedTarget="_targetingState.IsSelected(hero.Id)"
                                        OnAbilityActivated="StartTargeting"
-                                       OnCombatantClicked="SelectTarget" />
+                                       OnCombatantClicked="SelectTarget"
+                                       OnInspectAbility="ShowTooltip"/>
                     }
                 </div>
             }
@@ -129,7 +132,8 @@ else
                                            IsValidTarget="_targetingState.IsValidTarget(enemy)"
                                            IsSelectedTarget="_targetingState.IsSelected(enemy.Id)"
                                            OnAbilityActivated="StartTargeting"
-                                           OnCombatantClicked="SelectTarget" />
+                                           OnCombatantClicked="SelectTarget"
+                                           OnInspectAbility="ShowTooltip"/>
                         </div>
                     }
                 </div>
@@ -139,10 +143,63 @@ else
 
     <!-- RODAPÉ -->
     <div class="arena-footer">
+        <!-- Secção Esquerda: Botão Mobile Logs e Desktop Tooltip -->
         <div class="footer-section footer-left">
             <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="ToggleMobileLogs">
                 📜 BattleLogs
             </button>
+
+            <!-- DESKTOP TOOLTIP -->
+            <div class="desktop-tooltip">
+                @if (_inspectedAbility != null)
+                {
+                    <!-- NOME AO CENTRO -->
+                    @* <div class="tooltip-title-row">
+                        <span class="tooltip-title text-warning">@_inspectedAbility.Name</span>
+                    </div> *@
+                    <!-- NOME AO CENTRO COM ÍCONE -->
+                    <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
+                        <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(_inspectedAbility.Id)');"></div>
+                        <span class="tooltip-title text-warning m-0">@_inspectedAbility.Name</span>
+                    </div>
+
+                    <!-- DADOS (Custos à esquerda, CD/AP à direita) -->
+                    <div class="tooltip-stats-row">
+                        <div class="tooltip-costs">
+                            @if (_inspectedAbility.HPCost > 0)
+                            {
+                                <span class="badge bg-danger border border-light me-2">HP: @_inspectedAbility.HPCost</span>
+                            }
+
+                            <!-- Os Custos de Essence com as tuas Imagens -->
+                            @foreach (var c in _inspectedAbility.Costs.Where(x => x.Value > 0))
+                            {
+                                <div class="tooltip-cost-item" title="@c.Key">
+                                    <span class="cost-number">@c.Value</span>
+                                    <div class="tooltip-essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
+                                </div>
+                            }
+                        </div>
+                        <div class="tooltip-cd text-end">
+                            CD: @_inspectedAbility.BaseCooldown | AP: @_inspectedAbility.ActionPointCost
+                        </div>
+                    </div>
+
+                    <!-- SEPARADOR -->
+                    <hr class="tooltip-divider" />
+
+                    <!-- DESCRIÇÃO EM BAIXO -->
+                    <div class="tooltip-description">
+                        @_inspectedAbility.Description
+                    </div>
+                }
+                else
+                {
+                    <div class="tooltip-placeholder">
+                        Hover an ability to inspect details.
+                    </div>
+                }
+            </div>
         </div>
 
         <div class="footer-section footer-center">
@@ -152,7 +209,7 @@ else
             <div class="mobile-ticker">
                 @(_battleLogs.LastOrDefault() ?? "Waiting for actions...")
             </div>
-        </div>        
+        </div>
 
         <!-- Secção Direita: End Turn / Cancel -->
         <div class="footer-section footer-right">
@@ -160,7 +217,6 @@ else
             {
                 if (_targetingState.IsActive)
                 {
-                    <!-- Classes do bootstrap removidas. Fica só a nossa end-turn-btn -->
                     <button class="end-turn-btn" @onclick="CancelTargeting">
                         Cancel Action
                     </button>
@@ -174,13 +230,11 @@ else
             }
             else if (_gameState != null)
             {
-                <!-- O atributo disabled vai ativar a magia do CSS para o turno do inimigo -->
                 <button class="end-turn-btn" disabled>
                     Enemy Turn
                 </button>
             }
         </div>
-
     </div>
 }
 
@@ -194,6 +248,22 @@ else
     private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
 
+    // --- ESTADO DA TOOLTIP ---
+    private AbilitySummaryDto? _inspectedAbility = null;
+
+    private void ShowTooltip(AbilitySummaryDto ability)
+    {
+        _inspectedAbility = ability;
+        StateHasChanged();
+    }
+
+    private void HideTooltip()
+    {
+        // _showMobileTooltip = false;
+        // StateHasChanged();
+    }
+
+
     // --- ESTADO DO PAYMENT MODAL ---
     private bool _showPaymentModal = false;
     private int _neutralCostPending = 0;
@@ -201,17 +271,6 @@ else
 
     // --- PROPRIEDADES COMPUTADAS ---
     private int LocalPlayerId => 1;
-
-    private IEnumerable<CombatantDto> MyTeam =>
-        _gameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
-
-    private IEnumerable<CombatantDto> EnemyTeam =>
-        _gameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
-
-    // Lógica para detetar se os inimigos ocupam apenas 1 coluna
-    private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
-    private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
-    private bool IsSingleEnemyColumn => HasFrontRowEnemies ^ HasBackRowEnemies;
 
     private string GetBackgroundStyle()
     {
@@ -221,6 +280,16 @@ else
         var bgUrl = AssetService.GetBackgroundUrl(_gameState.BackgroundId);
         return $"background-image: url('{bgUrl}');";
     }
+
+    private IEnumerable<CombatantDto> MyTeam =>
+        _gameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
+
+    private IEnumerable<CombatantDto> EnemyTeam =>
+        _gameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
+
+    private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
+    private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
+    private bool IsSingleEnemyColumn => HasFrontRowEnemies ^ HasBackRowEnemies;
 
     private string GetGridClass(int position, bool isSingleColumn)
     {
@@ -256,17 +325,25 @@ else
 
         _targetingState.StartTargeting(payload.SourceId, ability);
 
+        // O nosso Helper (que usámos para resolver o bug do AoE na Elysia) garante
+        // que habilidades como "Astral Convergence" não pedem cliques no ecrã.
         bool requiresManualClicks = ability.TargetingRules.Any(r =>
             r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual &&
-            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.All &&
-            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllEnemies &&
-            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllAllies &&
-            r.Type != GuildArena.Domain.Enums.Targeting.TargetType.AllFriendlies);
+            !IsAoE(r.Type));
 
         if (!requiresManualClicks)
         {
             TransitionToPaymentOrExecute();
         }
+    }
+
+    // Método auxiliar (Helper) para limpar a verificação de AoE
+    private bool IsAoE(GuildArena.Domain.Enums.Targeting.TargetType type)
+    {
+        return type == GuildArena.Domain.Enums.Targeting.TargetType.All ||
+               type == GuildArena.Domain.Enums.Targeting.TargetType.AllEnemies ||
+               type == GuildArena.Domain.Enums.Targeting.TargetType.AllAllies ||
+               type == GuildArena.Domain.Enums.Targeting.TargetType.AllFriendlies;
     }
 
     private void SelectTarget(CombatantDto target)

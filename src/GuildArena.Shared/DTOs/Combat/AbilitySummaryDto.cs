@@ -9,6 +9,7 @@ public class AbilitySummaryDto
 {
     public required string Id { get; set; }
     public required string Name { get; set; }
+    public string Description { get; set; } = string.Empty;
     public int ActionPointCost { get; set; }
     public int BaseCooldown { get; set; }
     public int HPCost { get; set; }
