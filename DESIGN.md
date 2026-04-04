@@ -141,3 +141,24 @@ O sistema de Modifiers é a espinha dorsal da complexidade do jogo, sendo altame
     * `Disarm`: Bloqueia habilidades físicas.
     * `Blind`: Condição que reduz precisão ou permite interações críticas (ex: Ultimates que causam +50% dano a alvos cegos).
     * `Invulnerable` / `Untargetable` / `Stealth`: Regras defensivas absolutas.
+
+## 7. Inteligência Artificial (AI Orchestration)
+
+Para permitir combates PvE fluídos sem bloquear a API REST, o sistema utiliza um padrão de **Background Task** acoplado ao padrão **Strategy**.
+
+* **`IAiBehavior` (O Cérebro):** Uma classe injetável (ex: `RandomAiBehavior`) que avalia o `GameState` atual usando os mesmos serviços de cálculo do jogador humano (`ITargetResolutionService`, `ICostCalculationService`). Devolve uma intenção de jogada (`AiActionIntent`).
+* **`IAiTurnOrchestrator` (O Maestro):** Quando o humano passa o turno, o `EndTurnCommandHandler` lança este orquestrador numa *Thread* separada (usando `IServiceScopeFactory` para evitar *ObjectDisposedExceptions*). O orquestrador faz um *loop*, executando as intenções da IA com pausas (`Task.Delay`) para o cliente Blazor conseguir renderizar as animações, e envia os resultados por SignalR.
+
+## 8. Arquitetura de Frontend (Blazor + BFF)
+
+O Blazor WebAssembly foi desenhado estritamente como um **Thin Client**. 
+
+### 8.1. O Padrão Backend-For-Frontend (BFF)
+Para evitar duplicar as regras de negócio complexas do motor de jogo (ex: Raças, Taunt, Stealth) no JavaScript/C# do cliente, implementámos um `CombatStateMapper` robusto na API.
+* Antes de enviar o `GameStateDto` para o SignalR, a API pré-calcula a propriedade `IsAffordable` (avaliando se o jogador tem HP, AP e Essence para a magia).
+* A API pré-calcula a propriedade `ValidTargetIds` para cada regra de *Targeting*.
+* O Blazor apenas lê estes dados para escurecer botões ou ativar a "mira" (Crosshair) nas cartas correspondentes, não tomando qualquer decisão lógica.
+
+### 8.2. Gestão de Assets (Azure Blob Storage)
+As imagens não permanentes e que variam de combate para combate (Cenários, Portraits, Ícones de Habilidades) não são incluídas no código fonte para não penalizar o tempo de carregamento da *Single Page Application*. 
+O `AssetService` utiliza "Convenção sobre Configuração", pegando no `DefinitionId` da entidade e gerando dinamicamente o URL apontado para os contentores do Azure Blob Storage. Os elementos estáticos de UI (Molduras 9-Slice, Ícones de Essence) mantêm-se em `wwwroot` para garantir a integridade estrutural no milissegundo em que a página carrega.

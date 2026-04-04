@@ -34,17 +34,24 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * **Observer Triggers & Death Lifecycle:** Modifiers can react to events happening to allies/enemies. A dedicated `DeathService` handles complex state cleanup (e.g., removing linked buffs when a caster dies).
 * **Essence Economy:** A "colored" resource system (Vigor, Mind, Shadow, Flux, Light) requiring strategic hand management and trade-offs.
 * **Data-Driven:** Heroes, Abilities, and Races are defined in JSON, allowing for balancing updates without recompilation.
+* **AI Orchestrator:** A background service (`IAiTurnOrchestrator`) that manages AI turns asynchronously, utilizing an `IAiBehavior` strategy to evaluate valid targets and costs without cheating.
 
 ### Persistence & Meta-Game
 * **Entity Framework Core & Identity:** Secure user authentication linked to persistent player profiles (Guilds).
 * **Match History:** Relational tracking of PvE and PvP matches, including exact hero compositions used, to support complex quest requirements (e.g., "Win with 2 Kymera heroes").
 
+### Frontend Architecture (BFF Pattern)
+* **Backend-Driven UI:** The Blazor WebAssembly client acts as a "Thin Client". Complex validations (Targeting, Affordability, Taunt, Stealth) are pre-calculated by the API (`CombatStateMapper`) and sent via DTOs.
+* **Real-Time Sync:** WebSockets (SignalR) push state updates and narrative `BattleLogs` to the client instantly.
+* **Dynamic Asset Resolution:** A dedicated `AssetService` dynamically fetches portraits, ability icons, and backgrounds from Azure Blob Storage using naming conventions based on Definition IDs.
+
 ### Roadmap
 * [x] Core Combat Engine & Unit Tests.
 * [x] Relational Database Schema (EF Core) & Identity.
-* [ ] Advanced AI for PvE encounters.
-* [ ] SignalR Integration for Real-Time feedback.
-* [ ] Blazor WebAssembly Frontend.
+* [x] SignalR Integration for Real-Time feedback.
+* [x] Blazor WebAssembly Frontend (Combat Arena UI & State Machine).
+* [x] Basic AI for PvE encounters (RandomBehavior & Orchestrator).
+* [ ] Smart AI (Tactical evaluation algorithms).
 * [ ] Shop, Gold Economy & Hero Unlocks.
 
 ## Testing
