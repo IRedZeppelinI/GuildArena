@@ -1,6 +1,6 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
-using GuildArena.Application.Combat.AI;
+using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Abstractions.Factories;
@@ -8,7 +8,6 @@ using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
 using GuildArena.Domain.Gameplay;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -27,7 +26,7 @@ public class StartPveCombatCommandHandlerTests
     private readonly IRandomProvider _rngMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly ICombatEngine _combatEngineMock;
-    private readonly IServiceScopeFactory _scopeFactoryMock;
+    private readonly IAiTurnQueue _aiQueueMock; 
     private readonly IBattleLogService _battleLogMock;
     private readonly StartPveCombatCommandHandler _handler;
 
@@ -43,7 +42,7 @@ public class StartPveCombatCommandHandlerTests
         _rngMock = Substitute.For<IRandomProvider>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
         _combatEngineMock = Substitute.For<ICombatEngine>();
-        _scopeFactoryMock = Substitute.For<IServiceScopeFactory>();
+        _aiQueueMock = Substitute.For<IAiTurnQueue>(); 
         _battleLogMock = Substitute.For<IBattleLogService>();
 
         _handler = new StartPveCombatCommandHandler(
@@ -57,8 +56,8 @@ public class StartPveCombatCommandHandlerTests
             _rngMock,
             _triggerProcessorMock,
             _combatEngineMock,
-            _scopeFactoryMock,
-            _battleLogMock
+            _battleLogMock,            
+            _aiQueueMock
         );
     }
 
@@ -77,13 +76,19 @@ public class StartPveCombatCommandHandlerTests
         {
             Id = encounterId,
             Name = "Bandit Ambush",
-            // NOVO: Simulamos um JSON com duas opções de cenário
             BackgroundIds = new List<string> { "bg_forest_01", "bg_forest_02" },
             Enemies = new List<EncounterDefinition.EncounterEnemy> { new() { CharacterDefinitionId = "M1", Position = 1 } }
         };
-        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>()).Returns(x => { x[1] = encounterDef; return true; });
+        _encounterRepoMock.TryGetDefinition(encounterId, out Arg.Any<EncounterDefinition>())
+            .Returns(x => { x[1] = encounterDef; return true; });
 
-        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).Returns(info => new Combatant { Id = info.Arg<Hero>().Id, Name = "Mock", RaceId = "R", BaseStats = new() });
+        _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).Returns(info => new Combatant 
+            { 
+                Id = info.Arg<Hero>().Id,
+                Name = "Mock",
+                RaceId = "R",
+                BaseStats = new()
+            });
 
         // RNG: O primeiro Next(2) sorteia o Background. Devolve 1 ("bg_forest_02").
         // RNG: O segundo Next(2) atira a moeda ao ar. Devolve 0 (Player 1 ganha).
@@ -104,55 +109,52 @@ public class StartPveCombatCommandHandlerTests
         result.InitialState.Players.Count.ShouldBe(2);
 
         // Garantimos que o estado foi guardado com o cenário que o RNG sorteou (index 1)
-        await _combatStateRepoMock.Received(1).SaveAsync(result.CombatId, Arg.Is<GameState>(gs =>
-            gs.CurrentPlayerId == playerId &&
-            gs.BackgroundId == "bg_forest_02"
-        ));
+        await _combatStateRepoMock.Received(1).
+            SaveAsync(result.CombatId, Arg.Is<GameState>(gs =>
+                gs.CurrentPlayerId == playerId &&
+                gs.BackgroundId == "bg_forest_02"
+            ));
+
+        // A IA não deve ter sido enfileirada porque o Humano ganhou o Coin Toss
+        await _aiQueueMock.DidNotReceiveWithAnyArgs().EnqueueAsync(default!);
     }
 
     [Fact]
-    public async Task Handle_ShouldTriggerAiOrchestrator_WhenEnemyWinsCoinToss()
+    public async Task Handle_ShouldEnqueueAiTurn_WhenEnemyWinsCoinToss()
     {
         // ARRANGE
         _currentUserMock.UserId.Returns(1);
         _playerRepoMock.GetHeroesAsync(1, Arg.Any<List<int>>()).
             Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H" } });
+
         _encounterRepoMock.TryGetDefinition(Arg.Any<string>(), out Arg.Any<EncounterDefinition>())
-            .Returns(x => 
-            { 
+            .Returns(x =>
+            {
                 x[1] = new EncounterDefinition { Id = "E", Name = "E", Enemies = new() };
-                return true; 
+                return true;
             });
+
         _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).
             Returns(new Combatant { Id = 1, Name = "M", RaceId = "R", BaseStats = new() });
 
-        // RNG devolve 1 -> AI ganha a moeda ao ar!
+        // RNG devolve 1 -> AI ganha a moeda ao ar e começa a jogar!
         _rngMock.Next(2).Returns(1);
-
-        // Preparamos o ScopeFactory para devolvermos um mock do orquestrador
-        var serviceProviderMock = Substitute.For<IServiceProvider>();
-        var orchestratorMock = Substitute.For<IAiTurnOrchestrator>();
-        serviceProviderMock.GetService(typeof(IAiTurnOrchestrator)).Returns(orchestratorMock);
-
-        var scopeMock = Substitute.For<IServiceScope>();
-        scopeMock.ServiceProvider.Returns(serviceProviderMock);
-        _scopeFactoryMock.CreateScope().Returns(scopeMock);
 
         var command = new StartPveCombatCommand { EncounterId = "E", HeroInstanceIds = new List<int> { 1 } };
 
         // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT                
-        // Damos um pequeno delay no teste porque o Task.Run no handler é assíncrono e não esperado (Fire and Forget)
-        await Task.Delay(100);
-
+        // ASSERT
         result.ShouldNotBeNull();
         result.InitialState.ShouldNotBeNull();
 
-        // Verificamos se o orchestrator foi chamado para jogar!
-        await orchestratorMock.Received(1).PlayTurnAsync(result.CombatId, 0); // 0 é o AI Player ID
+        // Verificamos simplesmente se a Queue recebeu o bilhete, sem precisarmos de simular Scopes
+        await _aiQueueMock.Received(1).EnqueueAsync(
+            Arg.Is<AiTurnRequest>(req => req.CombatId == result.CombatId && req.AiPlayerId == 0),
+            Arg.Any<CancellationToken>());
     }
+
     [Fact]
     public async Task Handle_ShouldThrowUnauthorized_WhenUserNotAuthenticated()
     {

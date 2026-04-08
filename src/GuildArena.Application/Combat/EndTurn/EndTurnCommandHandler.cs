@@ -1,7 +1,9 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Combat.AI;
+using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Enums.Combat;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,8 +22,8 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
     private readonly ICurrentUserService _currentUserService;
     private readonly ICombatNotifier _notifier;
     private readonly IBattleLogService _battleLog;
-    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<EndTurnCommandHandler> _logger;
+    private readonly IAiTurnQueue _aiQueue;
 
     public EndTurnCommandHandler(
         ITurnManagerService turnManagerService,
@@ -29,7 +31,7 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
         ICurrentUserService currentUserService,
         ICombatNotifier notifier,
         IBattleLogService battleLog,
-        IServiceScopeFactory scopeFactory,
+        IAiTurnQueue aiQueue,
         ILogger<EndTurnCommandHandler> logger)
     {
         _turnManagerService = turnManagerService;
@@ -37,8 +39,8 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
         _currentUserService = currentUserService;
         _notifier = notifier;
         _battleLog = battleLog;
-        _scopeFactory = scopeFactory;
         _logger = logger;
+        _aiQueue = aiQueue;
     }
 
     /// <summary>
@@ -83,27 +85,13 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand>
         _logger.LogInformation("Combat {CombatId} advanced to Player {NextPlayer}.",
             request.CombatId, gameState.CurrentPlayerId);
 
-        // 5. AI Trigger: If the next player is AI, start the background orchestrator
-        if (nextPlayer.Type == Domain.Enums.Combat.CombatPlayerType.AI)
+        // 5. AI Trigger: If the next player is AI, enqueue the turn request.
+        if (nextPlayer.Type == CombatPlayerType.AI)
         {
-            var nextPlayerId = nextPlayer.PlayerId;
+            var aiRequest = new AiTurnRequest(request.CombatId, nextPlayer.PlayerId);
 
-            // Run in a background thread to prevent blocking the HTTP response
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // Create an isolated scope for the background task to safely resolve dependencies
-                    using var scope = _scopeFactory.CreateScope();
-                    var orchestrator = scope.ServiceProvider.GetRequiredService<IAiTurnOrchestrator>();
-
-                    await orchestrator.PlayTurnAsync(request.CombatId, nextPlayerId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Background AI task failed for Combat {CombatId}", request.CombatId);
-                }
-            });
+            // We send the ticket to the channel. The BackgroundService will pick it up and process it safely.
+            await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
         }
     }
 }

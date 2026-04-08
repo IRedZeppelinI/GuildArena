@@ -1,6 +1,7 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Application.Combat.AI;
+using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Factories;
@@ -28,8 +29,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
     private readonly IRandomProvider _rng;
     private readonly ITriggerProcessor _triggerProcessor;
     private readonly ICombatEngine _combatEngine;
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly IBattleLogService _battleLog; 
+    private readonly IBattleLogService _battleLog;
+    private readonly IAiTurnQueue _aiQueue;
 
     public StartPveCombatCommandHandler(
         ICombatStateRepository combatStateRepo,
@@ -42,8 +43,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         IRandomProvider rng,
         ITriggerProcessor triggerProcessor,
         ICombatEngine combatEngine,
-        IServiceScopeFactory scopeFactory,
-        IBattleLogService battleLog) 
+        IBattleLogService battleLog,
+        IAiTurnQueue aiQueue) 
     {
         _combatStateRepo = combatStateRepo;
         _playerRepo = playerRepo;
@@ -55,8 +56,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         _rng = rng;
         _triggerProcessor = triggerProcessor;
         _combatEngine = combatEngine;
-        _scopeFactory = scopeFactory;
         _battleLog = battleLog; 
+        _aiQueue = aiQueue;
     }
 
     public async Task<StartCombatResult> Handle(StartPveCombatCommand request, CancellationToken cancellationToken)
@@ -156,19 +157,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         if (startingPlayer.Type == CombatPlayerType.AI)
         {
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var scope = _scopeFactory.CreateScope();
-                    var orchestrator = scope.ServiceProvider.GetRequiredService<IAiTurnOrchestrator>();
-                    await orchestrator.PlayTurnAsync(combatId, startingPlayerId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Background AI task failed for Combat {CombatId}", combatId);
-                }
-            });
+            var aiRequest = new AiTurnRequest(combatId, startingPlayerId);
+            await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
         }
 
         // Extrai todos os logs acumulados e devolve no HTTP

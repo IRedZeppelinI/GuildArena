@@ -1,4 +1,5 @@
 ﻿using GuildArena.Application.Combat.AI;
+using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Application.Combat.AI.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -16,6 +17,10 @@ public static class DependencyInjection
         // (Se no futuro usarmos AutoMapper ou Validators, registamo-los aqui também)
         services.AddScoped<IAiBehavior, RandomAiBehavior>();
         services.AddScoped<IAiTurnOrchestrator, AiTurnOrchestrator>();
+
+
+        services.AddSingleton<IAiTurnQueue, AiTurnQueue>();
+        services.AddHostedService<AiTurnWorker>();
 
         return services;
     }
