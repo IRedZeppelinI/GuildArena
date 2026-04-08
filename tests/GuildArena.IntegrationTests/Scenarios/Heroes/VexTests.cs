@@ -43,7 +43,7 @@ public class VexTests : IntegrationTestBase
                 new() { Id = "ABIL_VEX_RECKLESS", Name = "Reckless" },
                 new() { Id = "ABIL_VEX_CHAOS", Name = "Chaos" },
                 new() { Id = "ABIL_VEX_FUEL", Name = "Fuel" },
-                new() { Id = "ABIL_VEX_ULTI", Name = "Ulti" }
+                new() { Id = "ABIL_VEX_DECIMATE", Name = "Decimate" }
             }
         };
 
@@ -233,7 +233,7 @@ public class VexTests : IntegrationTestBase
         {
             CombatId = combatId,
             SourceId = 101,
-            AbilityId = "ABIL_VEX_ULTI",
+            AbilityId = "ABIL_VEX_DECIMATE",
             TargetSelections = new() { { "SELF", new List<int> { 101 } }, { "TGT", new List<int> { 201 } } },
             Payment = new() { { EssenceType.Vigor, 2 }, { EssenceType.Flux, 1 } }
         };

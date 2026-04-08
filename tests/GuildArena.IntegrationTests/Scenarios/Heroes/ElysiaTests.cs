@@ -43,7 +43,7 @@ public class ElysiaTests : IntegrationTestBase
                 new() { Id = "ABIL_ELYSIA_BOLT", Name = "Bolt" },
                 new() { Id = "ABIL_ELYSIA_SHOCK", Name = "Shock" },
                 new() { Id = "ABIL_ELYSIA_MEND", Name = "Mend", ActionPointCost = 1 },
-                new() { Id = "ABIL_ELYSIA_ULTI", Name = "Ulti" }
+                new() { Id = "ABIL_ELYSIA_ASTRAL", Name = "Astral Convergence" }
             }
         };
 
@@ -233,7 +233,7 @@ public class ElysiaTests : IntegrationTestBase
         {
             CombatId = combatId,
             SourceId = 101,
-            AbilityId = "ABIL_ELYSIA_ULTI",
+            AbilityId = "ABIL_ELYSIA_ASTRAL",
             // Seleciona Todos (Elysia Ferida, Tank Ferido, FullHP Unit)
             TargetSelections = new() { { "TGT_ALL", new List<int> { 101, 102, 103 } } },
             Payment = new() { { EssenceType.Mind, 2 }, { EssenceType.Light, 2 } }

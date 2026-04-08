@@ -25,11 +25,11 @@ public class AssetServiceTests
         var modifierUrl = service.GetModifierIconUrl("MOD_STUN");
 
         // ASSERT
-        // Verifica se formatou em minúsculas e adicionou as pastas e extensões corretas
-        bgUrl.ShouldBe("https://cdn.guildarena.com/images/backgrounds/bg_forest_01.jpg");
-        portraitUrl.ShouldBe("https://cdn.guildarena.com/images/portraits/hero_garret.png");
-        abilityUrl.ShouldBe("https://cdn.guildarena.com/images/abilities/abil_slash.png");
-        modifierUrl.ShouldBe("https://cdn.guildarena.com/images/modifiers/mod_stun.png");
+        // Verifica se formatou em minúsculas e aplicou a extensão .jpg do teu blob storage
+        bgUrl.ShouldBe("https://cdn.guildarena.com/backgrounds/bg_forest_01.jpg");
+        portraitUrl.ShouldBe("https://cdn.guildarena.com/portraits/hero_garret.jpg");
+        abilityUrl.ShouldBe("https://cdn.guildarena.com/abilities/abil_slash.jpg");
+        modifierUrl.ShouldBe("https://cdn.guildarena.com/modifiers/mod_stun.jpg");
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class AssetServiceTests
     {
         // ARRANGE
         var configMock = Substitute.For<IConfiguration>();
-        // Simula o caso em que não há configuração (desenvolvimento local)
+        // Simula o caso em que não há configuração
         configMock["AssetBaseUrl"].Returns((string?)null);
 
         var service = new AssetService(configMock);
@@ -46,7 +46,7 @@ public class AssetServiceTests
         var portraitUrl = service.GetPortraitUrl("HERO_GARRET");
 
         // ASSERT
-        // Sem base URL, deve começar com a pasta local para o wwwroot apanhar
-        portraitUrl.ShouldBe("images/portraits/hero_garret.png");
+        // Sem base URL, deve devolver apenas o caminho relativo
+        portraitUrl.ShouldBe("portraits/hero_garret.jpg");
     }
 }
