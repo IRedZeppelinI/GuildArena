@@ -42,10 +42,12 @@ public class AiTurnWorker : BackgroundService
             {
                 // Expected when shutting down, do nothing
                 _logger.LogInformation("AI Turn Background Worker is stopping gracefully.");
+                break;
             }
             catch (Exception ex)
             {
                 _logger.LogCritical(ex, "A fatal error occurred in the AI Turn Background Worker loop.");
+                break;
             }
         }
     }
