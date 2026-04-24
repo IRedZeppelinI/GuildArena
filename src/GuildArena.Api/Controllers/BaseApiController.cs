@@ -1,4 +1,4 @@
-﻿using GuildArena.Shared.Results;
+﻿using GuildArena.Domain.Results;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GuildArena.Api.Controllers;

@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Shared.Results;
+﻿namespace GuildArena.Domain.Results;
 
 /// <summary>
 /// Represents the outcome of an operation, indicating success or failure 

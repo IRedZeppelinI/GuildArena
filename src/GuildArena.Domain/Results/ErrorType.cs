@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Shared.Results;
+﻿namespace GuildArena.Domain.Results;
 
 /// <summary>
 /// Defines the category of the error, which helps the Presentation layer 

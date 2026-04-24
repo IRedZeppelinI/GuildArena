@@ -1,4 +1,4 @@
-﻿namespace GuildArena.Shared.Results;
+﻿namespace GuildArena.Domain.Results;
 
 /// <summary>
 /// Represents a domain error with a specific code and descriptive message.

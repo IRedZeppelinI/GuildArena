@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace GuildArena.Shared.Results;
+﻿namespace GuildArena.Domain.Results;
 
 /// <summary>
 /// Represents the outcome of an operation that returns a value on success.
