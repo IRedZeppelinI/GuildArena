@@ -9,6 +9,9 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Application.Combat.ExecuteAbility;
 
+/// <summary>
+/// Handles the execution of a combat ability, validating game rules, costs, and state.
+/// </summary>
 public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityCommand, Result>
 {
     private readonly ICombatStateRepository _combatStateRepo;
@@ -37,7 +40,18 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         _logger = logger;
     }
 
-    public async Task<Result> Handle(ExecuteAbilityCommand request, CancellationToken cancellationToken)
+    /// <summary>
+    /// Processes the execute ability command.
+    /// </summary>
+    /// <param name="request">The command containing the ability, source, targets, and payment details.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>
+    /// A <see cref="Result"/> indicating success. Returns a failure result if validation fails 
+    /// (e.g., insufficient essence, invalid turn, stunned state).
+    /// </returns>
+    public async Task<Result> Handle(
+        ExecuteAbilityCommand request,
+        CancellationToken cancellationToken)
     {
         var userId = _currentUser.UserId;
         if (userId == null)
@@ -78,9 +92,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         {
             _logger.LogWarning(
                 "User {UserId} tried to control combatant {SourceId} owned by {OwnerId}.",
-                userId,
-                request.SourceId,
-                sourceCombatant.OwnerId);
+                userId, request.SourceId, sourceCombatant.OwnerId);
 
             return Result.Failure(new Error(
                 "Combat.NotOwner",
@@ -109,7 +121,6 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
 
         var domainTargets = new AbilityTargets { SelectedTargets = request.TargetSelections };
 
-        // 7. Execute via Combat Engine
         var results = _combatEngine.ExecuteAbility(
             gameState,
             abilityDef,
@@ -117,40 +128,31 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
             domainTargets,
             request.Payment);
 
-        // 8. Retrieve Logs
         var logs = _battleLog.GetAndClearLogs();
-
-        // 9. Check Logic Success
         var rootResult = results.FirstOrDefault();
+
         if (rootResult == null || !rootResult.IsSuccess)
         {
             _logger.LogWarning(
                 "Ability execution failed for {AbilityId}. Source: {Source}",
-                request.AbilityId,
-                sourceCombatant.Name);
+                request.AbilityId, sourceCombatant.Name);
 
-            // Se falhou (ex: não tem mana), avisamos os clientes com os logs do erro, 
-            // mas NÃO gravamos o estado, porque a jogada foi inválida.
+            // Notify clients about the failure logs, but DO NOT save the state
             await _notifier.SendBattleLogsAsync(request.CombatId, logs);
 
             return Result.Failure(new Error(
                 "Combat.ExecutionFailed",
                 "Ability execution failed due to game logic (e.g., insufficient essence, stunned). Check battle logs.",
-                ErrorType.Failure)); // Mapeia para 400 Bad Request
+                ErrorType.Failure));
         }
 
-        // 10. Persist State (Success Path)
         await _combatStateRepo.SaveAsync(request.CombatId, gameState);
-
-        // 11. Broadcast Updates via SignalR
         await _notifier.SendBattleLogsAsync(request.CombatId, logs);
         await _notifier.SendGameStateUpdateAsync(request.CombatId, gameState);
 
         _logger.LogInformation(
             "Ability {Ability} executed successfully by {Source} in Combat {CombatId}.",
-            request.AbilityId,
-            sourceCombatant.Name,
-            request.CombatId);
+            request.AbilityId, sourceCombatant.Name, request.CombatId);
 
         return Result.Success();
     }

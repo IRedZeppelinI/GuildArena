@@ -1,11 +1,12 @@
-﻿using MediatR;
+﻿using GuildArena.Domain.Results;
+using MediatR;
 
 namespace GuildArena.Application.Combat.StartCombat;
 
 /// <summary>
 /// Internal command to initialize a PvE combat based on persistent player data and static encounter definitions.
 /// </summary>
-public class StartPveCombatCommand : IRequest<StartCombatResult>
+public class StartPveCombatCommand : IRequest<Result<StartCombatResult>>
 {
     public required string EncounterId { get; set; }
     public List<int> HeroInstanceIds { get; set; } = new();

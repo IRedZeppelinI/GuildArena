@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using GuildArena.Domain.Results;
+using MediatR;
 
 namespace GuildArena.Application.Combat.EndTurn;
 
@@ -6,7 +7,7 @@ namespace GuildArena.Application.Combat.EndTurn;
 /// Represents a human player's intent to end their current turn in an active combat session.
 /// Triggers end-of-turn effects, turn advancement, and potentially AI execution.
 /// </summary>
-public class EndTurnCommand : IRequest
+public class EndTurnCommand : IRequest<Result>
 {
     /// <summary>
     /// The unique identifier (GUID) of the combat session where the turn is being ended.
