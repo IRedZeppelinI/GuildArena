@@ -1,7 +1,8 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using GuildArena.Web;
 using GuildArena.Web.Services;
+using GuildArena.Web.State;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -18,5 +19,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseU
 
 // Forma correta e robusta
 builder.Services.AddSingleton<IAssetService, AssetService>();
+
+builder.Services.AddScoped<ICombatStateService, CombatStateService>();
 
 await builder.Build().RunAsync();

@@ -1,35 +1,31 @@
 ﻿@page "/arena"
 @layout GuildArena.Web.Layout.ArenaLayout
-@using Microsoft.AspNetCore.SignalR.Client
 @using GuildArena.Domain.Enums.Resources
-@using GuildArena.Shared.Requests
-@using GuildArena.Shared.Responses
 @using GuildArena.Shared.DTOs.Combat
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Web.Pages.Arena.State
 @using GuildArena.Web.Services
+@using GuildArena.Web.State
+@inject ICombatStateService CombatState
 @inject IAssetService AssetService
-@inject HttpClient Http
-@inject ILogger<Arena> Logger
 @inject IJSRuntime JS
-@implements IAsyncDisposable
+@implements IDisposable
 
 <PageTitle>Battle Arena</PageTitle>
 
-@if (string.IsNullOrEmpty(_combatId))
+@if (string.IsNullOrEmpty(CombatState.CombatId))
 {
     <div class="startup-screen">
         <div class="startup-box">
             <h3 class="text-warning">GuildArena</h3>
             <p class="text-light">Prepare for battle.</p>
-            <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@_isConnecting">
-                @if (_isConnecting)
+            <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@CombatState.IsConnecting">
+                @if (CombatState.IsConnecting)
                 {
                     <span>Entering Arena...</span>
                 }
                 else
                 {
-
                     <span>Start Match</span>
                 }
             </button>
@@ -48,7 +44,7 @@ else
                     <button class="btn btn-sm btn-outline-light" @onclick="ToggleMobileLogs">Close</button>
                 </div>
                 <div style="flex-grow: 1; overflow: hidden; position: relative;">
-                    <BattleLogPanel Logs="_battleLogs" ContainerId="mobile-logs-container" />
+                    <BattleLogPanel Logs="CombatState.BattleLogs.ToList()" ContainerId="mobile-logs-container" />
                 </div>
             </div>
         </div>
@@ -57,7 +53,7 @@ else
     <!-- MODAL DE EXCHANGE (TRANSMUTAÇÃO) -->
     @if (_showExchangeModal)
     {
-        var me = _gameState!.Players.First(p => p.PlayerId == LocalPlayerId);
+        var me = CombatState.GameState!.Players.First(p => p.PlayerId == LocalPlayerId);
         <ExchangeEssenceModal PlayerEssencePool="me.EssencePool"
                               OnConfirmExchange="ExecuteExchangeAsync"
                               OnCancel="() => _showExchangeModal = false" />
@@ -77,13 +73,13 @@ else
 
         <!-- LADO ESQUERDO: Equipa do Jogador -->
         <div class="team-side player-team" @onclick:stopPropagation="true">
-            @if (_gameState != null)
+            @if (CombatState.GameState != null)
             {
-                var me = _gameState.Players.FirstOrDefault(p => p.PlayerId == LocalPlayerId);
+                var me = CombatState.GameState.Players.FirstOrDefault(p => p.PlayerId == LocalPlayerId);
                 if (me != null)
                 {
                     <PlayerResourceBar Player="me"
-                                       ShowExchangeButton="@(_gameState.CurrentPlayerId == LocalPlayerId)"
+                                       ShowExchangeButton="@(CombatState.GameState.CurrentPlayerId == LocalPlayerId)"
                                        OnExchangeClicked="() => _showExchangeModal = true" />
                 }
 
@@ -96,7 +92,7 @@ else
                                        IsSelectedTarget="_targetingState.IsSelected(hero.Id)"
                                        OnAbilityActivated="StartTargeting"
                                        OnCombatantClicked="SelectTarget"
-                                       OnInspectAbility="ShowTooltip"/>
+                                       OnInspectAbility="ShowTooltip" />
                     }
                 </div>
             }
@@ -104,25 +100,24 @@ else
 
         <!-- CENTRO -->
         <div class="arena-center">
-            @if (_gameState != null)
+            @if (CombatState.GameState != null)
             {
                 <div class="turn-indicator">
-                    Turn @_gameState.CurrentTurnNumber
+                    Turn @CombatState.GameState.CurrentTurnNumber
                 </div>
             }
         </div>
 
         <!-- LADO DIREITO: Inimigos -->
         <div class="team-side enemy-team" @onclick:stopPropagation="true">
-            @if (_gameState != null)
+            @if (CombatState.GameState != null)
             {
-                var enemyPlayer = _gameState.Players.FirstOrDefault(p => p.PlayerId != LocalPlayerId);
+                var enemyPlayer = CombatState.GameState.Players.FirstOrDefault(p => p.PlayerId != LocalPlayerId);
                 if (enemyPlayer != null)
                 {
                     <PlayerResourceBar Player="enemyPlayer" />
                 }
 
-                <!-- Grelha Inimiga Dinâmica -->
                 <div class="enemy-grid @(IsSingleEnemyColumn ? "single-column" : "two-columns")">
                     @foreach (var enemy in EnemyTeam)
                     {
@@ -133,7 +128,7 @@ else
                                            IsSelectedTarget="_targetingState.IsSelected(enemy.Id)"
                                            OnAbilityActivated="StartTargeting"
                                            OnCombatantClicked="SelectTarget"
-                                           OnInspectAbility="ShowTooltip"/>
+                                           OnInspectAbility="ShowTooltip" />
                         </div>
                     }
                 </div>
@@ -143,7 +138,6 @@ else
 
     <!-- RODAPÉ -->
     <div class="arena-footer">
-        <!-- Secção Esquerda: Botão Mobile Logs e Desktop Tooltip -->
         <div class="footer-section footer-left">
             <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="ToggleMobileLogs">
                 📜 BattleLogs
@@ -153,17 +147,11 @@ else
             <div class="desktop-tooltip">
                 @if (_inspectedAbility != null)
                 {
-                    <!-- NOME AO CENTRO -->
-                    @* <div class="tooltip-title-row">
-                        <span class="tooltip-title text-warning">@_inspectedAbility.Name</span>
-                    </div> *@
-                    <!-- NOME AO CENTRO COM ÍCONE -->
                     <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
                         <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(_inspectedAbility.Id)');"></div>
                         <span class="tooltip-title text-warning m-0">@_inspectedAbility.Name</span>
                     </div>
 
-                    <!-- DADOS (Custos à esquerda, CD/AP à direita) -->
                     <div class="tooltip-stats-row">
                         <div class="tooltip-costs">
                             @if (_inspectedAbility.HPCost > 0)
@@ -171,7 +159,6 @@ else
                                 <span class="badge bg-danger border border-light me-2">HP: @_inspectedAbility.HPCost</span>
                             }
 
-                            <!-- Os Custos de Essence com as tuas Imagens -->
                             @foreach (var c in _inspectedAbility.Costs.Where(x => x.Value > 0))
                             {
                                 <div class="tooltip-cost-item" title="@c.Key">
@@ -185,10 +172,7 @@ else
                         </div>
                     </div>
 
-                    <!-- SEPARADOR -->
                     <hr class="tooltip-divider" />
-
-                    <!-- DESCRIÇÃO EM BAIXO -->
                     <div class="tooltip-description">
                         @_inspectedAbility.Description
                     </div>
@@ -204,16 +188,16 @@ else
 
         <div class="footer-section footer-center">
             <div class="desktop-logs-wrapper w-100 h-100">
-                <BattleLogPanel Logs="_battleLogs" ContainerId="desktop-logs-container" />
+                <BattleLogPanel Logs="CombatState.BattleLogs.ToList()" ContainerId="desktop-logs-container" />
             </div>
             <div class="mobile-ticker">
-                @(_battleLogs.LastOrDefault() ?? "Waiting for actions...")
+                @(CombatState.BattleLogs.LastOrDefault() ?? "Waiting for actions...")
             </div>
         </div>
 
         <!-- Secção Direita: End Turn / Cancel -->
         <div class="footer-section footer-right">
-            @if (_gameState != null && _gameState.CurrentPlayerId == LocalPlayerId)
+            @if (CombatState.GameState != null && CombatState.GameState.CurrentPlayerId == LocalPlayerId)
             {
                 if (_targetingState.IsActive)
                 {
@@ -228,7 +212,7 @@ else
                     </button>
                 }
             }
-            else if (_gameState != null)
+            else if (CombatState.GameState != null)
             {
                 <button class="end-turn-btn" disabled>
                     Enemy Turn
@@ -239,53 +223,49 @@ else
 }
 
 @code {
-    private string? _combatId;
-    private HubConnection? _hubConnection;
-    private GameStateDto? _gameState;
-    private List<string> _battleLogs = new();
-
-    private bool _isConnecting = false;
     private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
 
-    // --- ESTADO DA TOOLTIP ---
-    private AbilitySummaryDto? _inspectedAbility = null;
-
-    private void ShowTooltip(AbilitySummaryDto ability)
-    {
-        _inspectedAbility = ability;
-        StateHasChanged();
-    }
-
-    private void HideTooltip()
-    {
-        // _showMobileTooltip = false;
-        // StateHasChanged();
-    }
-
-
-    // --- ESTADO DO PAYMENT MODAL ---
     private bool _showPaymentModal = false;
     private int _neutralCostPending = 0;
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
 
-    // --- PROPRIEDADES COMPUTADAS ---
+    private AbilitySummaryDto? _inspectedAbility = null;
+    private TargetingStateManager _targetingState = new();
+
     private int LocalPlayerId => 1;
+
+    protected override void OnInitialized()
+    {
+        // Subscreve as notificações do StateService para redesenhar a UI
+        CombatState.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        // É OBRIGATÓRIO anular a subscrição quando o componente morre para evitar memory leaks
+        CombatState.OnChange -= StateHasChanged;
+    }
+
+    private void ShowTooltip(AbilitySummaryDto ability)
+    {
+        _inspectedAbility = ability;
+    }
 
     private string GetBackgroundStyle()
     {
-        if (_gameState == null || string.IsNullOrEmpty(_gameState.BackgroundId))
+        if (CombatState.GameState == null || string.IsNullOrEmpty(CombatState.GameState.BackgroundId))
             return "";
 
-        var bgUrl = AssetService.GetBackgroundUrl(_gameState.BackgroundId);
+        var bgUrl = AssetService.GetBackgroundUrl(CombatState.GameState.BackgroundId);
         return $"background-image: url('{bgUrl}');";
     }
 
     private IEnumerable<CombatantDto> MyTeam =>
-        _gameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
+        CombatState.GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
 
     private IEnumerable<CombatantDto> EnemyTeam =>
-        _gameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
+        CombatState.GameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
 
     private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
     private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
@@ -311,22 +291,17 @@ else
         };
     }
 
-    // --- MÁQUINA DE ESTADOS DO TARGETING E PAGAMENTO ---
-    private TargetingStateManager _targetingState = new();
-
     private void StartTargeting((int SourceId, string AbilityId) payload)
     {
-        if (_gameState?.CurrentPlayerId != LocalPlayerId) return;
+        if (CombatState.GameState?.CurrentPlayerId != LocalPlayerId) return;
 
-        var source = _gameState.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
+        var source = CombatState.GameState.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
         var ability = source?.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId) ?? source?.SpecialAbility;
 
         if (ability == null || !ability.IsAffordable) return;
 
         _targetingState.StartTargeting(payload.SourceId, ability);
 
-        // O nosso Helper (que usámos para resolver o bug do AoE na Elysia) garante
-        // que habilidades como "Astral Convergence" não pedem cliques no ecrã.
         bool requiresManualClicks = ability.TargetingRules.Any(r =>
             r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual &&
             !IsAoE(r.Type));
@@ -337,7 +312,6 @@ else
         }
     }
 
-    // Método auxiliar (Helper) para limpar a verificação de AoE
     private bool IsAoE(GuildArena.Domain.Enums.Targeting.TargetType type)
     {
         return type == GuildArena.Domain.Enums.Targeting.TargetType.All ||
@@ -371,7 +345,7 @@ else
         {
             _neutralCostPending = neutralCost;
 
-            var me = _gameState!.Players.First(p => p.PlayerId == LocalPlayerId);
+            var me = CombatState.GameState!.Players.First(p => p.PlayerId == LocalPlayerId);
             _availableEssenceForPayment = new Dictionary<EssenceType, int>(me.EssencePool);
 
             foreach (var cost in ability.Costs.Where(c => c.Key != EssenceType.Neutral))
@@ -411,168 +385,40 @@ else
         await ExecuteAbilityAsync(finalPayment);
     }
 
-    private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)
-    {
-        if (string.IsNullOrEmpty(_combatId) || !_targetingState.IsActive) return;
-
-        var request = new ExecuteAbilityRequest
-        {
-            CombatId = _combatId,
-            SourceId = _targetingState.SourceId!.Value,
-            AbilityId = _targetingState.ActiveAbility!.Id,
-            TargetSelections = _targetingState.SelectedTargets.ToDictionary(
-                entry => entry.Key,
-                entry => new List<int>(entry.Value)),
-            Payment = payment
-        };
-
-        _targetingState.Cancel();
-        StateHasChanged();
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync($"api/combat/{_combatId}/execute-ability", request);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Logger.LogWarning("Ability execution failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "An unexpected error occurred while attempting to execute the ability.");
-        }
-    }
-
-    // --- HTTP E SIGNALR ---
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
 
     private async Task StartCombatAsync()
     {
-        _isConnecting = true;
-        try
-        {
-            var request = new StartPveRequest
-            {
-                EncounterId = "ENC_TUTORIAL_01",
-                HeroInstanceIds = new List<int> { 101, 103, 104 }
-            };
-
-            var response = await Http.PostAsJsonAsync("api/combat/start-pve", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
-                if (result != null)
-                {
-                    _combatId = result.CombatId;
-                    _battleLogs.AddRange(result.InitialLogs);
-                    _gameState = result.InitialState;
-
-                    await ConnectToSignalRAsync(_combatId);
-                }
-            }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Logger.LogWarning("Failed to start combat. API returned {StatusCode}: {Error}", response.StatusCode, error);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "An unexpected error occurred while attempting to start the combat session.");
-        }
-        finally
-        {
-            _isConnecting = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task ConnectToSignalRAsync(string combatId)
-    {
-        var apiBaseUrl = Http.BaseAddress?.ToString() ?? "";
-
-        _hubConnection = new HubConnectionBuilder()
-            .WithUrl(apiBaseUrl + "hubs/combat")
-            .WithAutomaticReconnect()
-            .Build();
-
-        _hubConnection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
-        {
-            _gameState = state;
-            StateHasChanged();
-        });
-
-        _hubConnection.On<List<string>>("ReceiveBattleLogs", async (logs) =>
-        {
-            _battleLogs.AddRange(logs);
-            await InvokeAsync(StateHasChanged);
-        });
-
-        await _hubConnection.StartAsync();
-        await _hubConnection.InvokeAsync("JoinCombat", combatId);
+        // Mapeamento hardcoded apenas temporário enquanto não há DB.
+        await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
     }
 
     private async Task EndTurnAsync()
     {
-        if (string.IsNullOrEmpty(_combatId)) return;
+        await CombatState.EndTurnAsync();
+    }
 
-        try
+    private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)
+    {
+        if (!string.IsNullOrEmpty(CombatState.CombatId) && _targetingState.IsActive)
         {
-            var response = await Http.PostAsync($"api/combat/{_combatId}/end-turn", null);
-            if (!response.IsSuccessStatusCode)
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Logger.LogWarning("End turn request failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
-            }
+            var targetSelections = _targetingState.SelectedTargets.ToDictionary(
+                entry => entry.Key,
+                entry => new List<int>(entry.Value));
+
+            await CombatState.ExecuteAbilityAsync(
+                _targetingState.SourceId!.Value,
+                _targetingState.ActiveAbility!.Id,
+                targetSelections,
+                payment);
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "An unexpected error occurred while attempting to end the turn.");
-        }
+
+        _targetingState.Cancel();
     }
 
     private async Task ExecuteExchangeAsync((Dictionary<EssenceType, int> Spent, EssenceType Gained) payload)
     {
-        if (string.IsNullOrEmpty(_combatId)) return;
-
-        var request = new ExchangeEssenceRequest
-        {
-            CombatId = _combatId,
-            EssenceToSpend = payload.Spent,
-            EssenceToGain = payload.Gained
-        };
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync($"api/combat/{_combatId}/exchange-essence", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                _showExchangeModal = false;
-            }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Logger.LogWarning("Exchange request failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
-            }
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "An unexpected error occurred while attempting to exchange essence.");
-            StateHasChanged();
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_hubConnection is not null)
-        {
-            if (!string.IsNullOrEmpty(_combatId)) await _hubConnection.InvokeAsync("LeaveCombat", _combatId);
-            await _hubConnection.DisposeAsync();
-        }
+        await CombatState.ExchangeEssenceAsync(payload.Spent, payload.Gained);
+        _showExchangeModal = false;
     }
 }
