@@ -5,15 +5,14 @@ using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
-using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Gameplay;
-using GuildArena.Domain.ValueObjects.Stats; 
+using GuildArena.Domain.Results; 
+using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
-using Xunit;
 
 namespace GuildArena.Application.UnitTests.Combat.ExecuteAbility;
 
@@ -58,10 +57,8 @@ public class ExecuteAbilityCommandHandlerTests
         var sourceId = 10;
         var abilityId = "ABIL_FIRE";
 
-        // Setup do Utilizador
         _userMock.UserId.Returns(userId);
 
-        // Setup do GameState
         var combatant = new Combatant
         {
             Id = sourceId,
@@ -69,7 +66,7 @@ public class ExecuteAbilityCommandHandlerTests
             Name = "Mage",
             RaceId = "Human",
             BaseStats = new BaseStats(),
-            CurrentHP = 100, 
+            CurrentHP = 100,
             MaxHP = 100,
             Abilities = new List<AbilityDefinition>
             {
@@ -79,13 +76,12 @@ public class ExecuteAbilityCommandHandlerTests
 
         var gameState = new GameState
         {
-            CurrentPlayerId = userId, // É a vez do user
+            CurrentPlayerId = userId,
             Combatants = new List<Combatant> { combatant }
         };
 
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
-        // Setup da Habilidade
         _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
             .Returns(x =>
             {
@@ -93,9 +89,6 @@ public class ExecuteAbilityCommandHandlerTests
                 return true;
             });
 
-        // Setup do Engine (Sucesso)
-        // Usamos Arg.Any para os parametros complexos para facilitar a leitura, 
-        // já que o foco é o fluxo do handler e não o engine.
         _engineMock.ExecuteAbility(
             gameState,
             Arg.Any<AbilityDefinition>(),
@@ -115,18 +108,19 @@ public class ExecuteAbilityCommandHandlerTests
         };
 
         // ACT
-        await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
         // ASSERT
-        // Deve ter guardado o estado atualizado
-        await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
+        // Validar que o Result é de Sucesso
+        result.IsSuccess.ShouldBeTrue();
 
+        await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
         await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
         await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowInvalidOperation_WhenNotUserTurn()
+    public async Task Handle_ShouldReturnForbiddenResult_WhenNotUserTurn()
     {
         // ARRANGE
         var userId = 1;
@@ -135,7 +129,6 @@ public class ExecuteAbilityCommandHandlerTests
 
         _userMock.UserId.Returns(userId);
 
-        // Mock devolve estado onde é a vez do inimigo
         _combatRepoMock.GetAsync(combatId)
             .Returns(new GameState { CurrentPlayerId = enemyId });
 
@@ -146,18 +139,20 @@ public class ExecuteAbilityCommandHandlerTests
             AbilityId = "A"
         };
 
-        // ACT & ASSERT
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        // ACT 
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        ex.Message.ShouldContain("not your turn");
+        // ASSERT
+        // Validamos que falhou e que o erro é exatamente o que esperamos
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Type.ShouldBe(ErrorType.Forbidden);
+        result.Error.Code.ShouldBe("Combat.NotYourTurn");
 
-        // Garante que nada foi salvo
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowInvalidOperation_WhenUserDoesNotOwnCombatant()
+    public async Task Handle_ShouldReturnForbiddenResult_WhenUserDoesNotOwnCombatant()
     {
         // ARRANGE
         var userId = 1;
@@ -166,11 +161,10 @@ public class ExecuteAbilityCommandHandlerTests
 
         _userMock.UserId.Returns(userId);
 
-        // O combatente pertence ao INIMIGO
         var enemyCombatant = new Combatant
         {
             Id = combatantId,
-            OwnerId = enemyUserId, // Dono diferente
+            OwnerId = enemyUserId,
             Name = "Enemy",
             RaceId = "X",
             BaseStats = new BaseStats(),
@@ -180,7 +174,7 @@ public class ExecuteAbilityCommandHandlerTests
 
         var gameState = new GameState
         {
-            CurrentPlayerId = userId, // É a minha vez...
+            CurrentPlayerId = userId,
             Combatants = new List<Combatant> { enemyCombatant }
         };
 
@@ -193,75 +187,17 @@ public class ExecuteAbilityCommandHandlerTests
             AbilityId = "A"
         };
 
-        // ACT & ASSERT
-        // Tentar controlar o boneco do inimigo deve falhar
-        var ex = await Should.ThrowAsync<InvalidOperationException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        // ACT 
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        ex.Message.ShouldContain("do not own");
+        // ASSERT
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Type.ShouldBe(ErrorType.Forbidden);
+        result.Error.Code.ShouldBe("Combat.NotOwner");
     }
 
-    //[Fact]
-    //public async Task Handle_ShouldThrowInvalidOperation_WhenEngineReturnsFailure()
-    //{
-    //    // ARRANGE
-    //    var userId = 1;
-    //    var sourceId = 10;
-    //    var abilityId = "ABIL_FAIL";
-
-    //    _userMock.UserId.Returns(userId);
-
-    //    var combatant = new Combatant
-    //    {
-    //        Id = sourceId,
-    //        OwnerId = userId,
-    //        Name = "Hero",
-    //        RaceId = "H",
-    //        BaseStats = new BaseStats(),
-    //        CurrentHP = 100,
-    //        MaxHP = 100
-    //    };
-
-    //    var gameState = new GameState
-    //    {
-    //        CurrentPlayerId = userId,
-    //        Combatants = new List<Combatant> { combatant }
-    //    };
-
-    //    _combatRepoMock.GetAsync("C1").Returns(gameState);
-
-    //    _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
-    //        .Returns(x =>
-    //        {
-    //            x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
-    //            return true;
-    //        });
-
-    //    // O Engine diz que falhou (ex: não tem mana, está atordoado)
-    //    _engineMock.ExecuteAbility(
-    //        default!, default!, default!, default!, default!)
-    //        .ReturnsForAnyArgs(new List<CombatActionResult>
-    //        {
-    //            new CombatActionResult { IsSuccess = false } // Falha lógica
-    //        });
-
-    //    var command = new ExecuteAbilityCommand
-    //    {
-    //        CombatId = "C1",
-    //        SourceId = sourceId,
-    //        AbilityId = abilityId
-    //    };
-
-    //    // ACT & ASSERT
-    //    await Should.ThrowAsync<InvalidOperationException>(() =>
-    //        _handler.Handle(command, CancellationToken.None));
-
-    //    // Não deve guardar estado se a ação falhou logicamente
-    //    await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
-    //}
-
     [Fact]
-    public async Task Handle_ShouldSendLogsAndThrow_WhenEngineReturnsFailure()
+    public async Task Handle_ShouldSendLogsAndReturnFailureResult_WhenEngineReturnsFailure()
     {
         // ARRANGE
         var userId = 1;
@@ -299,7 +235,6 @@ public class ExecuteAbilityCommandHandlerTests
 
         _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Not enough mana." });
 
-        // O Engine diz que falhou logicamente
         _engineMock.ExecuteAbility(default!, default!, default!, default!, default!)
             .ReturnsForAnyArgs(new List<CombatActionResult>
             {
@@ -313,22 +248,24 @@ public class ExecuteAbilityCommandHandlerTests
             AbilityId = abilityId
         };
 
-        // ACT & ASSERT
-        // Como o handler agora lança uma exceção quando falha logicamente (vê o passo 9 do teu handler), 
-        // temos de capturar a exceção no teste.
-        await Should.ThrowAsync<InvalidOperationException>(() =>
-            _handler.Handle(command, CancellationToken.None));
+        // ACT 
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT INTERAÇÕES (A Magia do NSubstitute)
-        // 1. Verificamos se o Notifier foi chamado e lhe enviou a lista com o erro "Not enough mana."
+        // ASSERT
+        // O Handler devolve uma Falha de Domínio (Failure normal, não Forbidden ou NotFound)
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Type.ShouldBe(ErrorType.Failure);
+        result.Error.Code.ShouldBe("Combat.ExecutionFailed");
+
+        // Verificamos se o Notifier foi chamado para enviar o erro à UI
         await _notifierMock.Received(1).SendBattleLogsAsync(
             combatId,
             Arg.Is<List<string>>(logs => logs.Contains("Not enough mana.")));
 
-        // 2. Garantimos que NÃO guardou o estado (porque a ação falhou)
+        // Garantimos que NÃO guardou o estado (porque a ação falhou)
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
 
-        // 3. Garantimos que NÃO enviou atualização de GameState (só enviou os logs do erro)
+        // Garantimos que NÃO enviou atualização de GameState (só enviou os logs do erro)
         await _notifierMock.DidNotReceiveWithAnyArgs().SendGameStateUpdateAsync(default!, default!);
     }
 }
