@@ -1,0 +1,48 @@
+﻿@using GuildArena.Domain.Enums.Resources
+
+@if (ShowMobileLogs)
+{
+    <div class="mobile-logs-modal" @onclick="OnCloseMobileLogs">
+        <div class="mobile-logs-content" @onclick:stopPropagation="true">
+            <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
+                <h5 class="text-warning m-0">Battle Logs</h5>
+                <button class="btn btn-sm btn-outline-light" @onclick="OnCloseMobileLogs">Close</button>
+            </div>
+            <div style="flex-grow: 1; overflow: hidden; position: relative;">
+                <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="mobile-logs-container" />
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowExchangeModal && PlayerEssencePool != null)
+{
+    <ExchangeEssenceModal PlayerEssencePool="PlayerEssencePool"
+                          OnConfirmExchange="OnConfirmExchange"
+                          OnCancel="OnCancelExchange" />
+}
+
+@if (ShowPaymentModal && AvailableEssenceForPayment != null)
+{
+    <PaymentModal AvailableEssence="AvailableEssenceForPayment"
+                  RequiredAmount="NeutralCostPending"
+                  OnConfirmPayment="OnConfirmPayment"
+                  OnCancel="OnCancelPayment" />
+}
+
+@code {
+    [Parameter] public bool ShowMobileLogs { get; set; }
+    [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
+    [Parameter] public EventCallback OnCloseMobileLogs { get; set; }
+
+    [Parameter] public bool ShowExchangeModal { get; set; }
+    [Parameter] public Dictionary<EssenceType, int>? PlayerEssencePool { get; set; }
+    [Parameter] public EventCallback<(Dictionary<EssenceType, int> Spent, EssenceType Gained)> OnConfirmExchange { get; set; }
+    [Parameter] public EventCallback OnCancelExchange { get; set; }
+
+    [Parameter] public bool ShowPaymentModal { get; set; }
+    [Parameter] public Dictionary<EssenceType, int>? AvailableEssenceForPayment { get; set; }
+    [Parameter] public int NeutralCostPending { get; set; }
+    [Parameter] public EventCallback<List<EssenceType>> OnConfirmPayment { get; set; }
+    [Parameter] public EventCallback OnCancelPayment { get; set; }
+}

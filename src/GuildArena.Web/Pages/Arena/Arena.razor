@@ -1,14 +1,12 @@
 ﻿@page "/arena"
 @layout GuildArena.Web.Layout.ArenaLayout
 @using GuildArena.Domain.Enums.Resources
+@using GuildArena.Domain.Enums.Targeting
 @using GuildArena.Shared.DTOs.Combat
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Web.Pages.Arena.State
-@using GuildArena.Web.Services
 @using GuildArena.Web.State
 @inject ICombatStateService CombatState
-@inject IAssetService AssetService
-@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Battle Arena</PageTitle>
@@ -20,282 +18,92 @@
             <h3 class="text-warning">GuildArena</h3>
             <p class="text-light">Prepare for battle.</p>
             <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@CombatState.IsConnecting">
-                @if (CombatState.IsConnecting)
-                {
-                    <span>Entering Arena...</span>
-                }
-                else
-                {
-                    <span>Start Match</span>
-                }
+                @(CombatState.IsConnecting ? "Entering Arena..." : "Start Match")
             </button>
         </div>
     </div>
 }
 else
 {
-    <!-- MODAL DE LOGS PARA MOBILE -->
-    @if (_showMobileLogs)
-    {
-        <div class="mobile-logs-modal" @onclick="ToggleMobileLogs">
-            <div class="mobile-logs-content" @onclick:stopPropagation="true">
-                <div class="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-2">
-                    <h5 class="text-warning m-0">Battle Logs</h5>
-                    <button class="btn btn-sm btn-outline-light" @onclick="ToggleMobileLogs">Close</button>
-                </div>
-                <div style="flex-grow: 1; overflow: hidden; position: relative;">
-                    <BattleLogPanel Logs="CombatState.BattleLogs.ToList()" ContainerId="mobile-logs-container" />
-                </div>
-            </div>
-        </div>
-    }
+    <ArenaModals ShowMobileLogs="_showMobileLogs"
+                 BattleLogs="CombatState.BattleLogs"
+                 OnCloseMobileLogs="ToggleMobileLogs"
+                 ShowExchangeModal="_showExchangeModal"
+                 PlayerEssencePool="LocalPlayerEssencePool"
+                 OnConfirmExchange="ExecuteExchangeAsync"
+                 OnCancelExchange="() => _showExchangeModal = false"
+                 ShowPaymentModal="_showPaymentModal"
+                 AvailableEssenceForPayment="_availableEssenceForPayment"
+                 NeutralCostPending="_neutralCostPending"
+                 OnConfirmPayment="ProcessManualPaymentAndExecute"
+                 OnCancelPayment="CancelPayment" />
 
-    <!-- MODAL DE EXCHANGE (TRANSMUTAÇÃO) -->
-    @if (_showExchangeModal)
-    {
-        var me = CombatState.GameState!.Players.First(p => p.PlayerId == LocalPlayerId);
-        <ExchangeEssenceModal PlayerEssencePool="me.EssencePool"
-                              OnConfirmExchange="ExecuteExchangeAsync"
-                              OnCancel="() => _showExchangeModal = false" />
-    }
+    <ArenaBoard GameState="CombatState.GameState"
+                LocalPlayerId="LocalPlayerId"
+                TargetingState="_targetingState"
+                OnBackgroundClicked="CancelTargeting"
+                OnExchangeRequested="() => _showExchangeModal = true"
+                OnAbilityActivated="StartTargeting"
+                OnCombatantClicked="SelectTarget"
+                OnInspectAbility="ShowTooltip" />
 
-    <!-- MODAL DE PAGAMENTO (CUSTOS NEUTROS) -->
-    @if (_showPaymentModal && _availableEssenceForPayment != null)
-    {
-        <PaymentModal AvailableEssence="_availableEssenceForPayment"
-                      RequiredAmount="_neutralCostPending"
-                      OnConfirmPayment="ProcessManualPaymentAndExecute"
-                      OnCancel="CancelPayment" />
-    }
-
-    <!-- O clique no fundo da arena cancela a mira (Targeting) -->
-    <div class="arena-board" style="@GetBackgroundStyle()" @onclick="CancelTargeting">
-
-        <!-- LADO ESQUERDO: Equipa do Jogador -->
-        <div class="team-side player-team" @onclick:stopPropagation="true">
-            @if (CombatState.GameState != null)
-            {
-                var me = CombatState.GameState.Players.FirstOrDefault(p => p.PlayerId == LocalPlayerId);
-                if (me != null)
-                {
-                    <PlayerResourceBar Player="me"
-                                       ShowExchangeButton="@(CombatState.GameState.CurrentPlayerId == LocalPlayerId)"
-                                       OnExchangeClicked="() => _showExchangeModal = true" />
-                }
-
-                <div class="combatants-column">
-                    @foreach (var hero in MyTeam)
-                    {
-                        <CombatantCard Combatant="hero"
-                                       IsTargetingMode="_targetingState.IsActive"
-                                       IsValidTarget="_targetingState.IsValidTarget(hero)"
-                                       IsSelectedTarget="_targetingState.IsSelected(hero.Id)"
-                                       OnAbilityActivated="StartTargeting"
-                                       OnCombatantClicked="SelectTarget"
-                                       OnInspectAbility="ShowTooltip" />
-                    }
-                </div>
-            }
-        </div>
-
-        <!-- CENTRO -->
-        <div class="arena-center">
-            @if (CombatState.GameState != null)
-            {
-                <div class="turn-indicator">
-                    Turn @CombatState.GameState.CurrentTurnNumber
-                </div>
-            }
-        </div>
-
-        <!-- LADO DIREITO: Inimigos -->
-        <div class="team-side enemy-team" @onclick:stopPropagation="true">
-            @if (CombatState.GameState != null)
-            {
-                var enemyPlayer = CombatState.GameState.Players.FirstOrDefault(p => p.PlayerId != LocalPlayerId);
-                if (enemyPlayer != null)
-                {
-                    <PlayerResourceBar Player="enemyPlayer" />
-                }
-
-                <div class="enemy-grid @(IsSingleEnemyColumn ? "single-column" : "two-columns")">
-                    @foreach (var enemy in EnemyTeam)
-                    {
-                        <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)">
-                            <CombatantCard Combatant="enemy"
-                                           IsTargetingMode="_targetingState.IsActive"
-                                           IsValidTarget="_targetingState.IsValidTarget(enemy)"
-                                           IsSelectedTarget="_targetingState.IsSelected(enemy.Id)"
-                                           OnAbilityActivated="StartTargeting"
-                                           OnCombatantClicked="SelectTarget"
-                                           OnInspectAbility="ShowTooltip" />
-                        </div>
-                    }
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- RODAPÉ -->
-    <div class="arena-footer">
-        <div class="footer-section footer-left">
-            <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="ToggleMobileLogs">
-                📜 BattleLogs
-            </button>
-
-            <!-- DESKTOP TOOLTIP -->
-            <div class="desktop-tooltip">
-                @if (_inspectedAbility != null)
-                {
-                    <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
-                        <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(_inspectedAbility.Id)');"></div>
-                        <span class="tooltip-title text-warning m-0">@_inspectedAbility.Name</span>
-                    </div>
-
-                    <div class="tooltip-stats-row">
-                        <div class="tooltip-costs">
-                            @if (_inspectedAbility.HPCost > 0)
-                            {
-                                <span class="badge bg-danger border border-light me-2">HP: @_inspectedAbility.HPCost</span>
-                            }
-
-                            @foreach (var c in _inspectedAbility.Costs.Where(x => x.Value > 0))
-                            {
-                                <div class="tooltip-cost-item" title="@c.Key">
-                                    <span class="cost-number">@c.Value</span>
-                                    <div class="tooltip-essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
-                                </div>
-                            }
-                        </div>
-                        <div class="tooltip-cd text-end">
-                            CD: @_inspectedAbility.BaseCooldown | AP: @_inspectedAbility.ActionPointCost
-                        </div>
-                    </div>
-
-                    <hr class="tooltip-divider" />
-                    <div class="tooltip-description">
-                        @_inspectedAbility.Description
-                    </div>
-                }
-                else
-                {
-                    <div class="tooltip-placeholder">
-                        Hover an ability to inspect details.
-                    </div>
-                }
-            </div>
-        </div>
-
-        <div class="footer-section footer-center">
-            <div class="desktop-logs-wrapper w-100 h-100">
-                <BattleLogPanel Logs="CombatState.BattleLogs.ToList()" ContainerId="desktop-logs-container" />
-            </div>
-            <div class="mobile-ticker">
-                @(CombatState.BattleLogs.LastOrDefault() ?? "Waiting for actions...")
-            </div>
-        </div>
-
-        <!-- Secção Direita: End Turn / Cancel -->
-        <div class="footer-section footer-right">
-            @if (CombatState.GameState != null && CombatState.GameState.CurrentPlayerId == LocalPlayerId)
-            {
-                if (_targetingState.IsActive)
-                {
-                    <button class="end-turn-btn" @onclick="CancelTargeting">
-                        Cancel Action
-                    </button>
-                }
-                else
-                {
-                    <button class="end-turn-btn" @onclick="EndTurnAsync">
-                        End Turn
-                    </button>
-                }
-            }
-            else if (CombatState.GameState != null)
-            {
-                <button class="end-turn-btn" disabled>
-                    Enemy Turn
-                </button>
-            }
-        </div>
-    </div>
+    <ArenaFooter InspectedAbility="_inspectedAbility"
+                 BattleLogs="CombatState.BattleLogs"
+                 IsLocalPlayerTurn="IsLocalPlayerTurn"
+                 IsTargetingActive="_targetingState.IsActive"
+                 OnToggleMobileLogs="ToggleMobileLogs"
+                 OnCancelTargeting="CancelTargeting"
+                 OnEndTurn="EndTurnAsync" />
 }
 
 @code {
     private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
-
     private bool _showPaymentModal = false;
+
     private int _neutralCostPending = 0;
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
 
-    private AbilitySummaryDto? _inspectedAbility = null;
-    private TargetingStateManager _targetingState = new();
+    private AbilitySummaryDto? _inspectedAbility;
+    private readonly TargetingStateManager _targetingState = new();
 
     private int LocalPlayerId => 1;
 
+    private bool IsLocalPlayerTurn =>
+        CombatState.GameState != null && CombatState.GameState.CurrentPlayerId == LocalPlayerId;
+
+    private Dictionary<EssenceType, int>? LocalPlayerEssencePool =>
+        CombatState.GameState?.Players.FirstOrDefault(p => p.PlayerId == LocalPlayerId)?.EssencePool;
+
     protected override void OnInitialized()
     {
-        // Subscreve as notificações do StateService para redesenhar a UI
         CombatState.OnChange += StateHasChanged;
     }
 
     public void Dispose()
     {
-        // É OBRIGATÓRIO anular a subscrição quando o componente morre para evitar memory leaks
         CombatState.OnChange -= StateHasChanged;
     }
 
-    private void ShowTooltip(AbilitySummaryDto ability)
+    private void ShowTooltip(AbilitySummaryDto ability) => _inspectedAbility = ability;
+
+    private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
+
+    private async Task StartCombatAsync()
     {
-        _inspectedAbility = ability;
+        await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
     }
 
-    private string GetBackgroundStyle()
+    private async Task EndTurnAsync()
     {
-        if (CombatState.GameState == null || string.IsNullOrEmpty(CombatState.GameState.BackgroundId))
-            return "";
-
-        var bgUrl = AssetService.GetBackgroundUrl(CombatState.GameState.BackgroundId);
-        return $"background-image: url('{bgUrl}');";
-    }
-
-    private IEnumerable<CombatantDto> MyTeam =>
-        CombatState.GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
-
-    private IEnumerable<CombatantDto> EnemyTeam =>
-        CombatState.GameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
-
-    private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
-    private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
-    private bool IsSingleEnemyColumn => HasFrontRowEnemies ^ HasBackRowEnemies;
-
-    private string GetGridClass(int position, bool isSingleColumn)
-    {
-        if (isSingleColumn)
-        {
-            int row = (position % 3) + 1;
-            return $"grid-single-col-row-{row}";
-        }
-
-        return position switch
-        {
-            0 => "grid-front-top",
-            1 => "grid-front-mid",
-            2 => "grid-front-bot",
-            3 => "grid-back-top",
-            4 => "grid-back-mid",
-            5 => "grid-back-bot",
-            _ => "grid-back-mid"
-        };
+        await CombatState.EndTurnAsync();
     }
 
     private void StartTargeting((int SourceId, string AbilityId) payload)
     {
-        if (CombatState.GameState?.CurrentPlayerId != LocalPlayerId) return;
+        if (!IsLocalPlayerTurn) return;
 
-        var source = CombatState.GameState.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
+        var source = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
         var ability = source?.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId) ?? source?.SpecialAbility;
 
         if (ability == null || !ability.IsAffordable) return;
@@ -303,8 +111,7 @@ else
         _targetingState.StartTargeting(payload.SourceId, ability);
 
         bool requiresManualClicks = ability.TargetingRules.Any(r =>
-            r.Strategy == GuildArena.Domain.Enums.Targeting.TargetSelectionStrategy.Manual &&
-            !IsAoE(r.Type));
+            r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type));
 
         if (!requiresManualClicks)
         {
@@ -312,22 +119,17 @@ else
         }
     }
 
-    private bool IsAoE(GuildArena.Domain.Enums.Targeting.TargetType type)
+    private bool IsAoE(TargetType type)
     {
-        return type == GuildArena.Domain.Enums.Targeting.TargetType.All ||
-               type == GuildArena.Domain.Enums.Targeting.TargetType.AllEnemies ||
-               type == GuildArena.Domain.Enums.Targeting.TargetType.AllAllies ||
-               type == GuildArena.Domain.Enums.Targeting.TargetType.AllFriendlies;
+        return type == TargetType.All || type == TargetType.AllEnemies ||
+               type == TargetType.AllAllies || type == TargetType.AllFriendlies;
     }
 
     private void SelectTarget(CombatantDto target)
     {
-        if (_targetingState.TrySelectTarget(target, out bool allRulesSatisfied))
+        if (_targetingState.TrySelectTarget(target, out bool allRulesSatisfied) && allRulesSatisfied)
         {
-            if (allRulesSatisfied)
-            {
-                TransitionToPaymentOrExecute();
-            }
+            TransitionToPaymentOrExecute();
         }
     }
 
@@ -345,12 +147,14 @@ else
         {
             _neutralCostPending = neutralCost;
 
-            var me = CombatState.GameState!.Players.First(p => p.PlayerId == LocalPlayerId);
-            _availableEssenceForPayment = new Dictionary<EssenceType, int>(me.EssencePool);
-
-            foreach (var cost in ability.Costs.Where(c => c.Key != EssenceType.Neutral))
+            if (LocalPlayerEssencePool != null)
             {
-                _availableEssenceForPayment[cost.Key] -= cost.Value;
+                _availableEssenceForPayment = new Dictionary<EssenceType, int>(LocalPlayerEssencePool);
+
+                foreach (var cost in ability.Costs.Where(c => c.Key != EssenceType.Neutral))
+                {
+                    _availableEssenceForPayment[cost.Key] -= cost.Value;
+                }
             }
 
             _showPaymentModal = true;
@@ -383,19 +187,6 @@ else
         }
 
         await ExecuteAbilityAsync(finalPayment);
-    }
-
-    private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
-
-    private async Task StartCombatAsync()
-    {
-        // Mapeamento hardcoded apenas temporário enquanto não há DB.
-        await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
-    }
-
-    private async Task EndTurnAsync()
-    {
-        await CombatState.EndTurnAsync();
     }
 
     private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)

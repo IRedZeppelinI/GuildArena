@@ -1,0 +1,99 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
+
+<div class="arena-footer">
+    <!-- Left Section: Tooltip -->
+    <div class="footer-section footer-left">
+        <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="OnToggleMobileLogs">
+            📜 BattleLogs
+        </button>
+
+        <div class="desktop-tooltip">
+            @if (InspectedAbility != null)
+            {
+                <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
+                    <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(InspectedAbility.Id)');"></div>
+                    <span class="tooltip-title text-warning m-0">@InspectedAbility.Name</span>
+                </div>
+
+                <div class="tooltip-stats-row">
+                    <div class="tooltip-costs">
+                        @if (InspectedAbility.HPCost > 0)
+                        {
+                            <span class="badge bg-danger border border-light me-2">HP: @InspectedAbility.HPCost</span>
+                        }
+
+                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
+                        {
+                            <div class="tooltip-cost-item" title="@c.Key">
+                                <span class="cost-number">@c.Value</span>
+                                <div class="tooltip-essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
+                            </div>
+                        }
+                    </div>
+                    <div class="tooltip-cd text-end">
+                        CD: @InspectedAbility.BaseCooldown | AP: @InspectedAbility.ActionPointCost
+                    </div>
+                </div>
+
+                <hr class="tooltip-divider" />
+                <div class="tooltip-description">
+                    @InspectedAbility.Description
+                </div>
+            }
+            else
+            {
+                <div class="tooltip-placeholder">
+                    Hover an ability to inspect details.
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Center Section: Battle Logs -->
+    <div class="footer-section footer-center">
+        <div class="desktop-logs-wrapper w-100 h-100">
+            <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="desktop-logs-container" />
+        </div>
+        <div class="mobile-ticker">
+            @(BattleLogs.LastOrDefault() ?? "Waiting for actions...")
+        </div>
+    </div>
+
+    <!-- Right Section: Actions -->
+    <div class="footer-section footer-right">
+        @if (IsLocalPlayerTurn)
+        {
+            if (IsTargetingActive)
+            {
+                <button class="end-turn-btn" @onclick="OnCancelTargeting">
+                    Cancel Action
+                </button>
+            }
+            else
+            {
+                <button class="end-turn-btn" @onclick="OnEndTurn">
+                    End Turn
+                </button>
+            }
+        }
+        else
+        {
+            <button class="end-turn-btn" disabled>
+                Enemy Turn
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public AbilitySummaryDto? InspectedAbility { get; set; }
+    [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
+    [Parameter] public bool IsLocalPlayerTurn { get; set; }
+    [Parameter] public bool IsTargetingActive { get; set; }
+
+    [Parameter] public EventCallback OnToggleMobileLogs { get; set; }
+    [Parameter] public EventCallback OnCancelTargeting { get; set; }
+    [Parameter] public EventCallback OnEndTurn { get; set; }
+}

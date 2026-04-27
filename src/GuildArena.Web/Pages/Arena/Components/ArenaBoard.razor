@@ -1,0 +1,122 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Pages.Arena.State
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
+
+<div class="arena-board" style="@GetBackgroundStyle()" @onclick="OnBackgroundClicked">
+
+    <!-- Player Team -->
+    <div class="team-side player-team" @onclick:stopPropagation="true">
+        @if (GameState != null)
+        {
+            var me = GameState.Players.FirstOrDefault(p => p.PlayerId == LocalPlayerId);
+            if (me != null)
+            {
+                <PlayerResourceBar Player="me"
+                                   ShowExchangeButton="@(GameState.CurrentPlayerId == LocalPlayerId)"
+                                   OnExchangeClicked="OnExchangeRequested" />
+            }
+
+            <div class="combatants-column">
+                @foreach (var hero in MyTeam)
+                {
+                    <CombatantCard Combatant="hero"
+                                   IsTargetingMode="TargetingState.IsActive"
+                                   IsValidTarget="TargetingState.IsValidTarget(hero)"
+                                   IsSelectedTarget="TargetingState.IsSelected(hero.Id)"
+                                   OnAbilityActivated="OnAbilityActivated"
+                                   OnCombatantClicked="OnCombatantClicked"
+                                   OnInspectAbility="OnInspectAbility" />
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Center -->
+    <div class="arena-center">
+        @if (GameState != null)
+        {
+            <div class="turn-indicator">
+                Turn @GameState.CurrentTurnNumber
+            </div>
+        }
+    </div>
+
+    <!-- Enemy Team -->
+    <div class="team-side enemy-team" @onclick:stopPropagation="true">
+        @if (GameState != null)
+        {
+            var enemyPlayer = GameState.Players.FirstOrDefault(p => p.PlayerId != LocalPlayerId);
+            if (enemyPlayer != null)
+            {
+                <PlayerResourceBar Player="enemyPlayer" />
+            }
+
+            <div class="enemy-grid @(IsSingleEnemyColumn ? "single-column" : "two-columns")">
+                @foreach (var enemy in EnemyTeam)
+                {
+                    <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)">
+                        <CombatantCard Combatant="enemy"
+                                       IsTargetingMode="TargetingState.IsActive"
+                                       IsValidTarget="TargetingState.IsValidTarget(enemy)"
+                                       IsSelectedTarget="TargetingState.IsSelected(enemy.Id)"
+                                       OnAbilityActivated="OnAbilityActivated"
+                                       OnCombatantClicked="OnCombatantClicked"
+                                       OnInspectAbility="OnInspectAbility" />
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GameStateDto? GameState { get; set; }
+    [Parameter, EditorRequired] public int LocalPlayerId { get; set; }
+    [Parameter, EditorRequired] public TargetingStateManager TargetingState { get; set; } = default!;
+
+    [Parameter] public EventCallback OnBackgroundClicked { get; set; }
+    [Parameter] public EventCallback OnExchangeRequested { get; set; }
+    [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
+    [Parameter] public EventCallback<CombatantDto> OnCombatantClicked { get; set; }
+    [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
+
+    private IEnumerable<CombatantDto> MyTeam =>
+        GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();
+
+    private IEnumerable<CombatantDto> EnemyTeam =>
+        GameState?.Combatants.Where(c => c.OwnerId != LocalPlayerId) ?? Array.Empty<CombatantDto>();
+
+    private bool HasFrontRowEnemies => EnemyTeam.Any(e => e.Position <= 2);
+    private bool HasBackRowEnemies => EnemyTeam.Any(e => e.Position >= 3);
+    private bool IsSingleEnemyColumn => HasFrontRowEnemies ^ HasBackRowEnemies;
+
+    private string GetBackgroundStyle()
+    {
+        if (GameState == null || string.IsNullOrEmpty(GameState.BackgroundId))
+            return string.Empty;
+
+        var bgUrl = AssetService.GetBackgroundUrl(GameState.BackgroundId);
+        return $"background-image: url('{bgUrl}');";
+    }
+
+    private string GetGridClass(int position, bool isSingleColumn)
+    {
+        if (isSingleColumn)
+        {
+            int row = (position % 3) + 1;
+            return $"grid-single-col-row-{row}";
+        }
+
+        return position switch
+        {
+            0 => "grid-front-top",
+            1 => "grid-front-mid",
+            2 => "grid-front-bot",
+            3 => "grid-back-top",
+            4 => "grid-back-mid",
+            5 => "grid-back-bot",
+            _ => "grid-back-mid"
+        };
+    }
+}

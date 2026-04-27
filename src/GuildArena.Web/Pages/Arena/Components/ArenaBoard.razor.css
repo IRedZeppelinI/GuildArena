@@ -1,0 +1,143 @@
+﻿.arena-board {
+    flex-grow: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 20px 50px 20px;
+    background-color: #222;
+    background-size: cover;
+    background-position: center;
+    overflow: hidden;
+}
+
+.team-side {
+    width: 38%;
+    display: flex;
+    flex-direction: column;
+}
+
+.arena-center {
+    width: 20%;
+    display: flex;
+    justify-content: center;
+    padding-top: 10px;
+}
+
+.turn-indicator {
+    background: rgba(0,0,0,0.7);
+    color: white;
+    padding: 5px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 1.2rem;
+    height: fit-content;
+    border: 1px solid #ffd800;
+}
+
+.combatants-column {
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+}
+
+.enemy-grid {
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+}
+
+    .enemy-grid.two-columns {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .enemy-grid.single-column {
+        grid-template-columns: 1fr;
+    }
+
+    .enemy-grid > div {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+.grid-front-top {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.grid-front-mid {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.grid-front-bot {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+.grid-back-top {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.grid-back-mid {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.grid-back-bot {
+    grid-column: 2;
+    grid-row: 3;
+}
+
+.grid-single-col-row-1 {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.grid-single-col-row-2 {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.grid-single-col-row-3 {
+    grid-column: 1;
+    grid-row: 3;
+}
+
+@media (max-height: 650px) {
+    .arena-board {
+        padding: 5px 10px 25px 10px;
+    }
+
+    .combatants-column, .enemy-grid {
+        gap: 2px;
+    }
+
+    .turn-indicator {
+        font-size: 0.9rem;
+        padding: 2px 10px;
+    }
+
+    .team-side {
+        width: 42%;
+    }
+
+    ::deep .combatant-card {
+        border-width: 12px;
+        padding: 2px 4px;
+    }
+
+    ::deep .hp-container {
+        height: 10px;
+        margin-top: 1px;
+    }
+
+    ::deep .hp-text {
+        font-size: 0.5rem;
+        line-height: 10px;
+    }
+}

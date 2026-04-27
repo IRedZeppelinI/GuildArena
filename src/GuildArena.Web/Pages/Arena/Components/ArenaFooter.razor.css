@@ -1,0 +1,237 @@
+﻿.arena-footer {
+    position: relative;
+    height: 25vh;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #111;
+    background-image: url('/images/ui/footer_bg.jpg');
+    background-size: cover;
+    background-position: top center;
+    border-top: none;
+    padding: 10px 20px;
+    transition: height 0.3s ease;
+}
+
+    .arena-footer::before {
+        content: '';
+        position: absolute;
+        top: -40px;
+        height: 40px;
+        left: 0;
+        width: 100%;
+        background-image: url('/images/ui/footer_separator.jpg');
+        background-size: 100% 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        z-index: 10;
+        pointer-events: none;
+    }
+
+.footer-section {
+    flex: 1;
+    display: flex;
+    height: 100%;
+}
+
+.footer-left {
+    justify-content: flex-start;
+    align-items: flex-end;
+}
+
+.footer-center {
+    justify-content: center;
+    max-width: 800px;
+    width: 100%;
+}
+
+.footer-right {
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+.end-turn-btn {
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    background-image: url('/images/ui/btn_action.jpg');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 220px;
+    height: 60px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #ffffff;
+    text-shadow: 2px 2px 4px #000, 0 0 10px #ff3300;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.6);
+    transition: transform 0.1s ease, filter 0.3s ease;
+}
+
+    .end-turn-btn:active:not(:disabled) {
+        transform: scale(0.95);
+    }
+
+    .end-turn-btn:disabled {
+        filter: grayscale(100%) brightness(0.6);
+        cursor: not-allowed;
+        color: #ccc;
+        text-shadow: 2px 2px 4px #000;
+    }
+
+.mobile-logs-btn, .mobile-ticker {
+    display: none;
+}
+
+.desktop-tooltip {
+    width: 450px;
+    height: 85%;
+    margin-left: 40px;
+    align-self: center;
+    background-image: url('/images/ui/tooltip_bg.jpg');
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    padding: 35px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    color: #eee;
+    font-family: sans-serif;
+    text-shadow: 1px 1px 2px black;
+}
+
+.tooltip-title-row {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.tooltip-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.tooltip-stats-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tooltip-cd {
+    font-size: 0.85rem;
+    color: #bbb;
+}
+
+.tooltip-divider {
+    border-color: rgba(255, 255, 255, 0.3);
+    margin: 10px 0;
+}
+
+.tooltip-description {
+    font-size: 0.95rem;
+    color: #ddd;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.tooltip-placeholder {
+    text-align: center;
+    color: #f8f9fa;
+    opacity: 0.8;
+    font-style: italic;
+    margin-top: 20px;
+}
+
+.tooltip-costs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tooltip-cost-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 2px 6px 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #555;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.cost-number {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #fff;
+}
+
+.tooltip-essence-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.tooltip-ability-icon {
+    width: 32px;
+    height: 32px;
+    background-size: 100% 100%;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+@media (max-height: 650px) {
+    .arena-footer {
+        height: auto;
+        padding: 5px 15px;
+    }
+
+        .arena-footer::before {
+            height: 20px;
+            top: -20px;
+        }
+
+    .end-turn-btn {
+        width: 150px;
+        height: 45px;
+        font-size: 1rem;
+    }
+
+    .desktop-logs-wrapper {
+        display: none;
+    }
+
+    .mobile-logs-btn {
+        display: block;
+        font-size: 0.85rem;
+        padding: 5px 10px;
+    }
+
+    .mobile-ticker {
+        display: block;
+        width: 100%;
+        text-align: center;
+        color: #ffd800;
+        font-family: monospace;
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 0 10px;
+        align-self: center;
+    }
+
+    .desktop-tooltip {
+        display: none;
+    }
+}
