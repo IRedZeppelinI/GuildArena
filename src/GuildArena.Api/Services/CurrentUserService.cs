@@ -1,5 +1,5 @@
-﻿using GuildArena.Application.Abstractions;
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using GuildArena.Application.Abstractions;
 
 namespace GuildArena.Api.Services;
 
@@ -12,18 +12,20 @@ public class CurrentUserService : ICurrentUserService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public int? UserId
+    public string? UserId =>
+        _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    public int? GuildId
     {
         get
         {
-            // Lógica Final (Comentada para referência):
-            // var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier);
-            // if (int.TryParse(userIdClaim?.Value, out int userId)) return userId;
-            // return null;
-
-            // Lógica Temporária para Desenvolvimento (Hardcoded):
-            // Isto permite-te testar sem configurar JWT agora            
+            // TEMPORARY DEVELOPMENT LOGIC
+            // Hardcoded to Guild 1 to allow testing the combat engine without requiring a full login flow.
             return 1;
+
+            // FINAL PRODUCTION LOGIC
+            // var guildClaim = _httpContextAccessor.HttpContext?.User?.FindFirstValue("GuildId");
+            // return int.TryParse(guildClaim, out var guildId) ? guildId : null;
         }
     }
 }

@@ -7,6 +7,7 @@ using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Core;
 using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Entities;
 using GuildArena.Infrastructure;
 using GuildArena.Infrastructure.Options;
 
@@ -60,6 +61,11 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+//  Identity Endpoints 
+builder.Services.AddAuthorization();
+builder.Services.AddIdentityApiEndpoints<ApplicationUser>()
+    .AddEntityFrameworkStores<GuildArena.Infrastructure.Persistence.Context.GuildArenaDbContext>();
+
 var app = builder.Build();
 
 
@@ -93,9 +99,13 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowBlazorWasm");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Endpoints Login/Registo 
+app.MapIdentityApi<ApplicationUser>();
 
 app.MapHub<CombatHub>("/hubs/combat");
 

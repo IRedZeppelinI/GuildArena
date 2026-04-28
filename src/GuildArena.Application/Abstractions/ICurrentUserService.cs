@@ -1,14 +1,19 @@
 ﻿namespace GuildArena.Application.Abstractions;
 
-// TODO: A implementação atual na Infrastructure é um Fake/Mock que lê de headers ou configuração.
-// No futuro, isto deve ser implementado usando IHttpContextAccessor para ler Claims do token JWT.
+/// <summary>
+/// Provides access to the currently authenticated user's identity and active game profile.
+/// </summary>
 public interface ICurrentUserService
 {
     /// <summary>
-    /// Gets the unique identifier (PlayerId) of the currently authenticated user.
+    /// Gets the unique identifier (GUID) of the authenticated ApplicationUser.
+    /// Used for security, identity, and account management operations.
     /// </summary>
-    /// <value>
-    /// The User ID if authenticated; otherwise, null.
-    /// </value>
-    int? UserId { get; }
+    string? UserId { get; }
+
+    /// <summary>
+    /// Gets the unique identifier of the user's active Guild.
+    /// This acts as the "PlayerId" across all combat and gameplay mechanics.
+    /// </summary>
+    int? GuildId { get; }
 }

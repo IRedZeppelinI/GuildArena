@@ -67,7 +67,7 @@ public static class DependencyInjection
 
         //SQL
         services.AddScoped<IPlayerRepository, PlayerRepository>();
-        
+        services.AddScoped<IGuildRepository, GuildRepository>();
 
 
         return services;
