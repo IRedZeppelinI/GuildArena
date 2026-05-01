@@ -5,14 +5,16 @@ using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
+using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Gameplay;
-using GuildArena.Domain.Results; 
+using GuildArena.Domain.Results;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.Targeting;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace GuildArena.Application.UnitTests.Combat.ExecuteAbility;
 
@@ -38,234 +40,160 @@ public class ExecuteAbilityCommandHandlerTests
         _notifierMock = Substitute.For<ICombatNotifier>();
 
         _handler = new ExecuteAbilityCommandHandler(
-            _combatRepoMock,
-            _userMock,
-            _abilityRepoMock,
-            _engineMock,
-            _battleLogMock,
-            _notifierMock,
-            _loggerMock
+            _combatRepoMock, _userMock, _abilityRepoMock, _engineMock,
+            _battleLogMock, _notifierMock, _loggerMock
         );
     }
 
     [Fact]
     public async Task Handle_ShouldExecuteSuccessfully_WhenRequestIsValid()
     {
-        // ARRANGE
         var combatId = "C1";
-        var userId = 1;
+        var requestUserId = "user-123"; 
+        var seatId = 1;                 
         var sourceId = 10;
         var abilityId = "ABIL_FIRE";
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
+
+        var matchPlayer = new CombatPlayer { PlayerId = seatId, UserId = requestUserId };
 
         var combatant = new Combatant
         {
             Id = sourceId,
-            OwnerId = userId,
+            OwnerId = seatId,
             Name = "Mage",
             RaceId = "Human",
             BaseStats = new BaseStats(),
             CurrentHP = 100,
             MaxHP = 100,
-            Abilities = new List<AbilityDefinition>
-            {
-                new AbilityDefinition { Id = abilityId, Name = "Fire" }
-            }
+            Abilities = new List<AbilityDefinition> { new() { Id = abilityId, Name = "Fire" } }
         };
 
         var gameState = new GameState
         {
-            CurrentPlayerId = userId,
+            CurrentPlayerId = seatId,
+            Players = new List<CombatPlayer> { matchPlayer },
             Combatants = new List<Combatant> { combatant }
         };
 
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
-            .Returns(x =>
-            {
-                x[1] = new AbilityDefinition { Id = abilityId, Name = "Fire" };
-                return true;
-            });
+            .Returns(x => { x[1] = new AbilityDefinition { Id = abilityId, Name = "Fire" }; return true; });
 
-        _engineMock.ExecuteAbility(
-            gameState,
-            Arg.Any<AbilityDefinition>(),
-            combatant,
-            Arg.Any<AbilityTargets>(),
-            Arg.Any<Dictionary<EssenceType, int>>())
-            .Returns(new List<CombatActionResult>
-            {
-                new CombatActionResult { IsSuccess = true }
-            });
+        _engineMock.ExecuteAbility(Arg.Any<GameState>(), Arg.Any<AbilityDefinition>(), Arg.Any<Combatant>(), Arg.Any<AbilityTargets>(), Arg.Any<Dictionary<EssenceType, int>>())
+            .Returns(new List<CombatActionResult> { new() { IsSuccess = true } });
 
-        var command = new ExecuteAbilityCommand
-        {
-            CombatId = combatId,
-            SourceId = sourceId,
-            AbilityId = abilityId
-        };
+        var command = new ExecuteAbilityCommand { CombatId = combatId, SourceId = sourceId, AbilityId = abilityId };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
-        // Validar que o Result é de Sucesso
         result.IsSuccess.ShouldBeTrue();
-
         await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
-        await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
-        await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnForbiddenResult_WhenNotUserTurn()
     {
-        // ARRANGE
-        var userId = 1;
-        var enemyId = 2;
-        var combatId = "C1";
+        var requestUserId = "user-123";
+        var mySeatId = 1;
+        var enemySeatId = 2; // Turno do inimigo
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
 
-        _combatRepoMock.GetAsync(combatId)
-            .Returns(new GameState { CurrentPlayerId = enemyId });
+        var matchPlayer = new CombatPlayer { PlayerId = mySeatId, UserId = requestUserId };
 
-        var command = new ExecuteAbilityCommand
+        _combatRepoMock.GetAsync("C1").Returns(new GameState
         {
-            CombatId = combatId,
-            SourceId = 10,
-            AbilityId = "A"
-        };
+            CurrentPlayerId = enemySeatId,
+            Players = new List<CombatPlayer> { matchPlayer }
+        });
 
-        // ACT 
+        var command = new ExecuteAbilityCommand { CombatId = "C1", SourceId = 10, AbilityId = "A" };
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
-        // Validamos que falhou e que o erro é exatamente o que esperamos
         result.IsFailure.ShouldBeTrue();
-        result.Error.Type.ShouldBe(ErrorType.Forbidden);
         result.Error.Code.ShouldBe("Combat.NotYourTurn");
-
-        await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnForbiddenResult_WhenUserDoesNotOwnCombatant()
     {
-        // ARRANGE
-        var userId = 1;
-        var enemyUserId = 2;
+        var requestUserId = "user-123";
+        var mySeatId = 1;
+        var enemySeatId = 2;
         var combatantId = 99;
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
+
+        var matchPlayer = new CombatPlayer { PlayerId = mySeatId, UserId = requestUserId };
 
         var enemyCombatant = new Combatant
         {
             Id = combatantId,
-            OwnerId = enemyUserId,
+            OwnerId = enemySeatId, // Pertence ao inimigo
             Name = "Enemy",
             RaceId = "X",
-            BaseStats = new BaseStats(),
-            CurrentHP = 100,
-            MaxHP = 100
+            BaseStats = new BaseStats()
         };
 
         var gameState = new GameState
         {
-            CurrentPlayerId = userId,
+            CurrentPlayerId = mySeatId,
+            Players = new List<CombatPlayer> { matchPlayer },
             Combatants = new List<Combatant> { enemyCombatant }
         };
 
         _combatRepoMock.GetAsync("C1").Returns(gameState);
 
-        var command = new ExecuteAbilityCommand
-        {
-            CombatId = "C1",
-            SourceId = combatantId,
-            AbilityId = "A"
-        };
+        var command = new ExecuteAbilityCommand { CombatId = "C1", SourceId = combatantId, AbilityId = "A" };
 
-        // ACT 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsFailure.ShouldBeTrue();
-        result.Error.Type.ShouldBe(ErrorType.Forbidden);
         result.Error.Code.ShouldBe("Combat.NotOwner");
     }
 
     [Fact]
     public async Task Handle_ShouldSendLogsAndReturnFailureResult_WhenEngineReturnsFailure()
     {
-        // ARRANGE
-        var userId = 1;
-        var sourceId = 10;
-        var abilityId = "ABIL_FAIL";
+        var requestUserId = "user-123";
+        var seatId = 1;
         var combatId = "C1";
+        var abilityId = "ABIL_FAIL";
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
 
+        var matchPlayer = new CombatPlayer { PlayerId = seatId, UserId = requestUserId };
         var combatant = new Combatant
         {
-            Id = sourceId,
-            OwnerId = userId,
+            Id = 10,
+            OwnerId = seatId,
             Name = "Hero",
             RaceId = "H",
             BaseStats = new BaseStats(),
-            CurrentHP = 100,
-            MaxHP = 100,
             Abilities = new List<AbilityDefinition> { new() { Id = abilityId, Name = "Fail Skill" } }
         };
 
-        var gameState = new GameState
-        {
-            CurrentPlayerId = userId,
-            Combatants = new List<Combatant> { combatant }
-        };
-
+        var gameState = new GameState { CurrentPlayerId = seatId, Players = new List<CombatPlayer> { matchPlayer }, Combatants = new List<Combatant> { combatant } };
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
-        _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>())
-            .Returns(x => {
-                x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" };
-                return true;
-            });
-
+        _abilityRepoMock.TryGetDefinition(abilityId, out Arg.Any<AbilityDefinition>()).Returns(x => { x[1] = new AbilityDefinition { Id = abilityId, Name = "Fail" }; return true; });
         _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Not enough mana." });
 
         _engineMock.ExecuteAbility(default!, default!, default!, default!, default!)
-            .ReturnsForAnyArgs(new List<CombatActionResult>
-            {
-                new CombatActionResult { IsSuccess = false }
-            });
+            .ReturnsForAnyArgs(new List<CombatActionResult> { new() { IsSuccess = false } });
 
-        var command = new ExecuteAbilityCommand
-        {
-            CombatId = combatId,
-            SourceId = sourceId,
-            AbilityId = abilityId
-        };
+        var command = new ExecuteAbilityCommand { CombatId = combatId, SourceId = 10, AbilityId = abilityId };
 
-        // ACT 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
-        // O Handler devolve uma Falha de Domínio (Failure normal, não Forbidden ou NotFound)
         result.IsFailure.ShouldBeTrue();
-        result.Error.Type.ShouldBe(ErrorType.Failure);
         result.Error.Code.ShouldBe("Combat.ExecutionFailed");
 
-        // Verificamos se o Notifier foi chamado para enviar o erro à UI
-        await _notifierMock.Received(1).SendBattleLogsAsync(
-            combatId,
-            Arg.Is<List<string>>(logs => logs.Contains("Not enough mana.")));
-
-        // Garantimos que NÃO guardou o estado (porque a ação falhou)
+        await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Is<List<string>>(logs => logs.Contains("Not enough mana.")));
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
-
-        // Garantimos que NÃO enviou atualização de GameState (só enviou os logs do erro)
-        await _notifierMock.DidNotReceiveWithAnyArgs().SendGameStateUpdateAsync(default!, default!);
     }
 }

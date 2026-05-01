@@ -12,13 +12,14 @@ using GuildArena.Domain.Results;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace GuildArena.Application.UnitTests.Combat.StartCombat;
 
 public class StartPveCombatCommandHandlerTests
 {
     private readonly ICombatStateRepository _combatStateRepoMock;
-    private readonly IPlayerRepository _playerRepoMock;
+    private readonly IGuildRepository _guildRepoMock;
     private readonly IEncounterDefinitionRepository _encounterRepoMock;
     private readonly ICurrentUserService _currentUserMock;
     private readonly ICombatantFactory _factoryMock;
@@ -34,7 +35,7 @@ public class StartPveCombatCommandHandlerTests
     public StartPveCombatCommandHandlerTests()
     {
         _combatStateRepoMock = Substitute.For<ICombatStateRepository>();
-        _playerRepoMock = Substitute.For<IPlayerRepository>();
+        _guildRepoMock = Substitute.For<IGuildRepository>();
         _encounterRepoMock = Substitute.For<IEncounterDefinitionRepository>();
         _currentUserMock = Substitute.For<ICurrentUserService>();
         _factoryMock = Substitute.For<ICombatantFactory>();
@@ -48,7 +49,7 @@ public class StartPveCombatCommandHandlerTests
 
         _handler = new StartPveCombatCommandHandler(
             _combatStateRepoMock,
-            _playerRepoMock,
+            _guildRepoMock,
             _encounterRepoMock,
             _currentUserMock,
             _factoryMock,
@@ -65,13 +66,17 @@ public class StartPveCombatCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldCreateCombat_WithRandomBackground_AndReturnLogs()
     {
-        // ARRANGE
-        var playerId = 123;
+        var accountId = "user-123";
+        var guildId = 15;
         var encounterId = "ENC_TEST";
         var heroIds = new List<int> { 10 };
 
-        _currentUserMock.UserId.Returns(playerId);
-        _playerRepoMock.GetHeroesAsync(playerId, heroIds).Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H1" } });
+        _currentUserMock.UserId.Returns(accountId);
+
+        _guildRepoMock.GetGuildByUserIdAsync(accountId).Returns(new Guild { Id = guildId, ApplicationUserId = accountId, Name = "My Guild" });
+
+        // AQUI: O Mock do GuildRepository lida com os Heróis
+        _guildRepoMock.GetHeroesAsync(guildId, heroIds).Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H1", GuildId = guildId } });
 
         var encounterDef = new EncounterDefinition
         {
@@ -84,28 +89,25 @@ public class StartPveCombatCommandHandlerTests
 
         _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).Returns(info => new Combatant { Id = info.Arg<Hero>().Id, Name = "Mock", RaceId = "R", BaseStats = new() });
 
-        // RNG: O primeiro Next(2) sorteia o Background. Devolve 1 ("bg_forest_02").
-        // RNG: O segundo Next(2) atira a moeda ao ar. Devolve 0 (Player 1 ganha).
         _rngMock.Next(2).Returns(1, 0);
 
         _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Combat Started" });
 
         var command = new StartPveCombatCommand { EncounterId = encounterId, HeroInstanceIds = heroIds };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsSuccess.ShouldBeTrue();
-        var startResult = result.Value; // <-- Extraímos o valor do Result<T>
+        var startResult = result.Value;
 
         Guid.TryParse(startResult.CombatId, out _).ShouldBeTrue();
         startResult.InitialState.ShouldNotBeNull();
         startResult.InitialState.Players.Count.ShouldBe(2);
 
         await _combatStateRepoMock.Received(1).SaveAsync(startResult.CombatId, Arg.Is<GameState>(gs =>
-            gs.CurrentPlayerId == playerId &&
-            gs.BackgroundId == "bg_forest_02"
+            gs.CurrentPlayerId == 1 &&
+            gs.BackgroundId == "bg_forest_02" &&
+            gs.Players.Any(p => p.UserId == accountId && p.PlayerId == 1)
         ));
 
         await _aiQueueMock.DidNotReceiveWithAnyArgs().EnqueueAsync(default!);
@@ -114,10 +116,13 @@ public class StartPveCombatCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldEnqueueAiTurn_WhenEnemyWinsCoinToss()
     {
-        // ARRANGE
-        _currentUserMock.UserId.Returns(1);
-        _playerRepoMock.GetHeroesAsync(1, Arg.Any<List<int>>()).
-            Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H" } });
+        var accountId = "user-123";
+        var guildId = 15;
+        var heroIds = new List<int> { 1 };
+
+        _currentUserMock.UserId.Returns(accountId);
+        _guildRepoMock.GetGuildByUserIdAsync(accountId).Returns(new Guild { Id = guildId, ApplicationUserId = accountId, Name = "My Guild" });
+        _guildRepoMock.GetHeroesAsync(guildId, heroIds).Returns(new List<Hero> { new() { Id = 1, CharacterDefinitionId = "H", GuildId = guildId } });
 
         _encounterRepoMock.TryGetDefinition(Arg.Any<string>(), out Arg.Any<EncounterDefinition>())
             .Returns(x =>
@@ -129,27 +134,24 @@ public class StartPveCombatCommandHandlerTests
         _factoryMock.Create(Arg.Any<Hero>(), Arg.Any<int>()).
             Returns(new Combatant { Id = 1, Name = "M", RaceId = "R", BaseStats = new() });
 
-        // RNG devolve 1 -> AI ganha a moeda ao ar e começa a jogar!
         _rngMock.Next(2).Returns(1);
 
-        var command = new StartPveCombatCommand { EncounterId = "E", HeroInstanceIds = new List<int> { 1 } };
+        var command = new StartPveCombatCommand { EncounterId = "E", HeroInstanceIds = heroIds };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsSuccess.ShouldBeTrue();
         var startResult = result.Value;
 
         await _aiQueueMock.Received(1).EnqueueAsync(
-            Arg.Is<AiTurnRequest>(req => req.CombatId == startResult.CombatId && req.AiPlayerId == 0),
+            Arg.Is<AiTurnRequest>(req => req.CombatId == startResult.CombatId && req.AiPlayerId == -1),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_ShouldReturnUnauthorized_WhenUserNotAuthenticated()
     {
-        _currentUserMock.UserId.Returns((int?)null);
+        _currentUserMock.UserId.Returns((string?)null);
         var command = new StartPveCombatCommand { EncounterId = "ANY", HeroInstanceIds = new() { 1 } };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -162,7 +164,7 @@ public class StartPveCombatCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenNoHeroesSelected()
     {
-        _currentUserMock.UserId.Returns(1);
+        _currentUserMock.UserId.Returns("user-123");
         var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int>() };
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -173,14 +175,33 @@ public class StartPveCombatCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldReturnForbidden_WhenPlayerHasNoGuild()
+    {
+        _currentUserMock.UserId.Returns("user-123");
+        _guildRepoMock.GetGuildByUserIdAsync("user-123").Returns((Guild?)null);
+
+        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int> { 10 } };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Type.ShouldBe(ErrorType.Forbidden);
+        result.Error.Code.ShouldBe("Combat.NoGuild");
+    }
+
+    [Fact]
     public async Task Handle_ShouldReturnForbidden_WhenPlayerDoesNotOwnHero()
     {
-        var playerId = 1;
+        var accountId = "user-123";
+        var guildId = 15;
         var requestedIds = new List<int> { 10, 999 };
-        _currentUserMock.UserId.Returns(playerId);
 
-        _playerRepoMock.GetHeroesAsync(playerId, requestedIds).
-            Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H" } });
+        _currentUserMock.UserId.Returns(accountId);
+        _guildRepoMock.GetGuildByUserIdAsync(accountId).Returns(new Guild { Id = guildId, ApplicationUserId = accountId, Name = "My Guild" });
+
+        // Retorna só 1 herói
+        _guildRepoMock.GetHeroesAsync(guildId, requestedIds).
+            Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H", GuildId = guildId } });
 
         var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = requestedIds };
 

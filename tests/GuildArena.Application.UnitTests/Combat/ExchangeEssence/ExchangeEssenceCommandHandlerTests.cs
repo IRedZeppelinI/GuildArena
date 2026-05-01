@@ -10,6 +10,7 @@ using GuildArena.Domain.ValueObjects.Resources;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
+using Xunit;
 
 namespace GuildArena.Application.UnitTests.Combat.ExchangeEssence;
 
@@ -45,16 +46,22 @@ public class ExchangeEssenceCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldExecuteExchange_WhenRequestIsValid()
     {
-        // ARRANGE
         var combatId = "C1";
-        var userId = 1;
+        var requestUserId = "user-123";
+        var seatId = 1;
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
 
-        var player = new CombatPlayer { PlayerId = userId, Type = CombatPlayerType.Human };
+        var player = new CombatPlayer
+        {
+            PlayerId = seatId,
+            UserId = requestUserId,
+            Type = CombatPlayerType.Human
+        };
+
         var gameState = new GameState
         {
-            CurrentPlayerId = userId,
+            CurrentPlayerId = seatId,
             Players = new List<CombatPlayer> { player }
         };
 
@@ -73,10 +80,8 @@ public class ExchangeEssenceCommandHandlerTests
             EssenceToGain = EssenceType.Flux
         };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsSuccess.ShouldBeTrue();
 
         _essenceServiceMock.Received(1).ConsumeEssence(player, command.EssenceToSpend);
@@ -86,16 +91,22 @@ public class ExchangeEssenceCommandHandlerTests
         await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
         await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
     }
-
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenTotalSpentIsNotExactlyTwo()
     {
-        // ARRANGE
         var combatId = "C1";
-        var userId = 1;
+        var requestUserId = "user-123";
+        var seatId = 1;
 
-        _userMock.UserId.Returns(userId);
-        _combatRepoMock.GetAsync(combatId).Returns(new GameState { CurrentPlayerId = userId });
+        _userMock.UserId.Returns(requestUserId);
+
+        var gameState = new GameState
+        {
+            CurrentPlayerId = seatId,
+            Players = new List<CombatPlayer> { new CombatPlayer { PlayerId = seatId, UserId = requestUserId } }
+        };
+
+        _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         var command = new ExchangeEssenceCommand
         {
@@ -107,10 +118,8 @@ public class ExchangeEssenceCommandHandlerTests
             EssenceToGain = EssenceType.Flux
         };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Validation);
         result.Error.Code.ShouldBe("Exchange.InvalidAmount");
@@ -122,16 +131,16 @@ public class ExchangeEssenceCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnValidationFailure_WhenPlayerHasInsufficientFunds()
     {
-        // ARRANGE
         var combatId = "C1";
-        var userId = 1;
+        var requestUserId = "user-123";
+        var seatId = 1;
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
 
-        var player = new CombatPlayer { PlayerId = userId };
+        var player = new CombatPlayer { PlayerId = seatId, UserId = requestUserId };
         var gameState = new GameState
         {
-            CurrentPlayerId = userId,
+            CurrentPlayerId = seatId,
             Players = new List<CombatPlayer> { player }
         };
 
@@ -146,10 +155,8 @@ public class ExchangeEssenceCommandHandlerTests
             EssenceToGain = EssenceType.Shadow
         };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Validation);
         result.Error.Code.ShouldBe("Exchange.InsufficientEssence");
@@ -158,18 +165,17 @@ public class ExchangeEssenceCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnForbidden_WhenNotPlayerTurn()
+    public async Task Handle_ShouldReturnForbidden_WhenNotParticipant()
     {
-        // ARRANGE
         var combatId = "C1";
-        var userId = 1;
-        var enemyId = 2;
+        var requestUserId = "user-intruder";
 
-        _userMock.UserId.Returns(userId);
+        _userMock.UserId.Returns(requestUserId);
 
         _combatRepoMock.GetAsync(combatId).Returns(new GameState
         {
-            CurrentPlayerId = enemyId
+            CurrentPlayerId = 1,
+            Players = new List<CombatPlayer> { new CombatPlayer { PlayerId = 1, UserId = "user-legit" } }
         });
 
         var command = new ExchangeEssenceCommand
@@ -179,10 +185,38 @@ public class ExchangeEssenceCommandHandlerTests
             EssenceToGain = EssenceType.Flux
         };
 
-        // ACT 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Type.ShouldBe(ErrorType.Forbidden);
+        result.Error.Code.ShouldBe("Combat.NotParticipant");
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnForbidden_WhenNotPlayerTurn()
+    {
+        var combatId = "C1";
+        var requestUserId = "user-123";
+        var mySeatId = 1;
+        var enemySeatId = 2;
+
+        _userMock.UserId.Returns(requestUserId);
+
+        _combatRepoMock.GetAsync(combatId).Returns(new GameState
+        {
+            CurrentPlayerId = enemySeatId,
+            Players = new List<CombatPlayer> { new CombatPlayer { PlayerId = mySeatId, UserId = requestUserId } }
+        });
+
+        var command = new ExchangeEssenceCommand
+        {
+            CombatId = combatId,
+            EssenceToSpend = new Dictionary<EssenceType, int> { { EssenceType.Vigor, 2 } },
+            EssenceToGain = EssenceType.Flux
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Forbidden);
         result.Error.Code.ShouldBe("Combat.NotYourTurn");
@@ -193,15 +227,12 @@ public class ExchangeEssenceCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldReturnUnauthorized_WhenUserNotAuthenticated()
     {
-        // ARRANGE
-        _userMock.UserId.Returns((int?)null);
+        _userMock.UserId.Returns((string?)null);
 
         var command = new ExchangeEssenceCommand { CombatId = "C1" };
 
-        // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // ASSERT
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Unauthorized);
         result.Error.Code.ShouldBe("Auth.Unauthorized");

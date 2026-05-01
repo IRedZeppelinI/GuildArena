@@ -28,12 +28,12 @@ public class RacialMechanicsTests : IntegrationTestBase
         var valdrin = new Combatant
         {
             Id = -1,
-            OwnerId = 0,
+            OwnerId = 2, // Inimigo (Cadeira 2)
             Name = "Valdrin Unit",
             RaceId = "RACE_VALDRIN",
             CurrentHP = 100,
             MaxHP = 100,
-            BaseStats = new BaseStats { Defense = 0 }, // Defesa 0 para isolar o teste do modifier
+            BaseStats = new BaseStats { Defense = 0 },
             ActiveModifiers = new List<ActiveModifier>
             {
                 new ActiveModifier { DefinitionId = "MOD_RACIAL_VALDRIN_SKIN", TurnsRemaining = -1 }
@@ -44,7 +44,7 @@ public class RacialMechanicsTests : IntegrationTestBase
         var attacker = new Combatant
         {
             Id = 101,
-            OwnerId = 1,
+            OwnerId = 1, // Jogador 1
             Name = "Attacker",
             RaceId = "RACE_HUMAN",
             BaseStats = new BaseStats { Attack = 10 },
@@ -61,11 +61,14 @@ public class RacialMechanicsTests : IntegrationTestBase
         {
             CurrentPlayerId = 1,
             Combatants = new List<Combatant> { attacker, valdrin },
-            Players = new List<CombatPlayer> { new() { PlayerId = 1 } }
+            Players = new List<CombatPlayer>
+            {
+                new() { PlayerId = 1, UserId = "user-123" }, 
+                new() { PlayerId = 2, UserId = "enemy-456" }
+            }
         };
         await stateRepo.SaveAsync(combatId, gameState);
 
-        // Habilidade "Slash": Base 5 + Attack 10 = 15 Dano Físico.
         var command = new ExecuteAbilityCommand
         {
             CombatId = combatId,
@@ -110,7 +113,7 @@ public class RacialMechanicsTests : IntegrationTestBase
         var dummyTarget = new Combatant
         {
             Id = -1,
-            OwnerId = 0,
+            OwnerId = 2,
             Name = "Dummy",
             RaceId = "RACE_HUMAN",
             CurrentHP = 100,
@@ -122,8 +125,11 @@ public class RacialMechanicsTests : IntegrationTestBase
         {
             CurrentPlayerId = 1,
             Combatants = new List<Combatant> { psylianUnit, dummyTarget },
-            // Começa com 0 Mana para garantir que o saldo final vem apenas da habilidade
-            Players = new List<CombatPlayer> { new() { PlayerId = 1, EssencePool = new() } }
+            Players = new List<CombatPlayer>
+            {
+                new() { PlayerId = 1, UserId = "user-123", EssencePool = new() }, 
+                new() { PlayerId = 2, UserId = "enemy-456", EssencePool = new() }
+            }
         };
 
         await stateRepo.SaveAsync(combatId, gameState);
@@ -144,8 +150,6 @@ public class RacialMechanicsTests : IntegrationTestBase
         var state = await stateRepo.GetAsync(combatId);
         var player = state!.Players.First(p => p.PlayerId == 1);
 
-        // Como a habilidade gera "2 Random Essence", não podemos prever a cor exata 
-        // (depende do RNG), mas sabemos que a soma total tem de ser 2.
         var totalEssence = player.EssencePool.Values.Sum();
 
         totalEssence.ShouldBe
@@ -153,14 +157,12 @@ public class RacialMechanicsTests : IntegrationTestBase
             "Deep Focus should generate exactly 2 units of essence (Random types).");
     }
 
-
     [Fact]
-    public void Kymera_FluxConductor_ShouldGenerateFlux_OnCombatStart() 
+    public void Kymera_FluxConductor_ShouldGenerateFlux_OnCombatStart()
     {
         // ARRANGE
         var combatId = Guid.NewGuid().ToString();
 
-        // Criamos um Kymera genérico.
         var kymeraUnit = new Combatant
         {
             Id = 101,
@@ -181,14 +183,16 @@ public class RacialMechanicsTests : IntegrationTestBase
         {
             CurrentPlayerId = 1,
             Combatants = new List<Combatant> { kymeraUnit },
-            Players = new List<CombatPlayer> { new() { PlayerId = 1, EssencePool = new() } }
+            Players = new List<CombatPlayer>
+            {
+                new() { PlayerId = 1, UserId = "user-123", EssencePool = new() } 
+            }
         };
 
         var triggerProcessor = GetService<ITriggerProcessor>();
         var combatEngine = GetService<ICombatEngine>();
 
         // ACT
-        // 1. Simular o evento de início de combate
         var context = new TriggerContext
         {
             Source = kymeraUnit,
@@ -198,8 +202,6 @@ public class RacialMechanicsTests : IntegrationTestBase
         };
 
         triggerProcessor.ProcessTriggers(Domain.Enums.Modifiers.ModifierTrigger.ON_COMBAT_START, context);
-
-        // 2. Executar a ação agendada
         combatEngine.ProcessPendingActions(gameState);
 
         // ASSERT
@@ -210,12 +212,4 @@ public class RacialMechanicsTests : IntegrationTestBase
 
         kymeraUnit.ActiveModifiers.ShouldBeEmpty("Racial modifier should be removed after triggering.");
     }
-
-    /* 
-     * Nota sobre Humanos:
-     * O bónus de +1 AP dos humanos é aplicado na criação (Factory) através dos BaseStats.
-     * Esse teste já existe no CombatantFactoryTests.cs.
-     */
-
-
 }

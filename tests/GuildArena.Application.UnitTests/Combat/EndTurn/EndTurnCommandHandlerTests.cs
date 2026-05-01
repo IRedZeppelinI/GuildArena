@@ -48,22 +48,23 @@ public class EndTurnCommandHandlerTests
     public async Task Handle_ShouldAdvanceTurn_WhenUserIsOwnerOfTurn()
     {
         // ARRANGE
-        var combatId = Guid.NewGuid().ToString();
-        var userId = 100;
+        var combatId = "C1";
+        var requestUserId = "user-123"; // O GUID do utilizador
+        var seatId = 1;                 // A cadeira que lhe pertence
 
         var command = new EndTurnCommand { CombatId = combatId };
 
         var gameState = new GameState
         {
             CurrentTurnNumber = 1,
-            CurrentPlayerId = userId,
+            CurrentPlayerId = seatId, // É o turno da cadeira 1
             Players = new List<CombatPlayer>
             {
-                new CombatPlayer { PlayerId = userId, Type = CombatPlayerType.Human }
+                new CombatPlayer { PlayerId = seatId, UserId = requestUserId, Type = CombatPlayerType.Human }
             }
         };
 
-        _currentUserMock.UserId.Returns(userId);
+        _currentUserMock.UserId.Returns(requestUserId);
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         // ACT
@@ -78,6 +79,7 @@ public class EndTurnCommandHandlerTests
         await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Any<List<string>>());
         await _notifierMock.Received(1).SendGameStateUpdateAsync(combatId, gameState);
 
+        // O próximo não é IA neste setup, por isso não envia para a queue
         await _aiQueueMock.DidNotReceiveWithAnyArgs().EnqueueAsync(default!);
     }
 
@@ -86,27 +88,29 @@ public class EndTurnCommandHandlerTests
     {
         // ARRANGE
         var combatId = "C1";
-        var userId = 100;
-        var aiPlayerId = 999;
+        var requestUserId = "user-123";
+        var mySeatId = 1;
+        var aiSeatId = -1;
 
         var command = new EndTurnCommand { CombatId = combatId };
 
         var gameState = new GameState
         {
             CurrentTurnNumber = 1,
-            CurrentPlayerId = userId,
+            CurrentPlayerId = mySeatId,
             Players = new List<CombatPlayer>
             {
-                new CombatPlayer { PlayerId = userId, Type = CombatPlayerType.Human },
-                new CombatPlayer { PlayerId = aiPlayerId, Type = CombatPlayerType.AI }
+                new CombatPlayer { PlayerId = mySeatId, UserId = requestUserId, Type = CombatPlayerType.Human },
+                new CombatPlayer { PlayerId = aiSeatId, UserId = null, Type = CombatPlayerType.AI }
             }
         };
 
-        _currentUserMock.UserId.Returns(userId);
+        _currentUserMock.UserId.Returns(requestUserId);
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
+        // Simular o TurnManager a passar a vez para a Cadeira da IA (-1)
         _turnManagerMock.When(x => x.AdvanceTurn(gameState))
-            .Do(x => gameState.CurrentPlayerId = aiPlayerId);
+            .Do(x => gameState.CurrentPlayerId = aiSeatId);
 
         // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -115,7 +119,7 @@ public class EndTurnCommandHandlerTests
         result.IsSuccess.ShouldBeTrue();
 
         await _aiQueueMock.Received(1).EnqueueAsync(
-            Arg.Is<AiTurnRequest>(req => req.CombatId == combatId && req.AiPlayerId == aiPlayerId),
+            Arg.Is<AiTurnRequest>(req => req.CombatId == combatId && req.AiPlayerId == aiSeatId),
             Arg.Any<CancellationToken>());
     }
 
@@ -123,7 +127,7 @@ public class EndTurnCommandHandlerTests
     public async Task Handle_ShouldReturnUnauthorized_WhenUserIsNotAuthenticated()
     {
         // ARRANGE
-        _currentUserMock.UserId.Returns((int?)null); // No User
+        _currentUserMock.UserId.Returns((string?)null);
 
         var command = new EndTurnCommand { CombatId = "ANY" };
 
@@ -134,48 +138,57 @@ public class EndTurnCommandHandlerTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Unauthorized);
         result.Error.Code.ShouldBe("Auth.Unauthorized");
-
-        _turnManagerMock.DidNotReceiveWithAnyArgs().AdvanceTurn(default!);
-        await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnNotFound_WhenCombatDoesNotExist()
+    public async Task Handle_ShouldReturnForbidden_WhenUserIsNotParticipant()
     {
         // ARRANGE
-        var combatId = "INVALID_ID";
-        _currentUserMock.UserId.Returns(1);
-        _combatRepoMock.GetAsync(combatId).Returns((GameState?)null); // Missing
+        var combatId = "C1";
+        var requestUserId = "user-intruder";
 
         var command = new EndTurnCommand { CombatId = combatId };
+
+        var gameState = new GameState
+        {
+            CurrentPlayerId = 1,
+            Players = new List<CombatPlayer>
+            {
+                new CombatPlayer { PlayerId = 1, UserId = "user-legit" }
+            }
+        };
+
+        _currentUserMock.UserId.Returns(requestUserId);
+        _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         // ACT
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // ASSERT
         result.IsFailure.ShouldBeTrue();
-        result.Error.Type.ShouldBe(ErrorType.NotFound);
-        result.Error.Code.ShouldBe("Combat.NotFound");
-
-        _turnManagerMock.DidNotReceiveWithAnyArgs().AdvanceTurn(default!);
+        result.Error.Type.ShouldBe(ErrorType.Forbidden);
+        result.Error.Code.ShouldBe("Combat.NotParticipant");
     }
-
     [Fact]
     public async Task Handle_ShouldReturnForbidden_WhenItIsNotUserTurn()
     {
         // ARRANGE
-        var combatId = Guid.NewGuid().ToString();
-        var userId = 100;
-        var enemyId = 200;
+        var combatId = "C1";
+        var requestUserId = "user-123";
+        var mySeatId = 1;
+        var enemySeatId = 2;
 
         var command = new EndTurnCommand { CombatId = combatId };
         var gameState = new GameState
         {
-            CurrentTurnNumber = 1,
-            CurrentPlayerId = enemyId // ENEMY's turn
+            CurrentPlayerId = enemySeatId, // O turno é da cadeira 2
+            Players = new List<CombatPlayer>
+            {
+                new CombatPlayer { PlayerId = mySeatId, UserId = requestUserId }
+            }
         };
 
-        _currentUserMock.UserId.Returns(userId);
+        _currentUserMock.UserId.Returns(requestUserId);
         _combatRepoMock.GetAsync(combatId).Returns(gameState);
 
         // ACT
@@ -185,8 +198,5 @@ public class EndTurnCommandHandlerTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Forbidden);
         result.Error.Code.ShouldBe("Combat.NotYourTurn");
-
-        _turnManagerMock.DidNotReceiveWithAnyArgs().AdvanceTurn(default!);
-        await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
     }
 }

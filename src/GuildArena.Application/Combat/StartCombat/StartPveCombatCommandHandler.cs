@@ -23,7 +23,7 @@ namespace GuildArena.Application.Combat.StartCombat;
 public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatCommand, Result<StartCombatResult>>
 {
     private readonly ICombatStateRepository _combatStateRepo;
-    private readonly IPlayerRepository _playerRepo;
+    private readonly IGuildRepository _guildRepo;
     private readonly IEncounterDefinitionRepository _encounterRepo;
     private readonly ICurrentUserService _currentUser;
     private readonly ICombatantFactory _combatantFactory;
@@ -37,7 +37,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
     public StartPveCombatCommandHandler(
         ICombatStateRepository combatStateRepo,
-        IPlayerRepository playerRepo,
+        IGuildRepository guildRepo,
         IEncounterDefinitionRepository encounterRepo,
         ICurrentUserService currentUser,
         ICombatantFactory combatantFactory,
@@ -50,7 +50,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         IBattleLogService battleLog)
     {
         _combatStateRepo = combatStateRepo;
-        _playerRepo = playerRepo;
+        _guildRepo = guildRepo;
         _encounterRepo = encounterRepo;
         _currentUser = currentUser;
         _combatantFactory = combatantFactory;
@@ -72,45 +72,38 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
     /// A <see cref="Result{T}"/> containing the <see cref="StartCombatResult"/> on success. 
     /// Returns a failure result if validation fails (e.g., heroes not owned, encounter not found).
     /// </returns>
-    public async Task<Result<StartCombatResult>> Handle(
-        StartPveCombatCommand request,
-        CancellationToken cancellationToken)
+    public async Task<Result<StartCombatResult>> Handle(StartPveCombatCommand request, CancellationToken cancellationToken)
     {
-        var playerId = _currentUser.UserId;
-        if (playerId == null)
+        // 1. Validar utilizador autenticado (GUID)
+        var accountId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(accountId))
         {
-            return Result.Failure<StartCombatResult>(new Error(
-                "Auth.Unauthorized",
-                "User is not authenticated.",
-                ErrorType.Unauthorized));
+            return Result.Failure<StartCombatResult>(new Error("Auth.Unauthorized", "User is not authenticated.", ErrorType.Unauthorized));
         }
 
         if (request.HeroInstanceIds == null || !request.HeroInstanceIds.Any())
         {
-            return Result.Failure<StartCombatResult>(new Error(
-                "Combat.NoHeroes",
-                "You must select at least one hero to enter combat.",
-                ErrorType.Validation));
+            return Result.Failure<StartCombatResult>(new Error("Combat.NoHeroes", "You must select at least one hero.", ErrorType.Validation));
         }
 
-        var playerTeamEntities = await _playerRepo.GetHeroesAsync(
-            playerId.Value,
-            request.HeroInstanceIds);
+        // 2. Usar o GuildRepository para buscar a Guilda
+        var guild = await _guildRepo.GetGuildByUserIdAsync(accountId);
+        if (guild == null)
+        {
+            return Result.Failure<StartCombatResult>(new Error("Combat.NoGuild", "You must create a guild first.", ErrorType.Forbidden));
+        }
+
+        // 3. Usar o MESMO GuildRepository para buscar os Heróis (validando Anti-Cheat)
+        var playerTeamEntities = await _guildRepo.GetHeroesAsync(guild.Id, request.HeroInstanceIds);
 
         if (playerTeamEntities.Count != request.HeroInstanceIds.Count)
         {
-            return Result.Failure<StartCombatResult>(new Error(
-                "Combat.InvalidHeroes",
-                "One or more selected heroes do not exist or do not belong to you.",
-                ErrorType.Forbidden));
+            return Result.Failure<StartCombatResult>(new Error("Combat.InvalidHeroes", "One or more selected heroes do not exist or do not belong to you.", ErrorType.Forbidden));
         }
 
         if (!_encounterRepo.TryGetDefinition(request.EncounterId, out var encounterDef))
         {
-            return Result.Failure<StartCombatResult>(new Error(
-                "Combat.EncounterNotFound",
-                $"Encounter '{request.EncounterId}' not found.",
-                ErrorType.NotFound));
+            return Result.Failure<StartCombatResult>(new Error("Combat.EncounterNotFound", $"Encounter '{request.EncounterId}' not found.", ErrorType.NotFound));
         }
 
         var combatId = Guid.NewGuid().ToString();
@@ -127,10 +120,13 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
             Players = new List<CombatPlayer>()
         };
 
+        // HUMAN PLAYER (Cadeira 1)
+        int humanMatchId = 1;
         var humanPlayer = new CombatPlayer
         {
-            PlayerId = playerId.Value,
-            Name = $"Player {playerId.Value}",
+            PlayerId = humanMatchId,
+            UserId = accountId, // Vincula o acesso à conta para os outros handlers validarem
+            Name = guild.Name,  // Privacidade mantida (usa o nome da guilda)
             Type = CombatPlayerType.Human,
             MaxTotalEssence = 10,
             EssencePool = new Dictionary<EssenceType, int>()
@@ -141,15 +137,17 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
         int playerPosIndex = 0;
         foreach (var heroEntity in playerTeamEntities)
         {
-            var combatant = _combatantFactory.Create(heroEntity, humanPlayer.PlayerId);
+            var combatant = _combatantFactory.Create(heroEntity, humanMatchId);
             combatant.Position = playerPosIndex++;
             gameState.Combatants.Add(combatant);
         }
 
-        var aiPlayerId = 0;
+        // AI PLAYER (Cadeira -1)
+        int aiMatchId = -1;
         var aiPlayer = new CombatPlayer
         {
-            PlayerId = aiPlayerId,
+            PlayerId = aiMatchId,
+            UserId = null,
             Name = encounterDef.Name ?? "Enemy Encounter",
             Type = CombatPlayerType.AI,
             MaxTotalEssence = 10,
@@ -158,7 +156,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         gameState.Players.Add(aiPlayer);
 
-        int mobIdCounter = -1;
+        int mobIdCounter = -100;
         foreach (var enemyDef in encounterDef.Enemies)
         {
             var mobEntity = new Hero
@@ -170,14 +168,14 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
                 CurrentXP = 0
             };
 
-            var mobCombatant = _combatantFactory.Create(mobEntity, aiPlayerId);
+            var mobCombatant = _combatantFactory.Create(mobEntity, aiMatchId);
             mobCombatant.Position = enemyDef.Position;
             gameState.Combatants.Add(mobCombatant);
         }
 
         _battleLog.Log($"--- Combat Started: {encounterDef.Name} ---");
 
-        var startingPlayerId = _rng.Next(2) == 0 ? playerId.Value : aiPlayerId;
+        var startingPlayerId = _rng.Next(2) == 0 ? humanMatchId : aiMatchId;
         gameState.CurrentPlayerId = startingPlayerId;
 
         var startingPlayer = gameState.Players.First(p => p.PlayerId == startingPlayerId);
@@ -188,6 +186,8 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
         InitializeCombatTriggers(gameState);
 
+        _combatEngine.ProcessPendingActions(gameState);
+
         await _combatStateRepo.SaveAsync(combatId, gameState);
 
         if (startingPlayer.Type == CombatPlayerType.AI)
@@ -196,16 +196,12 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
             await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
         }
 
-        var initialLogs = _battleLog.GetAndClearLogs();
-
-        var startResult = new StartCombatResult
+        return new StartCombatResult
         {
             CombatId = combatId,
-            InitialLogs = initialLogs,
+            InitialLogs = _battleLog.GetAndClearLogs(),
             InitialState = gameState
         };
-
-        return startResult;
     }
 
     private void InitializeCombatTriggers(GameState gameState)
@@ -222,7 +218,5 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
 
             _triggerProcessor.ProcessTriggers(ModifierTrigger.ON_COMBAT_START, context);
         }
-
-        _combatEngine.ProcessPendingActions(gameState);
     }
 }

@@ -84,8 +84,8 @@ public class VexTests : IntegrationTestBase
             Combatants = new List<Combatant> { vex, enemy, enemy2 },
             Players = new List<CombatPlayer>
             {
-                new() { PlayerId = 1, EssencePool = essence },
-                new() { PlayerId = 2, EssencePool = new() }
+                new() { PlayerId = 1, UserId = "user-123", EssencePool = essence },
+                new() { PlayerId = 2, UserId = "enemy-456", EssencePool = new() }
             }
         };
 
@@ -102,7 +102,7 @@ public class VexTests : IntegrationTestBase
 
         state!.CurrentPlayerId = 2; // Vez do Inimigo
         var userMock = GetService<ICurrentUserService>();
-        userMock.UserId.Returns(2); // Autenticar como Inimigo
+        userMock.UserId.Returns("enemy-456"); // Autenticar como Inimigo
         await repo.SaveAsync(combatId, state);
 
         // Inimigo ataca Vex com Melee

@@ -66,7 +66,7 @@ public static class DependencyInjection
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
 
         //SQL
-        services.AddScoped<IPlayerRepository, PlayerRepository>();
+        //services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<IGuildRepository, GuildRepository>();
 
 

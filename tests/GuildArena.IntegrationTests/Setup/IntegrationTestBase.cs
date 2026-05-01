@@ -1,6 +1,6 @@
 ﻿using GuildArena.Application;
 using GuildArena.Application.Abstractions;
-using GuildArena.Application.Abstractions.Notifications; 
+using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Core;
 using GuildArena.Domain.Abstractions.Repositories;
@@ -52,19 +52,19 @@ public abstract class IntegrationTestBase
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
 
-        var playerRepoMock = Substitute.For<IPlayerRepository>();
-        services.AddSingleton(playerRepoMock);
+        // Substituímos o antigo PlayerRepository pelo GuildRepository
+        var guildRepoMock = Substitute.For<IGuildRepository>();
+        services.AddSingleton(guildRepoMock);
 
         // 5. REGISTAR O FAKE REDIS        
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
 
         // 6. SIMULAR UTILIZADOR (Player 1)
         var userMock = Substitute.For<ICurrentUserService>();
-        userMock.UserId.Returns(1);
+        userMock.UserId.Returns("user-123"); 
         services.AddSingleton(userMock);
 
         // 7. SIMULAR NOTIFICADOR 
-        // Para  não tentar enviar SignalR real nos testes
         var notifierMock = Substitute.For<ICombatNotifier>();
         services.AddSingleton(notifierMock);
 

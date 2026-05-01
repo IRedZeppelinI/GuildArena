@@ -5,6 +5,7 @@ using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.Gameplay;
+using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.IntegrationTests.Setup;
 using MediatR;
@@ -41,7 +42,7 @@ public class CommonAbilitiesTests : IntegrationTestBase
         var dummy = new Combatant
         {
             Id = -1,
-            OwnerId = 0,
+            OwnerId = 2, // Alterado para a cadeira 2
             Name = "Dummy",
             RaceId = "RACE_HUMAN",
             CurrentHP = 100,
@@ -56,15 +57,15 @@ public class CommonAbilitiesTests : IntegrationTestBase
             Combatants = new List<Combatant> { soldier, dummy },
             Players = new List<CombatPlayer>
             {
-                // Player com recursos genéricos
-                new() { PlayerId = 1, EssencePool = new() { { EssenceType.Vigor, 5 } } }
+                // AQUI ESTÁ A CORREÇÃO: Adicionamos o UserId da sessão de testes
+                new() { PlayerId = 1, UserId = "user-123", EssencePool = new() { { EssenceType.Vigor, 5 } } },
+                new() { PlayerId = 2, UserId = "enemy-456", EssencePool = new() }
             }
         };
 
         await stateRepo.SaveAsync(combatId, gameState);
         return (combatId, mediator, stateRepo);
     }
-
     [Fact]
     public async Task Slash_ShouldDealPhysicalDamage_ScalingWithAttack()
     {
@@ -90,7 +91,6 @@ public class CommonAbilitiesTests : IntegrationTestBase
         // Cálculo: Base 5 + (Attack 10 * 1.0 Scaling) = 15 Dano
         target.CurrentHP.ShouldBe(85); // 100 - 15        
     }
-
     [Fact]
     public async Task Guard_ShouldApplyDefenseBuff_ToSelf()
     {
@@ -119,9 +119,5 @@ public class CommonAbilitiesTests : IntegrationTestBase
 
         // 2. Verificar duração (Guard dura 1 turno)
         guardMod.TurnsRemaining.ShouldBe(1);
-
-        // 3. (Opcional) Poderíamos verificar se o stat de Defense subiu, 
-        // mas isso seria testar o StatCalculationService. 
-        // Aqui basta saber que o modifier "Guarding" está lá.
     }
 }

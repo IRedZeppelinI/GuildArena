@@ -48,8 +48,8 @@ public class ExchangeEssenceCommandHandler : IRequestHandler<ExchangeEssenceComm
     /// </returns>
     public async Task<Result> Handle(ExchangeEssenceCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId;
-        if (userId == null)
+        var requestUserId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(requestUserId))
         {
             return Result.Failure(new Error(
                 "Auth.Unauthorized",
@@ -66,7 +66,18 @@ public class ExchangeEssenceCommandHandler : IRequestHandler<ExchangeEssenceComm
                 ErrorType.NotFound));
         }
 
-        if (gameState.CurrentPlayerId != userId)
+        var matchPlayer = gameState.Players.FirstOrDefault(p => p.UserId == requestUserId);
+        if (matchPlayer == null)
+        {
+            return Result.Failure(new Error(
+                "Combat.NotParticipant",
+                "You are not a participant in this combat.",
+                ErrorType.Forbidden));
+        }
+
+        var seatId = matchPlayer.PlayerId;
+
+        if (gameState.CurrentPlayerId != seatId)
         {
             return Result.Failure(new Error(
                 "Combat.NotYourTurn",
@@ -83,14 +94,13 @@ public class ExchangeEssenceCommandHandler : IRequestHandler<ExchangeEssenceComm
                 ErrorType.Validation));
         }
 
-        var player = gameState.Players.First(p => p.PlayerId == userId);
         var costsToValidate = request.EssenceToSpend
             .Select(kvp => new EssenceAmount { Type = kvp.Key, Amount = kvp.Value })
             .ToList();
 
-        if (!_essenceService.HasEnoughEssence(player, costsToValidate))
+        if (!_essenceService.HasEnoughEssence(matchPlayer, costsToValidate))
         {
-            _logger.LogWarning("Player {PlayerId} attempted to exchange essence they do not own.", userId);
+            _logger.LogWarning("User {UserId} attempted to exchange essence they do not own.", requestUserId);
 
             return Result.Failure(new Error(
                 "Exchange.InsufficientEssence",
@@ -98,10 +108,10 @@ public class ExchangeEssenceCommandHandler : IRequestHandler<ExchangeEssenceComm
                 ErrorType.Validation));
         }
 
-        _essenceService.ConsumeEssence(player, request.EssenceToSpend);
-        _essenceService.AddEssence(player, request.EssenceToGain, 1);
+        _essenceService.ConsumeEssence(matchPlayer, request.EssenceToSpend);
+        _essenceService.AddEssence(matchPlayer, request.EssenceToGain, 1);
 
-        _battleLog.Log($"{player.Name} exchanged essence for {request.EssenceToGain} Essence.");
+        _battleLog.Log($"{matchPlayer.Name} exchanged essence for {request.EssenceToGain} Essence.");
 
         await _combatStateRepo.SaveAsync(request.CombatId, gameState);
 
@@ -109,8 +119,9 @@ public class ExchangeEssenceCommandHandler : IRequestHandler<ExchangeEssenceComm
         await _notifier.SendBattleLogsAsync(request.CombatId, logs);
         await _notifier.SendGameStateUpdateAsync(request.CombatId, gameState);
 
-        _logger.LogInformation("Player {PlayerId} successfully exchanged essence in combat {CombatId}.",
-            userId, request.CombatId);
+        _logger.LogInformation(
+            "User {UserId} successfully exchanged essence in combat {CombatId}.",
+            requestUserId, request.CombatId);
 
         return Result.Success();
     }

@@ -52,8 +52,8 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
     /// </returns>
     public async Task<Result> Handle(EndTurnCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUserService.UserId;
-        if (userId == null)
+        var requestUserId = _currentUserService.UserId;
+        if (string.IsNullOrEmpty(requestUserId))
         {
             return Result.Failure(new Error(
                 "Auth.Unauthorized",
@@ -70,7 +70,18 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
                 ErrorType.NotFound));
         }
 
-        if (gameState.CurrentPlayerId != userId)
+        var matchPlayer = gameState.Players.FirstOrDefault(p => p.UserId == requestUserId);
+        if (matchPlayer == null)
+        {
+            return Result.Failure(new Error(
+                "Combat.NotParticipant",
+                "You are not a participant in this combat.",
+                ErrorType.Forbidden));
+        }
+
+        var seatId = matchPlayer.PlayerId;
+
+        if (gameState.CurrentPlayerId != seatId)
         {
             return Result.Failure(new Error(
                 "Combat.NotYourTurn",
@@ -79,8 +90,8 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
         }
 
         _logger.LogInformation(
-            "User {UserId} ending turn {TurnNumber} in Combat {CombatId}.",
-            userId, gameState.CurrentTurnNumber, request.CombatId);
+            "User {UserId} (Seat {SeatId}) ending turn {TurnNumber} in Combat {CombatId}.",
+            requestUserId, seatId, gameState.CurrentTurnNumber, request.CombatId);
 
         _turnManagerService.AdvanceTurn(gameState);
 

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace GuildArena.Application.Combat.ExecuteAbility;
 
 /// <summary>
-/// Handles the execution of a combat ability, validating game rules, costs, and state.
+/// Handles the execution of a combat ability, securely validating the user's identity and in-match seat assignment.
 /// </summary>
 public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityCommand, Result>
 {
@@ -49,12 +49,10 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
     /// A <see cref="Result"/> indicating success. Returns a failure result if validation fails 
     /// (e.g., insufficient essence, invalid turn, stunned state).
     /// </returns>
-    public async Task<Result> Handle(
-        ExecuteAbilityCommand request,
-        CancellationToken cancellationToken)
+    public async Task<Result> Handle(ExecuteAbilityCommand request, CancellationToken cancellationToken)
     {
-        var userId = _currentUser.UserId;
-        if (userId == null)
+        var requestUserId = _currentUser.UserId;
+        if (string.IsNullOrEmpty(requestUserId))
         {
             return Result.Failure(new Error(
                 "Auth.Unauthorized",
@@ -71,7 +69,20 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
                 ErrorType.NotFound));
         }
 
-        if (gameState.CurrentPlayerId != userId)
+        // FIND THE SEAT THIS ACCOUNT OWNS IN THIS SPECIFIC MATCH
+        var matchPlayer = gameState.Players.FirstOrDefault(p => p.UserId == requestUserId);
+        if (matchPlayer == null)
+        {
+            return Result.Failure(new Error(
+                "Combat.NotParticipant",
+                "You are not a participant in this combat.",
+                ErrorType.Forbidden));
+        }
+
+        var seatId = matchPlayer.PlayerId;
+
+        // COMBAT ENGINE VALIDATIONS USE THE SEAT ID
+        if (gameState.CurrentPlayerId != seatId)
         {
             return Result.Failure(new Error(
                 "Combat.NotYourTurn",
@@ -84,15 +95,15 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         {
             return Result.Failure(new Error(
                 "Combat.SourceNotFound",
-                $"Source combatant {request.SourceId} not found in this combat.",
+                $"Source combatant {request.SourceId} not found.",
                 ErrorType.Validation));
         }
 
-        if (sourceCombatant.OwnerId != userId)
+        if (sourceCombatant.OwnerId != seatId)
         {
             _logger.LogWarning(
-                "User {UserId} tried to control combatant {SourceId} owned by {OwnerId}.",
-                userId, request.SourceId, sourceCombatant.OwnerId);
+                "User {UserId} tried to control combatant {SourceId} owned by seat {OwnerId}.",
+                requestUserId, request.SourceId, sourceCombatant.OwnerId);
 
             return Result.Failure(new Error(
                 "Combat.NotOwner",

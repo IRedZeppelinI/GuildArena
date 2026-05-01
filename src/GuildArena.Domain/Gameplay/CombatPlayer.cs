@@ -11,10 +11,16 @@ namespace GuildArena.Domain.Gameplay;
 public class CombatPlayer
 {
     /// <summary>
-    /// ID from player (correspondes to Combatant.OwnerId).
+    /// In-match ID assigned by the combat engine (e.g., 1 for Player 1, 2 for Player 2, -1 for AI).
+    /// Corresponds to Combatant.OwnerId.
     /// </summary>
     public int PlayerId { get; set; }
 
+    /// <summary>
+    /// The Global Identity GUID of the user controlling this seat. Null if AI.
+    /// Used by the API to authorize requests.
+    /// </summary>
+    public string? UserId { get; set; }
 
     public string Name { get; set; } = "Unknown Player";
 

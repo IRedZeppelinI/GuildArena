@@ -92,8 +92,8 @@ public class ElysiaTests : IntegrationTestBase
             Combatants = new List<Combatant> { elysia, tank, fullHpUnit, enemy },
             Players = new List<CombatPlayer>
             {
-                new() { PlayerId = 1, EssencePool = essence },
-                new() { PlayerId = 2, EssencePool = new() }
+                 new() { PlayerId = 1, UserId = "user-123", EssencePool = essence },
+                new() { PlayerId = 2, UserId = "enemy-456", EssencePool = new() }
             }
         };
 

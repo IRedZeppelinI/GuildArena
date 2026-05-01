@@ -69,7 +69,7 @@ public class GarretTests : IntegrationTestBase
             Combatants = new List<Combatant> { garret, dummy },
             Players = new List<CombatPlayer>
             {
-                new() { PlayerId = 1, EssencePool = playerEssence }
+                new() { PlayerId = 1, UserId = "user-123", EssencePool = playerEssence }
             }
         };
 

@@ -1,7 +1,7 @@
 ﻿namespace GuildArena.Application.Abstractions;
 
 /// <summary>
-/// Provides access to the currently authenticated user's identity and active game profile.
+/// Provides access to the currently authenticated user's identity.
 /// </summary>
 public interface ICurrentUserService
 {
@@ -12,8 +12,7 @@ public interface ICurrentUserService
     string? UserId { get; }
 
     /// <summary>
-    /// Gets the unique identifier of the user's active Guild.
-    /// This acts as the "PlayerId" across all combat and gameplay mechanics.
+    /// Gets the unique identifier of the user's active Guild.    
     /// </summary>
     int? GuildId { get; }
 }

@@ -86,8 +86,8 @@ public class KorgTests : IntegrationTestBase
             Combatants = new List<Combatant> { korg, ally, enemy },
             Players = new List<CombatPlayer>
             {
-                new() { PlayerId = 1, EssencePool = korgEssence },
-                new() { PlayerId = 2, EssencePool = new() }
+                 new() { PlayerId = 1, UserId = "user-123", EssencePool = korgEssence },
+                new() { PlayerId = 2, UserId = "enemy-456", EssencePool = new() }
             }
         };
 
@@ -223,7 +223,7 @@ public class KorgTests : IntegrationTestBase
         // Simular vez do inimigo
         state!.CurrentPlayerId = 2;
         var userMock = GetService<ICurrentUserService>();
-        userMock.UserId.Returns(2);
+        userMock.UserId.Returns("enemy-456");
         await repo.SaveAsync(combatId, state);
 
         // Inimigo ataca Korg com Slash (ID 201 -> 101)
