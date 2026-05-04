@@ -17,7 +17,8 @@ namespace GuildArena.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Adds and configures the Infrastructure services.
+    /// Handles the registration of infrastructure services, such as database contexts, 
+    /// Redis connections, and data repositories.
     /// </summary>
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services, IConfiguration configuration)
@@ -41,18 +42,18 @@ public static class DependencyInjection
             options.UseNpgsql(dbConnectionString));
 
         // 3. Identity (Auth)
-        services.AddIdentity<ApplicationUser, IdentityRole>(options =>
-        {
-            options.User.RequireUniqueEmail = true;
-            // Regras relaxadas para desenvolvimento
-            options.Password.RequireDigit = false;
-            options.Password.RequiredLength = 4;
-            options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequireUppercase = false;
-            options.Password.RequireLowercase = false;
-        })
-            .AddEntityFrameworkStores<GuildArenaDbContext>()
-            .AddDefaultTokenProviders();
+        //services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+        //{
+        //    options.User.RequireUniqueEmail = true;
+        //    // Regras relaxadas para desenvolvimento
+        //    options.Password.RequireDigit = false;
+        //    options.Password.RequiredLength = 4;
+        //    options.Password.RequireNonAlphanumeric = false;
+        //    options.Password.RequireUppercase = false;
+        //    options.Password.RequireLowercase = false;
+        //})
+        //    .AddEntityFrameworkStores<GuildArenaDbContext>()
+        //    .AddDefaultTokenProviders();
 
         // Repositórios
         //redis
