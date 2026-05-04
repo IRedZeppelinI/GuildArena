@@ -36,6 +36,10 @@ public static class DependencyInjection
         .AddRoles<IdentityRole>()
         .AddEntityFrameworkStores<GuildArenaDbContext>();
 
+
+        // REGISTO FACTORY CUSTOMIZADO para cookie de Guild
+        services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, CustomUserClaimsPrincipalFactory>();
+
         return services;
     }
 }
