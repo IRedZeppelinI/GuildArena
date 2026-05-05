@@ -1,9 +1,11 @@
-﻿using System.Security.Claims;
-using GuildArena.Api.Controllers;
+﻿using GuildArena.Api.Controllers;
 using GuildArena.Application.Abstractions;
+using GuildArena.Domain.Entities;
 using GuildArena.Shared.DTOs.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GuildArena.Api.Controllers.Account;
 
@@ -11,10 +13,13 @@ namespace GuildArena.Api.Controllers.Account;
 public class AccountController : BaseApiController
 {
     private readonly ICurrentUserService _currentUserService;
+    private readonly SignInManager<ApplicationUser> _signInManager;
 
-    public AccountController(ICurrentUserService currentUserService)
+    public AccountController(ICurrentUserService currentUserService,
+        SignInManager<ApplicationUser> signInManager)
     {
         _currentUserService = currentUserService;
+        _signInManager = signInManager;
     }
 
     /// <summary>
@@ -33,5 +38,14 @@ public class AccountController : BaseApiController
             Email = email,
             GuildId = _currentUserService.GuildId
         });
+    }
+
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        await _signInManager.SignOutAsync();
+        return Ok();
     }
 }

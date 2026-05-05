@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+﻿@* @inherits LayoutComponentBase
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -14,3 +14,59 @@
         </article>
     </main>
 </div>
+ *@
+
+
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using GuildArena.Web.Security
+@inject AuthenticationStateProvider AuthState
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <!-- Top Row com Botões de Autenticação -->
+        <div class="top-row px-4 auth">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="me-3 text-dark fw-bold">Welcome, @context.User.Identity?.Name!</span>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="ExecuteLogout">Logout</button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/login" class="btn btn-sm btn-primary">Login</a>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private async Task ExecuteLogout()
+    {
+        try
+        {
+            // Chama a API para apagar o Cookie no browser
+            await Http.PostAsync("api/account/logout", null);
+
+            // Avisa a aplicação Blazor que o utilizador saiu
+            var customAuthState = (CookieAuthenticationStateProvider)AuthState;
+            customAuthState.NotifyAuthStatusChanged();
+
+            // Redireciona para o login ou home
+            NavManager.NavigateTo("/login");
+        }
+        catch
+        {
+            // Ignora erros de rede no logout
+        }
+    }
+}

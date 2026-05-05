@@ -19,6 +19,12 @@ public interface IGuildRepository
     Task<List<Hero>> GetHeroesAsync(int guildId, List<int> heroIds);
 
     /// <summary>
+    /// Retrieves all heroes belonging to a specific guild.
+    /// </summary>
+    Task<List<Hero>> GetAllHeroesAsync(int guildId);
+
+
+    /// <summary>
     /// Creates a new Guild profile in the database.
     /// </summary>
     Task CreateGuildAsync(Guild guild);
@@ -26,5 +32,5 @@ public interface IGuildRepository
     /// <summary>
     /// Updates an existing Guild profile (e.g., adding wins/losses, MMR, or Gold).
     /// </summary>
-    Task UpdateGuildAsync(Guild guild);
+    Task UpdateGuildAsync(Guild guild);    
 }

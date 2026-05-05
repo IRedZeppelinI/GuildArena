@@ -15,11 +15,9 @@
 {
     <div class="startup-screen">
         <div class="startup-box">
-            <h3 class="text-warning">GuildArena</h3>
-            <p class="text-light">Prepare for battle.</p>
-            <button class="btn btn-danger btn-lg mt-3" @onclick="StartCombatAsync" disabled="@CombatState.IsConnecting">
-                @(CombatState.IsConnecting ? "Entering Arena..." : "Start Match")
-            </button>
+            <h3 class="text-warning">No active combat</h3>
+            <p class="text-light">Please select your heroes in the Lobby first.</p>
+            <a class="btn btn-outline-info mt-3" href="/">Go to Lobby</a>
         </div>
     </div>
 }
@@ -89,10 +87,10 @@ else
 
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
 
-    private async Task StartCombatAsync()
-    {
-        await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
-    }
+    // private async Task StartCombatAsync()
+    // {
+    //     await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
+    // }
 
     private async Task EndTurnAsync()
     {

@@ -1,0 +1,78 @@
+﻿@page "/login"
+@using GuildArena.Shared.Requests
+@using GuildArena.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager NavManager
+
+<PageTitle>Login</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <div class="card bg-dark text-light border-secondary">
+                <div class="card-header border-secondary text-center text-warning">
+                    <h4>GuildArena Login</h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger p-2">@_errorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control bg-secondary text-light" @bind="_request.Email" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control bg-secondary text-light" @bind="_request.Password" />
+                    </div>
+                    <button class="btn btn-warning w-100 fw-bold" @onclick="ExecuteLogin" disabled="@_isLoading">
+                        @(_isLoading ? "Connecting..." : "Login")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginRequest _request = new() { Email = "dev@guildarena.com", Password = "Password123!" };
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private async Task ExecuteLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // O endpoint do Identity requer o query param useCookies=true
+            var response = await Http.PostAsJsonAsync("login?useCookies=true", _request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Avisa a aplicação Blazor que o utilizador já tem o cookie
+                var customAuthState = (CookieAuthenticationStateProvider)AuthState;
+                customAuthState.NotifyAuthStatusChanged();
+
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "Invalid login attempt.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Connection error.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

@@ -29,6 +29,14 @@ public class GuildRepository : IGuildRepository
             .ToListAsync();
     }
 
+    public async Task<List<Hero>> GetAllHeroesAsync(int guildId)
+    {
+        return await _dbContext.Heroes
+            .AsNoTracking()
+            .Where(hero => hero.GuildId == guildId)
+            .ToListAsync();
+    }
+
     public async Task CreateGuildAsync(Guild guild)
     {
         await _dbContext.Guilds.AddAsync(guild);
@@ -40,4 +48,5 @@ public class GuildRepository : IGuildRepository
         _dbContext.Guilds.Update(guild);
         await _dbContext.SaveChangesAsync();
     }
+    
 }

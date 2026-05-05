@@ -1,7 +1,93 @@
 ﻿@page "/"
+@attribute [Authorize]
+@using GuildArena.Shared.DTOs.GuildAndHeroes
+@using GuildArena.Web.State
+@using Microsoft.AspNetCore.Authorization
+@inject HttpClient Http
+@inject ICombatStateService CombatService
+@inject NavigationManager NavManager
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Lobby - My Roster</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container mt-4 text-light">
+    <h2 class="text-warning">Guild Roster</h2>
+    <p>Select exactly 3 heroes to enter the Arena.</p>
 
-Welcome to your new app.
+    @if (_heroes == null)
+    {
+        <p><em>Loading roster...</em></p>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var hero in _heroes)
+            {
+                var isSelected = _selectedHeroIds.Contains(hero.Id);
+                <div class="col-md-4 mb-3">
+                    <div class="card @(isSelected ? "border-warning" : "border-secondary") bg-dark text-center"
+                         style="cursor: pointer;"
+                         @onclick="() => ToggleSelection(hero.Id)">
+                        <div class="card-body">
+                            <h5 class="card-title text-info">@hero.DefinitionId</h5>
+                            <p class="card-text small text-muted">Level @hero.CurrentLevel | ID: @hero.Id</p>
+                            @if (isSelected)
+                            {
+                                <span class="badge bg-warning text-dark">Selected</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="text-center mt-4 border-top border-secondary pt-3">
+            <h4>Selected: @_selectedHeroIds.Count / 3</h4>
+            <button class="btn btn-danger btn-lg mt-2 fw-bold"
+                    disabled="@(_selectedHeroIds.Count != 3 || CombatService.IsConnecting)"
+                    @onclick="StartMatchAsync">
+                @(CombatService.IsConnecting ? "Entering Arena..." : "ENTER ARENA")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private List<HeroDto>? _heroes;
+    private List<int> _selectedHeroIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _heroes = await Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
+        }
+        catch
+        {
+            // Tratamento básico de erro para placeholder
+        }
+    }
+
+    private void ToggleSelection(int heroId)
+    {
+        if (_selectedHeroIds.Contains(heroId))
+        {
+            _selectedHeroIds.Remove(heroId);
+        }
+        else if (_selectedHeroIds.Count < 3)
+        {
+            _selectedHeroIds.Add(heroId);
+        }
+    }
+
+    private async Task StartMatchAsync()
+    {
+        if (_selectedHeroIds.Count == 3)
+        {
+            // Inicia o combate usando os serviços globais
+            await CombatService.StartPveCombatAsync("ENC_TUTORIAL_01", _selectedHeroIds);
+
+            // Navega para a página de combate para renderizar a arena
+            NavManager.NavigateTo("/arena");
+        }
+    }
+}
