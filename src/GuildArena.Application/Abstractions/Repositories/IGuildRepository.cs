@@ -23,6 +23,10 @@ public interface IGuildRepository
     /// </summary>
     Task<List<Hero>> GetAllHeroesAsync(int guildId);
 
+    /// <summary>
+    /// Creates a new Guild and populates it with a starter roster of heroes.
+    /// </summary>
+    Task CreateWithStarterPackAsync(string applicationUserId, string guildName);
 
     /// <summary>
     /// Creates a new Guild profile in the database.

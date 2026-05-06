@@ -1,19 +1,16 @@
-﻿@page "/login"
+﻿@page "/register"
 @using GuildArena.Shared.Requests
-@using GuildArena.Web.Security
-@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
-@inject AuthenticationStateProvider AuthState
 @inject NavigationManager NavManager
 
-<PageTitle>Login</PageTitle>
+<PageTitle>Register</PageTitle>
 
 <div class="container mt-5">
     <div class="row justify-content-center">
-        <div class="col-md-4">
+        <div class="col-md-5">
             <div class="card bg-dark text-light border-secondary">
-                <div class="card-header border-secondary text-center text-warning">
-                    <h4>GuildArena Login</h4>
+                <div class="card-header border-secondary text-center text-info">
+                    <h4>Create Account</h4>
                 </div>
                 <div class="card-body">
                     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -22,23 +19,21 @@
                     }
 
                     <div class="mb-3">
-                        <label class="form-label">Email</label>
+                        <label class="form-label">Email Address</label>
                         <input type="email" class="form-control bg-secondary text-light" @bind="_request.Email" />
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Password</label>
                         <input type="password" class="form-control bg-secondary text-light" @bind="_request.Password" />
+                        <small class="text-muted">Minimum 6 characters, at least 1 number.</small>
                     </div>
-                    <button class="btn btn-warning w-100 fw-bold" @onclick="ExecuteLogin" disabled="@_isLoading">
-                        @(_isLoading ? "Connecting..." : "Login")
+                    <button class="btn btn-info w-100 fw-bold mt-3" @onclick="ExecuteRegister" disabled="@_isLoading">
+                        @(_isLoading ? "Registering..." : "Sign Up")
                     </button>
 
-                    <!-- ADICIONADO: Link para a página de Registo -->
-                    <div class="mt-4 text-center border-top border-secondary pt-3">
-                        <p class="mb-1 text-muted">Don't have a Guild yet?</p>
-                        <a href="/register" class="btn btn-outline-info w-100">Create Account</a>
+                    <div class="mt-3 text-center">
+                        <a href="/login" class="text-info text-decoration-none">Already have an account? Login here.</a>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -50,32 +45,25 @@
     private string? _errorMessage;
     private bool _isLoading;
 
-    protected override void OnInitialized()
-    {
-        // Preenche com os dados do seeder para facilitar testes durante o desenvolvimento
-        _request.Email = "dev@guildarena.com";
-        _request.Password = "Password123!";
-    }
-
-    private async Task ExecuteLogin()
+    private async Task ExecuteRegister()
     {
         _isLoading = true;
         _errorMessage = null;
 
         try
         {
-            var response = await Http.PostAsJsonAsync("login?useCookies=true", _request);
+            // Endpoint padrão do Identity API
+            var response = await Http.PostAsJsonAsync("register", _request);
 
             if (response.IsSuccessStatusCode)
             {
-                var customAuthState = (CookieAuthenticationStateProvider)AuthState;
-                customAuthState.NotifyAuthStatusChanged();
-
-                NavManager.NavigateTo("/");
+                // Registo com sucesso, mandamos para o Login
+                NavManager.NavigateTo("/login");
             }
             else
             {
-                _errorMessage = "Invalid login attempt.";
+                var errorText = await response.Content.ReadAsStringAsync();
+                _errorMessage = "Registration failed. Check password requirements.";
             }
         }
         catch

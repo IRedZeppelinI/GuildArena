@@ -37,6 +37,27 @@ public class GuildRepository : IGuildRepository
             .ToListAsync();
     }
 
+    public async Task CreateWithStarterPackAsync(string applicationUserId, string guildName)
+    {
+        var guild = new Guild
+        {
+            ApplicationUserId = applicationUserId,
+            Name = guildName,
+            Gold = 500, // Dinheiro inicial
+            Wins = 0,
+            Losses = 0,
+            Heroes = new List<Hero>
+            {
+                new Hero { CharacterDefinitionId = "HERO_GARRET", CurrentLevel = 1, CurrentXP = 0 },
+                new Hero { CharacterDefinitionId = "HERO_KORG", CurrentLevel = 1, CurrentXP = 0 },
+                new Hero { CharacterDefinitionId = "HERO_ELYSIA", CurrentLevel = 1, CurrentXP = 0 }
+            }
+        };
+
+        await _dbContext.Guilds.AddAsync(guild);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public async Task CreateGuildAsync(Guild guild)
     {
         await _dbContext.Guilds.AddAsync(guild);
