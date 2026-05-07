@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GuildArena.Core\GuildArena.Core.csproj" />
     <ProjectReference Include="..\GuildArena.Domain\GuildArena.Domain.csproj" />
+    <ProjectReference Include="..\GuildArena.Shared\GuildArena.Shared.csproj" />
   </ItemGroup>
 
 </Project>

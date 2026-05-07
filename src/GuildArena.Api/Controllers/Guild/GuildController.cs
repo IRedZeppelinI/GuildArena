@@ -1,8 +1,5 @@
 ﻿using GuildArena.Application.Abstractions;
-using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Domain.Entities;
-using GuildArena.Shared.DTOs;
-using GuildArena.Shared.DTOs.GuildAndHeroes;
 using GuildArena.Shared.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -14,40 +11,38 @@ namespace GuildArena.Api.Controllers.Guild;
 [Route("api/[controller]")]
 public class GuildController : BaseApiController
 {
-    private readonly IGuildRepository _guildRepo;
+    private readonly IGuildService _guildService;
     private readonly ICurrentUserService _currentUser;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
 
     public GuildController(
-        IGuildRepository guildRepo,
+        IGuildService guildService,
         ICurrentUserService currentUser,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager)
     {
-        _guildRepo = guildRepo;
+        _guildService = guildService;
         _currentUser = currentUser;
         _userManager = userManager;
         _signInManager = signInManager;
     }
-
     [HttpPost("create")]
     public async Task<IActionResult> CreateGuild([FromBody] CreateGuildRequest request)
     {
-        if (_currentUser.GuildId.HasValue)
+        // Delega TUDO para o serviço (incluindo validações)
+        var result = await _guildService.CreateGuildAsync(
+            _currentUser.UserId!,
+            _currentUser.GuildId,
+            request.GuildName);
+
+        // Se falhou (ex: nome inválido, já tem guilda), o BaseApiController trata do Erro!
+        if (result.IsFailure)
         {
-            return BadRequest(new { detail = "User already has an active Guild." });
+            return HandleResult(result);
         }
 
-        if (string.IsNullOrWhiteSpace(request.GuildName) || request.GuildName.Length < 3)
-        {
-            return BadRequest(new { detail = "Guild name must be at least 3 characters long." });
-        }
-
-        // 1. Criar a Guild e o Starter Pack
-        await _guildRepo.CreateWithStarterPackAsync(_currentUser.UserId!, request.GuildName);
-
-        // 2. Refrescar o Cookie de Autenticação para injetar GuildId
+        // Lógica puramente Web: Refrescar o Cookie de Autenticação
         var user = await _userManager.FindByIdAsync(_currentUser.UserId!);
         if (user != null)
         {
@@ -58,22 +53,11 @@ public class GuildController : BaseApiController
     }
 
     [HttpGet("my-roster")]
-    public async Task<ActionResult<List<HeroDto>>> GetMyRoster()
+    public async Task<IActionResult> GetMyRoster()
     {
-        if (!_currentUser.GuildId.HasValue)
-        {
-            return BadRequest(new { detail = "User is not associated with any guild." });
-        }
+        var result = await _guildService.GetGuildRosterAsync(_currentUser.GuildId);
 
-        var heroes = await _guildRepo.GetAllHeroesAsync(_currentUser.GuildId.Value);
-
-        var dtos = heroes.Select(h => new HeroDto
-        {
-            Id = h.Id,
-            DefinitionId = h.CharacterDefinitionId,
-            CurrentLevel = h.CurrentLevel
-        }).ToList();
-
-        return Ok(dtos);
+        // HandleResult devolve Ok(result.Value) se for sucesso, ou ProblemDetails se falhar
+        return HandleResult(result);
     }
 }

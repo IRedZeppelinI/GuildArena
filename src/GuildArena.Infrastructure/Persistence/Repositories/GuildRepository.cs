@@ -43,7 +43,7 @@ public class GuildRepository : IGuildRepository
         {
             ApplicationUserId = applicationUserId,
             Name = guildName,
-            Gold = 500, // Dinheiro inicial
+            Gold = 500, // Starter Gold
             Wins = 0,
             Losses = 0,
             Heroes = new List<Hero>

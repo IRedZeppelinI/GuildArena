@@ -1,6 +1,8 @@
-﻿using GuildArena.Application.Combat.AI;
+﻿using GuildArena.Application.Abstractions;
+using GuildArena.Application.Combat.AI;
 using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Application.Combat.AI.Behaviors;
+using GuildArena.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
@@ -21,6 +23,10 @@ public static class DependencyInjection
 
         services.AddSingleton<IAiTurnQueue, AiTurnQueue>();
         services.AddHostedService<AiTurnWorker>();
+
+        
+        services.AddScoped<IGuildService, GuildService>();
+        services.AddScoped<IEncounterService, EncounterService>();
 
         return services;
     }
