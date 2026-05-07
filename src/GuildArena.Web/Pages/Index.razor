@@ -1,0 +1,56 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>GuildArena - The Ultimate Tactical RPG</PageTitle>
+
+<!-- Secção Hero (O Banner Principal) -->
+<div class="jumbotron text-center py-5 mb-5 rounded shadow" style="background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('/images/ui/landing-bg.jpg') center/cover;">
+    <h1 class="display-3 text-warning fw-bold mb-3" style="text-shadow: 0 0 15px rgba(255, 216, 0, 0.5);">GuildArena</h1>
+    <p class="lead text-light mb-4">Draft your heroes. Master the essence. Conquer the Arena.</p>
+
+    <AuthorizeView>
+        <Authorized>
+            <a href="/roster" class="btn btn-warning btn-lg fw-bold px-5 py-3 shadow">Enter your Guild</a>
+        </Authorized>
+        <NotAuthorized>
+            <a href="/login" class="btn btn-warning btn-lg fw-bold px-5 py-2 me-3 shadow">Play Now</a>
+            <a href="/register" class="btn btn-outline-light btn-lg px-4 py-2">Create Account</a>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+<!-- Secção de Notícias -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <h2 class="border-bottom border-secondary pb-2">Latest News</h2>
+    </div>
+
+    <!-- Notícia 1 -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100 shadow">
+            <div class="card-body">
+                <span class="badge bg-danger mb-2">New Update</span>
+                <h4 class="card-title text-info">The Shadow Assassin Arrives</h4>
+                <p class="card-text text-muted">Vesper, the Nethra assassin, joins the roster! Master the shadows and outmaneuver your opponents with high evasion and deadly precision strikes.</p>
+            </div>
+            <div class="card-footer border-secondary text-muted text-end">
+                <small>May 6, 2026</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notícia 2 -->
+    <div class="col-md-6 mb-4">
+        <div class="card bg-dark border-secondary h-100 shadow">
+            <div class="card-body">
+                <span class="badge bg-success mb-2">PvE Content</span>
+                <h4 class="card-title text-info">New Encounter: Bandit Ambush</h4>
+                <p class="card-text text-muted">A group of bandits has been spotted near the tutorial forest. Test your team compositions and earn valuable gold to expand your guild.</p>
+            </div>
+            <div class="card-footer border-secondary text-muted text-end">
+                <small>May 1, 2026</small>
+            </div>
+        </div>
+    </div>
+</div>

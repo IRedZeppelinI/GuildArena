@@ -1,6 +1,8 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">GuildArena.Web</a>
+    <div class="container-fluid justify-content-between">
+        <a class="navbar-brand game-logo" href="">
+            GuildArena
+        </a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -8,25 +10,30 @@
 </div>
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
+    <nav class="nav flex-column game-menu">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            <NavLink class="nav-link" href="roster" Match="NavLinkMatch.All">
+                <span class="fs-5 me-2">🏕️</span> Guild Roster
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="encounters">
+                <span class="fs-5 me-2">⚔️</span> Encounters
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="dungeons">
+                <span class="fs-5 me-2">🏰</span> Dungeons
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="arena">
-                <span class="bi bi-controller" aria-hidden="true"></span> Arena
+            <NavLink class="nav-link" href="tavern">
+                <span class="fs-5 me-2">🍻</span> Hero Tavern
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="quests">
+                <span class="fs-5 me-2">📜</span> Quests
             </NavLink>
         </div>
     </nav>

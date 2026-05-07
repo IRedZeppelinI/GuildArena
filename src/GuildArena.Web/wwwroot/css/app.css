@@ -1,5 +1,13 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /*font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;*/
+    font-family: 'Lato', Helvetica, Arial, sans-serif;
+    color: #e0e0e0;
+    background-color: #121212;
+}
+
+h1, h2, h3, h4, h5, h6, .navbar-brand, .card-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
 }
 
 h1:focus {

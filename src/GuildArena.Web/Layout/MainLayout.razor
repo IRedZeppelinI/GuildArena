@@ -1,44 +1,35 @@
-﻿@* @inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
- *@
-
-
-@inherits LayoutComponentBase
+﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using GuildArena.Web.Security
 @inject AuthenticationStateProvider AuthState
 @inject HttpClient Http
 @inject NavigationManager NavManager
 
-<div class="page">
+<div class="page game-container">
     <div class="sidebar">
         <NavMenu />
     </div>
 
-    <main>
-        <!-- Top Row com Botões de Autenticação -->
-        <div class="top-row px-4 auth">
+    <main class="main-content">
+        <!-- Top Row agora usa justify-content-between para empurrar extremos -->
+        <div class="top-row px-4 auth d-flex justify-content-between align-items-center">
             <AuthorizeView>
                 <Authorized>
-                    <span class="me-3 text-dark fw-bold">Welcome, @context.User.Identity?.Name!</span>
-                    <button class="btn btn-sm btn-outline-danger" @onclick="ExecuteLogout">Logout</button>
+                    <!-- ESQUERDA: Gold -->
+                    <div class="gold-container d-flex align-items-center bg-dark px-3 py-1 rounded border border-warning">
+                        <span class="text-warning fw-bold me-2">500</span>
+                        <span title="Gold">🪙</span>
+                    </div>
+
+                    <!-- DIREITA: User e Logout -->
+                    <div class="user-profile d-flex align-items-center">
+                        <span class="me-3 text-light fw-bold d-none d-sm-inline">@context.User.Identity?.Name</span>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="ExecuteLogout">Logout</button>
+                    </div>
                 </Authorized>
                 <NotAuthorized>
-                    <a href="/login" class="btn btn-sm btn-primary">Login</a>
+                    <div></div> <!-- Espaçador invisível para empurrar o botão para a direita -->
+                    <a href="/login" class="btn btn-warning fw-bold">Login to Play</a>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -54,19 +45,11 @@
     {
         try
         {
-            // Chama a API para apagar o Cookie no browser
             await Http.PostAsync("api/account/logout", null);
-
-            // Avisa a aplicação Blazor que o utilizador saiu
             var customAuthState = (CookieAuthenticationStateProvider)AuthState;
             customAuthState.NotifyAuthStatusChanged();
-
-            // Redireciona para o login ou home
             NavManager.NavigateTo("/login");
         }
-        catch
-        {
-            // Ignora erros de rede no logout
-        }
+        catch { }
     }
 }
