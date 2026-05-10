@@ -23,4 +23,6 @@ public class AbilitySummaryDto
     public bool IsAffordable { get; set; }
 
     public List<TargetingRuleDto> TargetingRules { get; set; } = new();
+
+    public List<string> Tags { get; set; } = new();
 }

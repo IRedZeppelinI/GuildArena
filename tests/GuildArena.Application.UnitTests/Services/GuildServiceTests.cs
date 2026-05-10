@@ -24,6 +24,7 @@ public class GuildServiceTests
         _characterRepoMock = Substitute.For<ICharacterDefinitionRepository>();
         _loggerMock = Substitute.For<ILogger<GuildService>>();
 
+        // Instanciação limpa
         _service = new GuildService(_guildRepoMock, _characterRepoMock, _loggerMock);
     }
 

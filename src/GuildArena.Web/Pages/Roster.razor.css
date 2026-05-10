@@ -19,3 +19,11 @@
         transform: translateY(-4px);
         box-shadow: 0 6px 15px rgba(255, 216, 0, 0.2) !important;
     }
+
+.hero-portrait {
+    height: 200px;
+    background-color: #212529; /* bg-dark */
+    background-size: cover;
+    background-position: top center;
+    border-bottom: 1px solid #6c757d; /* border-secondary */
+}

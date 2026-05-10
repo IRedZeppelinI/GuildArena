@@ -6,6 +6,7 @@
 @inject HttpClient Http
 @inject NavigationManager NavManager
 @inject AuthenticationStateProvider AuthState
+@inject IAssetService AssetService
 
 <PageTitle>GuildArena - Roster</PageTitle>
 
@@ -57,20 +58,16 @@
                 @foreach (var hero in _heroes)
                 {
                     <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                        <!-- Usamos a classe hero-card -->
-                        <div class="card hero-card bg-dark border-secondary h-100 shadow">
-                            <div class="card-img-top bg-secondary d-flex justify-content-center align-items-center" style="height: 150px;">
-                                <span class="fs-1">👤</span>
+                        <!-- Transformámos a <div> do cartão numa tag <a> -->
+                        <a href="/hero/@hero.DefinitionId" class="card hero-card bg-dark border-secondary h-100 shadow text-decoration-none">
+                            <div class="card-img-top hero-portrait"
+                                 style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)');">
                             </div>
                             <div class="card-body text-center">
                                 <h5 class="card-title text-info fw-bold mb-1">@hero.Name</h5>
                                 <p class="card-text small text-muted">Level @hero.CurrentLevel</p>
-
-                                <button class="btn btn-sm btn-outline-light mt-2" @onclick="() => InspectHero(hero.Id)">
-                                    View Details
-                                </button>
                             </div>
-                        </div>
+                        </a>
                     </div>
                 }
             </div>
@@ -130,6 +127,6 @@
 
     private void InspectHero(int heroId)
     {
-        Console.WriteLine($"Inspecting hero {heroId}...");
+        NavManager.NavigateTo($"/hero/{heroId}");
     }
 }

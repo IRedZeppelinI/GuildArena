@@ -98,7 +98,8 @@ public class CombatStateMapper : ICombatStateMapper
             HPCost = def.HPCost,
             Costs = def.Costs.ToDictionary(k => k.Type, v => v.Amount),
             CurrentCooldownTurns = cd?.TurnsRemaining ?? 0,
-            IsAffordable = isAffordable, 
+            IsAffordable = isAffordable,
+            Tags = def.Tags.ToList(),
 
             TargetingRules = def.TargetingRules.Select(r => new TargetingRuleDto
             {
