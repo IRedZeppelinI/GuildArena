@@ -24,4 +24,5 @@ public class HeroDetailsDto
 
     //public List<HeroAbilityDto> Abilities { get; set; } = new();
     public List<AbilitySummaryDto> Abilities { get; set; } = new();
+    public List<TraitDto> Traits { get; set; } = new();
 }

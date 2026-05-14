@@ -2,6 +2,8 @@
 @attribute [Authorize]
 @using GuildArena.Shared.DTOs.GuildAndHeroes
 @using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Domain.Enums.Stats
+@using GuildArena.Domain.Enums.Combat
 @using GuildArena.Web.Services
 @inject HttpClient Http
 @inject IAssetService AssetService
@@ -18,8 +20,7 @@
     @if (_errorMessage != null)
     {
         <div class="alert alert-danger mt-3 shadow-sm border-danger">
-            <h5 class="text-danger fw-bold">Error loading hero</h5>
-            <p class="mb-0">@_errorMessage</p>
+            <h5 class="text-danger fw-bold">Error loading hero</h5><p class="mb-0">@_errorMessage</p>
         </div>
     }
     else if (_hero == null)
@@ -28,13 +29,12 @@
     }
     else
     {
-        <!-- BLOCO SUPERIOR: Retrato e Stats lado a lado -->
+        <!-- BLOCO SUPERIOR: Retrato (Esq) | Stats + Traits (Dir) -->
         <div class="row mb-5">
 
-            <!-- ESQUERDA: Retrato (Mais estreito: ocupa 3 a 4 colunas dependendo do ecrã) -->
+            <!-- COLUNA ESQUERDA: Retrato Limpo -->
             <div class="col-lg-3 col-md-4 mb-4 mb-md-0">
                 <div class="card bg-dark border-secondary shadow-lg hero-portrait-card">
-                    <!-- A imagem adapta-se automaticamente à largura da coluna -->
                     <img src="@AssetService.GetPortraitUrl(_hero.DefinitionId)" class="card-img-top hero-details-img" alt="@_hero.Name" />
                     <div class="card-body text-center p-3">
                         <h3 class="card-title text-warning fw-bold mb-0">@_hero.Name</h3>
@@ -44,36 +44,74 @@
                 </div>
             </div>
 
-            <!-- DIREITA: Stats (Ocupa o resto do espaço) -->
-            <div class="col-lg-9 col-md-8">
-                <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Combat Attributes</h4>
+            <!-- COLUNA DIREITA: Stats no topo, Traits a preencher o espaço -->
+            <div class="col-lg-9 col-md-8 d-flex flex-column">
 
-                <!-- Grelha responsiva de Stats -->
-                <div class="row text-center">
-                    @StatBox("❤️", "Max HP", _hero.MaxHP, "text-danger")
-                    @StatBox("⚔️", "Attack", _hero.Attack, "text-light")
-                    @StatBox("🛡️", "Defense", _hero.Defense, "text-secondary")
-                    @StatBox("⚡", "Agility", _hero.Agility, "text-success")
-                    @StatBox("🔮", "Magic", _hero.Magic, "text-info")
-                    @StatBox("🧿", "Magic Def", _hero.MagicDefense, "text-primary")
+                <!-- PARTE DE CIMA: STATS -->
+                <div>
+                    <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Combat Attributes</h4>
+                    <div class="row text-center mb-4">
+                        @StatBox("❤️", "Max HP", _hero.MaxHP, "text-danger")
+                        @StatBox("⚔️", "Attack", _hero.Attack, "text-light")
+                        @StatBox("🛡️", "Defense", _hero.Defense, "text-secondary")
+                        @StatBox("⚡", "Agility", _hero.Agility, "text-success")
+                        @StatBox("🔮", "Magic", _hero.Magic, "text-info")
+                        @StatBox("🧿", "Magic Def", _hero.MagicDefense, "text-primary")
+                    </div>
                 </div>
+
+                <!-- PARTE DE BAIXO: TRAITS PASSIVOS (Empilhados Verticalmente) -->
+                @if (_hero.Traits.Any())
+                {
+                    <div class="mt-2 d-flex flex-column flex-grow-1">
+                        <h4 class="text-warning border-bottom border-secondary pb-2 mb-3">Passive Traits</h4>
+
+                        <div class="d-flex flex-column gap-3 align-items-stretch">
+                            @foreach (var trait in _hero.Traits)
+                            {
+                                <div class="p-3 bg-black border border-secondary rounded shadow-sm">
+                                    <h6 class="fw-bold mb-2">
+                                        <span class="@(trait.IsRacial ? "text-success" : "text-warning")">@trait.SourceName Trait</span>
+                                        <span class="text-light"> - </span>
+                                        <span class="text-info">@trait.Name</span>
+                                    </h6>
+                                    @* <p class="text-light small mb-0 trait-desc">@trait.Description</p> *@
+                                    <!-- O HTML mastiga a lista que o Backend lhe deu! -->
+                                    <div class="text-light small mb-0">
+                                        @foreach(var line in trait.DescriptionLines)
+                                        {
+                                            @if (string.IsNullOrEmpty(line))
+                                            {
+                                                <br />
+                                            }
+                                            else
+                                            {
+                                                @line <br />
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 
-        <!-- BLOCO INFERIOR: Habilidades em largura total (Full Width) -->
+        <!-- BLOCO INFERIOR: Habilidades (Full Width) -->
         <div class="row">
             <div class="col-12">
                 <h4 class="text-warning border-bottom border-secondary pb-2 mb-4">Known Abilities</h4>
 
-                <!-- Usamos uma grelha para as habilidades não ficarem esticadas ao máximo num PC gigante -->
                 <div class="row">
                     @foreach (var ability in _hero.Abilities)
                     {
                         <div class="col-xl-6 col-lg-12 mb-3">
                             <div class="card bg-dark border-secondary shadow-sm d-flex flex-row overflow-hidden h-100 ability-card">
+                                <!-- A imagem de fundo tem mesmo de ser inline style -->
                                 <div class="ability-icon-col" style="background-image: url('@AssetService.GetAbilityIconUrl(ability.Id)');"></div>
 
-                                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                <div class="card-body p-3 d-flex flex-column justify-content-between w-100">
                                     <div>
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h5 class="text-info fw-bold mb-0">@ability.Name</h5>
@@ -86,7 +124,7 @@
                                         <div class="mb-2">
                                             @if (ability.Tags != null)
                                             {
-                                                @foreach (var tag in ability.Tags)
+                                                foreach (var tag in ability.Tags)
                                                 {
                                                     <span class="badge bg-secondary me-1">@tag</span>
                                                 }
@@ -96,13 +134,12 @@
                                     </div>
 
                                     <div class="d-flex gap-3 mt-2 flex-wrap align-items-center">
-                                        @if (ability.Costs != null && ability.Costs.Any())
+                                        @if (ability.Costs != null)
                                         {
-                                            @foreach (var cost in ability.Costs.Where(c => c.Value > 0))
+                                            foreach (var cost in ability.Costs.Where(c => c.Value > 0))
                                             {
                                                 <div class="d-flex align-items-center" title="@cost.Key Essence">
-                                                    <span class="fw-bold text-light me-1">@cost.Value</span>
-                                                    <span class="text-muted small me-2">x</span>
+                                                    <span class="fw-bold text-light me-1">@cost.Value</span><span class="text-muted small me-2">x</span>
                                                     <div class="cost-essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(cost.Key.ToString())');"></div>
                                                 </div>
                                             }
@@ -135,25 +172,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            _hero = await Http.GetFromJsonAsync<HeroDetailsDto>($"api/character/{DefinitionId}");
-        }
-        catch (HttpRequestException ex)
-        {
-            _errorMessage = $"API HTTP Error: {ex.StatusCode}. Controller missing or API needs restart.";
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = $"Unexpected Error: {ex.Message}";
-        }
+        try { _hero = await Http.GetFromJsonAsync<HeroDetailsDto>($"api/character/{DefinitionId}"); }
+        catch (Exception ex) { _errorMessage = ex.Message; }
     }
 
     private RenderFragment StatBox(string icon, string name, int value, string colorClass) => __builder =>
     {
-        <!-- Ajustado para ficar 2/linha em mobile, 3/linha em tablets, 6/linha em ecrãs grandes -->
         <div class="col-6 col-sm-4 col-lg-2 mb-3">
-            <div class="p-3 bg-dark border border-secondary rounded shadow-sm h-100 d-flex flex-column justify-content-center align-items-center stat-box">
+            <div class="p-3 bg-dark border border-secondary rounded shadow-sm h-100 d-flex flex-column justify-content-center align-items-center stat-box" title="@name">
                 <div class="fs-3 mb-1">@icon</div>
                 <div class="text-muted mb-2 stat-box-title text-uppercase">@name</div>
                 <div class="fw-bold fs-4 @colorClass">@value</div>

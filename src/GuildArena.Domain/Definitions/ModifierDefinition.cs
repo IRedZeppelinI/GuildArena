@@ -11,6 +11,9 @@ public class ModifierDefinition
 {
     public required string Id { get; set; } // "MOD_POISON_WEAK"
     public required string Name { get; set; } // "Veneno Fraco"
+
+    public string? Description { get; set; }
+
     public ModifierType Type { get; set; } // Enum: Bless, Curse
 
     /// <summary>
