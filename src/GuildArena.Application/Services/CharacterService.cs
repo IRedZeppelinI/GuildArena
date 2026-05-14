@@ -141,6 +141,7 @@ public class CharacterService : ICharacterService
             RaceName = raceDef?.Name ?? "Unknown Race",
             CurrentLevel = 1,
             MaxHP = (int)GetStat(s => s.MaxHP),
+            MaxActions = (int)GetStat(s => s.MaxActions),
             Attack = (int)GetStat(s => s.Attack),
             Defense = (int)GetStat(s => s.Defense),
             Agility = (int)GetStat(s => s.Agility),

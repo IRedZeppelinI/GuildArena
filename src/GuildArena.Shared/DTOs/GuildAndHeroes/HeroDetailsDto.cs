@@ -16,6 +16,7 @@ public class HeroDetailsDto
 
     // Computed Stats
     public int MaxHP { get; set; }
+    public int MaxActions { get; set; }
     public int Attack { get; set; }
     public int Defense { get; set; }
     public int Agility { get; set; }
