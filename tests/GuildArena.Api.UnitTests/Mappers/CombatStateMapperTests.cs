@@ -1,4 +1,5 @@
 ﻿using GuildArena.Api.Mappers;
+using GuildArena.Application.Abstractions;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Targeting;
@@ -7,6 +8,7 @@ using GuildArena.Domain.ValueObjects.Resources;
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.Targeting;
+using GuildArena.Shared.DTOs.Combat;
 using NSubstitute;
 using Shouldly;
 using Xunit;
@@ -17,14 +19,18 @@ public class CombatStateMapperTests
 {
     private readonly ITargetResolutionService _targetServiceMock;
     private readonly IEssenceService _essenceServiceMock;
+    private readonly IEffectTooltipService _tooltipServiceMock;
     private readonly CombatStateMapper _mapper;
 
     public CombatStateMapperTests()
     {
         _targetServiceMock = Substitute.For<ITargetResolutionService>();
         _essenceServiceMock = Substitute.For<IEssenceService>();
-
-        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock);
+        _tooltipServiceMock = Substitute.For<IEffectTooltipService>();
+        // Ensure the mock returns a valid empty object to avoid null references in tests
+        _tooltipServiceMock.GeneratePreview(Arg.Any<Combatant>(), Arg.Any<EffectDefinition>())
+            .Returns(new AbilityEffectSummaryDto());
+        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock, _tooltipServiceMock);
     }
 
     [Fact]
@@ -37,7 +43,9 @@ public class CombatStateMapperTests
         {
             Id = "ABIL_TEST",
             Name = "Test Strike",
-            TargetingRules = new List<TargetingRule> { rule }
+            TargetingRules = new List<TargetingRule> { rule },
+            // Adicionado um Efeito para o Mapper ter o que enviar para o TooltipService
+            Effects = new List<EffectDefinition> { new EffectDefinition { TargetRuleId = "T1" } }
         };
 
         var combatant = new Combatant
@@ -64,7 +72,6 @@ public class CombatStateMapperTests
             Players = new List<CombatPlayer> { player }
         };
 
-        // Mocks de Sucesso para a nova lógica do Mapper
         _essenceServiceMock.HasEnoughEssence(player, Arg.Any<List<EssenceAmount>>()).Returns(true);
         _targetServiceMock.GetValidCandidates(rule, combatant, state).Returns(new List<Combatant>
         {
@@ -83,15 +90,14 @@ public class CombatStateMapperTests
 
         var abilityDto = combatantDto.Abilities.First();
         abilityDto.CurrentCooldownTurns.ShouldBe(3);
-
-        // Verifica se a acessibilidade calculou True (Devido aos mocks)
         abilityDto.IsAffordable.ShouldBeTrue();
-
-        // Verifica os campos de Targeting
         abilityDto.TargetingRules.Count.ShouldBe(1);
         abilityDto.TargetingRules.First().ValidTargetIds.ShouldContain(201);
-
         combatantDto.ActiveModifiers.First().CasterId.ShouldBe(999);
+
+        // Verifica se chamou a Tooltip 
+        abilityDto.Effects.ShouldNotBeNull();
+        _tooltipServiceMock.ReceivedWithAnyArgs().GeneratePreview(default!, default!);
     }
 
 

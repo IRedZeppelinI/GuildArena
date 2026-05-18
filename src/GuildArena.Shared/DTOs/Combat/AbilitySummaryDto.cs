@@ -25,4 +25,6 @@ public class AbilitySummaryDto
     public List<TargetingRuleDto> TargetingRules { get; set; } = new();
 
     public List<string> Tags { get; set; } = new();
+
+    public List<AbilityEffectSummaryDto> Effects { get; set; } = new();
 }

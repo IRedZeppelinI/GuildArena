@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IGuildService, GuildService>();
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<ICharacterService, CharacterService>();
+        services.AddScoped<IEffectTooltipService, EffectTooltipService>();
 
         return services;
     }

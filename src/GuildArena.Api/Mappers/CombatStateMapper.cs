@@ -1,4 +1,5 @@
-﻿using GuildArena.Core.Combat.Abstractions;
+﻿using GuildArena.Application.Abstractions;
+using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Gameplay;
@@ -7,17 +8,24 @@ using GuildArena.Shared.DTOs.Combat;
 
 namespace GuildArena.Api.Mappers;
 
+/// <summary>
+/// Responsible for translating the internal domain GameState into secure DTOs for the frontend,
+/// pre-calculating targeting rules, affordability, and effect math for UI tooltips.
+/// </summary>
 public class CombatStateMapper : ICombatStateMapper
 {
     private readonly ITargetResolutionService _targetService;
     private readonly IEssenceService _essenceService;
+    private readonly IEffectTooltipService _tooltipService;
 
     public CombatStateMapper(
         ITargetResolutionService targetService,
-        IEssenceService essenceService)
+        IEssenceService essenceService,
+        IEffectTooltipService tooltipService)
     {
         _targetService = targetService;
         _essenceService = essenceService;
+        _tooltipService = tooltipService;
     }
 
     public GameStateDto MapToDto(GameState state)
@@ -75,17 +83,13 @@ public class CombatStateMapper : ICombatStateMapper
     private AbilitySummaryDto MapAbility(AbilityDefinition def, Combatant source, GameState state)
     {
         var cd = source.ActiveCooldowns.FirstOrDefault(x => x.AbilityId == def.Id);
-
         var ownerPlayer = state.Players.FirstOrDefault(p => p.PlayerId == source.OwnerId);
 
-        // Verifica se o turno atual pertence ao dono desta carta
         bool isMyTurn = state.CurrentPlayerId == source.OwnerId;
-
         bool hasEssence = ownerPlayer != null && _essenceService.HasEnoughEssence(ownerPlayer, def.Costs);
         bool hasHP = source.CurrentHP > def.HPCost;
         bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= source.BaseStats.MaxActions;
 
-        //  A habilidae só é "Affordable" se for o turno deste jogador
         bool isAffordable = isMyTurn && hasEssence && hasHP && hasAP;
 
         return new AbilitySummaryDto
@@ -100,6 +104,9 @@ public class CombatStateMapper : ICombatStateMapper
             CurrentCooldownTurns = cd?.TurnsRemaining ?? 0,
             IsAffordable = isAffordable,
             Tags = def.Tags.ToList(),
+
+            // Generate the dynamic math for the UI tooltip using the LIVE combatant
+            Effects = def.Effects.Select(e => _tooltipService.GeneratePreview(source, e)).ToList(),
 
             TargetingRules = def.TargetingRules.Select(r => new TargetingRuleDto
             {
