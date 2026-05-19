@@ -117,30 +117,72 @@
 
                                 <div class="card-body p-3 d-flex flex-column justify-content-between w-100">
                                     <div>
+                                        <!-- TOPO: Nome da Habilidade e Badges de AP/CD bem visíveis -->
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h5 class="text-info fw-bold mb-0">@ability.Name</h5>
-                                            <div class="d-flex gap-2 text-muted small">
-                                                <span>AP: @ability.ActionPointCost</span>
-                                                <span>CD: @ability.BaseCooldown</span>
+                                            <div class="d-flex gap-2">
+                                                <span class="badge bg-secondary border border-dark" title="Action Point Cost">⚡ @ability.ActionPointCost AP</span>
+                                                <span class="badge bg-secondary border border-dark" title="Base Cooldown">⏳ @ability.BaseCooldown CD</span>
                                             </div>
                                         </div>
-
+                                        
                                         <div class="mb-2">
-                                            @if (ability.Tags != null)
+                                            @if(ability.Tags != null)
                                             {
-                                                foreach (var tag in ability.Tags)
-                                                {
-                                                    <span class="badge bg-secondary me-1">@tag</span>
-                                                }
+                                                foreach(var tag in ability.Tags) { <span class="badge bg-secondary me-1">@tag</span> }
                                             }
                                         </div>
                                         <p class="card-text text-light small mb-2">@ability.Description</p>
-                                    </div>
 
+                                        <!-- MATEMÁTICA E MODIFICADORES (Com a duração dinâmica!) -->
+                                        @if(ability.Effects != null && ability.Effects.Any())
+                                        {
+                                            <div class="effect-math-box p-2 mb-2 rounded border border-secondary">
+                                                @foreach(var eff in ability.Effects)
+                                                {
+                                                    @if (eff.Type == EffectType.DAMAGE || eff.Type == EffectType.HEAL)
+                                                    {
+                                                        var isHeal = eff.Type == EffectType.HEAL;
+                                                        var colorClass = isHeal ? "text-success" : "text-danger";
+                                                        var actionText = isHeal ? "Healing" : "Damage";
+
+                                                        <div class="d-flex justify-content-between align-items-center mb-1 effect-row">
+                                                            <span>
+                                                                <span class="@colorClass fw-bold fs-6">@eff.PredictedValue</span> 
+                                                                <span class="text-light">@actionText</span>
+                                                            </span>
+                                                            <span class="effect-text-secondary">
+                                                                (Base @eff.BaseAmount + @((int)Math.Round(eff.ScalingFactor * 100))% @eff.ScalingStat)
+                                                            </span>
+                                                        </div>
+                                                    }
+                                                    else if (eff.Type == EffectType.APPLY_MODIFIER && !string.IsNullOrEmpty(eff.ModifierName))
+                                                    {
+                                                        <div class="d-flex flex-column mb-1 effect-row">
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <span class="text-warning fw-bold">🛡️ Applies @eff.ModifierName</span>
+                                                                @if (eff.DurationInTurns == -1)
+                                                                {
+                                                                    <span class="text-info small fw-bold">Permanent</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-info small fw-bold">@eff.DurationInTurns Turn@(eff.DurationInTurns > 1 ? "s" : "")</span>
+                                                                }
+                                                            </div>
+                                                            <span class="effect-text-secondary">@eff.ModifierDescription</span>
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                    
+                                    <!-- CUSTOS (Essence e HP) -->
                                     <div class="d-flex gap-3 mt-2 flex-wrap align-items-center">
                                         @if (ability.Costs != null)
                                         {
-                                            foreach (var cost in ability.Costs.Where(c => c.Value > 0))
+                                            foreach(var cost in ability.Costs.Where(c => c.Value > 0))
                                             {
                                                 <div class="d-flex align-items-center" title="@cost.Key Essence">
                                                     <span class="fw-bold text-light me-1">@cost.Value</span><span class="text-muted small me-2">x</span>

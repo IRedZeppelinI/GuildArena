@@ -16,4 +16,7 @@ public class AbilityEffectSummaryDto
     // Para Aplicação de Modificadores (A UI precisa do texto para não mostrar apenas o ID "MOD_GUARD")
     public string? ModifierName { get; set; }
     public string? ModifierDescription { get; set; }
+
+
+    public int DurationInTurns { get; set; }
 }

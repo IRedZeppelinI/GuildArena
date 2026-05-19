@@ -80,6 +80,7 @@ public class EffectTooltipService : IEffectTooltipService
             {
                 dto.ModifierName = modDef.Name;
                 dto.ModifierDescription = modDef.Description;
+                dto.DurationInTurns = effectDef.DurationInTurns;
             }
         }
 

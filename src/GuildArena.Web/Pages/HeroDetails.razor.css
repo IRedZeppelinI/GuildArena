@@ -66,3 +66,22 @@
     font-size: 0.9rem;
     filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));
 }
+
+.effect-math-box {
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    background-color: #0a0a0a; /* Fundo ligeiramente mais escuro para destacar da carta */
+}
+
+.effect-row {
+    font-size: 0.85rem;
+}
+
+.effect-base-math {
+    font-size: 0.75rem;
+}
+
+.effect-text-secondary {
+    color: #ced4da; /* Um cinzento muito clarinho e legível */
+    font-size: 0.8rem;
+    font-style: italic;
+}
