@@ -19,6 +19,14 @@ public class GuildConfiguration : IEntityTypeConfiguration<Guild>
         builder.Property(g => g.Gold)
             .IsRequired();
 
+        builder.Property(g => g.Level)
+           .IsRequired()
+           .HasDefaultValue(1); 
+
+        builder.Property(g => g.CurrentXP)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         // Relação inversa com User (já configurada no User, mas reforça-se aqui o lado do foreign key)
         builder.HasOne(g => g.ApplicationUser)
             .WithOne(u => u.Guild)

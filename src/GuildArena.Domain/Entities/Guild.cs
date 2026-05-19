@@ -16,6 +16,10 @@ public class Guild
     public int Wins { get; set; }
     public int Losses { get; set; }
 
+    //Progression
+    public int Level { get; set; } = 1;
+    public int CurrentXP { get; set; } = 0;
+
     // Coleções
     public ICollection<Hero> Heroes { get; set; } = new List<Hero>();
     public ICollection<MatchParticipant> MatchHistory { get; set; } = new List<MatchParticipant>();

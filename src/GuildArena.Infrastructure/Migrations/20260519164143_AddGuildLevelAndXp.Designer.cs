@@ -3,6 +3,7 @@ using System;
 using GuildArena.Infrastructure.Persistence.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GuildArena.Infrastructure.Migrations
 {
     [DbContext(typeof(GuildArenaDbContext))]
-    partial class GuildArenaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260519164143_AddGuildLevelAndXp")]
+    partial class AddGuildLevelAndXp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
