@@ -1,23 +1,23 @@
-﻿@page "/roster"
+﻿@page "/guild"
 @attribute [Authorize]
 @using GuildArena.Shared.Requests
+@using GuildArena.Shared.DTOs.GuildAndHeroes
 @using GuildArena.Web.Security
 @using System.Security.Claims
 @inject HttpClient Http
 @inject NavigationManager NavManager
 @inject AuthenticationStateProvider AuthState
-@inject IAssetService AssetService
+@inject GuildArena.Web.Services.IAssetService AssetService
 
-<PageTitle>GuildArena - Roster</PageTitle>
+<PageTitle>Guild Profile</PageTitle>
 
-<div class="container mt-4 text-light">
+<div class="container mt-4 text-light pb-5">
     @if (_isCheckingState)
     {
         <p><em>Loading your profile...</em></p>
     }
     else if (!_hasGuild)
     {
-        <!-- Ecrã de criação de guilda -->
         <div class="row justify-content-center mt-5">
             <div class="col-md-6">
                 <div class="card bg-dark border-warning shadow-lg">
@@ -42,10 +42,37 @@
     }
     else
     {
+        <!-- PAINEL DA GUILDA (Level, XP, W/L) -->
+        @if (_profile != null)
+        {
+            <div class="card bg-dark border-warning mb-5 shadow-lg">
+                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="mb-3 mb-md-0 text-center text-md-start">
+                        <h2 class="text-warning fw-bold mb-0" style="font-family: 'Cinzel', serif;">@_profile.Name</h2>
+                        <p class="text-info fw-bold mb-0">Level @_profile.Level</p>
+                    </div>
+
+                    <div class="text-center text-md-end">
+                        <div class="mb-2" style="font-family: 'Cinzel', serif; font-size: 1.2rem;">
+                            <span class="text-success fw-bold">@_profile.Wins W</span>
+                            <span class="text-light mx-2">|</span>
+                            <span class="text-danger fw-bold">@_profile.Losses L</span>
+                        </div>
+
+                        <div class="progress border border-secondary mb-1 xp-bar-container">
+                            <!-- O inline style da width é a forma padrão do Bootstrap de preencher a barra de progresso -->
+                            <div class="progress-bar bg-info" role="progressbar" style="width: @((_profile.CurrentXP * 100) / _profile.RequiredXP)%"></div>
+                        </div>
+                        <small class="text-light">@_profile.CurrentXP / @_profile.RequiredXP XP</small>
+                    </div>
+                </div>
+            </div>
+        }
+
         <!-- A GALERIA DE HERÓIS -->
         <div class="page-header">
-            <h2 class="title text-warning">🏕️ Guild Roster</h2>
-            <p class="subtitle">Manage your collected heroes, view their stats, and upgrade them.</p>
+            <h3 class="title text-light">🏕️ Collected Heroes</h3>
+            <p class="subtitle">Manage your roster and view their attributes.</p>
         </div>
 
         @if (_heroes == null)
@@ -58,11 +85,8 @@
                 @foreach (var hero in _heroes)
                 {
                     <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                        <!-- Transformámos a <div> do cartão numa tag <a> -->
                         <a href="/hero/@hero.DefinitionId" class="card hero-card bg-dark border-secondary h-100 shadow text-decoration-none">
-                            <div class="card-img-top hero-portrait"
-                                 style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)');">
-                            </div>
+                            <div class="card-img-top hero-portrait" style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)');"></div>
                             <div class="card-body text-center">
                                 <h5 class="card-title text-info fw-bold mb-1">@hero.Name</h5>
                                 <p class="card-text small text-muted">Level @hero.CurrentLevel</p>
@@ -81,6 +105,8 @@
     private string _guildName = string.Empty;
     private bool _isCreatingGuild;
     private string? _guildError;
+
+    private GuildProfileDto? _profile;
     private List<HeroDto>? _heroes;
 
     protected override async Task OnInitializedAsync()
@@ -92,7 +118,7 @@
 
         if (_hasGuild)
         {
-            await LoadRosterAsync();
+            await LoadGuildDataAsync();
         }
     }
 
@@ -108,7 +134,7 @@
             {
                 var customAuthState = (CookieAuthenticationStateProvider)AuthState;
                 customAuthState.NotifyAuthStatusChanged();
-                NavManager.NavigateTo("/roster", forceLoad: true);
+                NavManager.NavigateTo("/guild", forceLoad: true);
             }
             else
             {
@@ -119,14 +145,19 @@
         finally { _isCreatingGuild = false; }
     }
 
-    private async Task LoadRosterAsync()
+    private async Task LoadGuildDataAsync()
     {
-        try { _heroes = await Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster"); }
-        catch { }
-    }
+        try
+        {
+            // Dispara os dois pedidos ao mesmo tempo
+            var profileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
+            var rosterTask = Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
 
-    private void InspectHero(int heroId)
-    {
-        NavManager.NavigateTo($"/hero/{heroId}");
+            await Task.WhenAll(profileTask, rosterTask);
+
+            _profile = profileTask.Result;
+            _heroes = rosterTask.Result;
+        }
+        catch { }
     }
 }

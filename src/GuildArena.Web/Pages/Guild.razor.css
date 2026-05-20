@@ -27,3 +27,17 @@
     background-position: top center;
     border-bottom: 1px solid #6c757d; /* border-secondary */
 }
+
+
+
+.xp-bar-container {
+    height: 12px;
+    width: 200px;
+    background-color: #222;
+}
+
+@media (max-width: 768px) {
+    .xp-bar-container {
+        width: 100%; /* No telemóvel a barra de XP ocupa a largura toda */
+    }
+}

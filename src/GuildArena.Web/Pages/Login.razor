@@ -33,7 +33,6 @@
                         @(_isLoading ? "Connecting..." : "Login")
                     </button>
 
-                    <!-- ADICIONADO: Link para a página de Registo -->
                     <div class="mt-4 text-center border-top border-secondary pt-3">
                         <p class="mb-1 text-muted">Don't have a Guild yet?</p>
                         <a href="/register" class="btn btn-outline-info w-100">Create Account</a>
@@ -71,7 +70,7 @@
                 var customAuthState = (CookieAuthenticationStateProvider)AuthState;
                 customAuthState.NotifyAuthStatusChanged();
 
-                NavManager.NavigateTo("/");
+                NavManager.NavigateTo("/guild");
             }
             else
             {

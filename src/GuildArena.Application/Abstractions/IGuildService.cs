@@ -18,5 +18,10 @@ public interface IGuildService
     /// Orchestrates the creation of a new guild and its starter pack.
     /// </summary>
     Task<Result> CreateGuildAsync(string applicationUserId, int? existingGuildId, string guildName);
-    
+
+    /// <summary>
+    /// Retrieves the profile information for a user's guild.
+    /// </summary>
+    Task<Result<GuildProfileDto>> GetGuildProfileAsync(string applicationUserId);
+
 }

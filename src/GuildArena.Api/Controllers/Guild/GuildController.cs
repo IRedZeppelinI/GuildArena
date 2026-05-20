@@ -55,4 +55,14 @@ public class GuildController : BaseApiController
         var result = await _guildService.GetGuildRosterAsync(_currentUser.GuildId);
         return HandleResult(result);
     }
+
+    /// <summary>
+    /// Retrieves the current user's guild profile and progression stats.
+    /// </summary>
+    [HttpGet("profile")]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        var result = await _guildService.GetGuildProfileAsync(_currentUser.UserId!);
+        return HandleResult(result);
+    }
 }

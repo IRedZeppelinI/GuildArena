@@ -68,4 +68,25 @@ public class GuildService : IGuildService
 
         return Result.Success();
     }
+
+    public async Task<Result<GuildProfileDto>> GetGuildProfileAsync(string applicationUserId)
+    {
+        var guild = await _guildRepo.GetGuildByUserIdAsync(applicationUserId);
+
+        if (guild == null)
+        {
+            return Result.Failure<GuildProfileDto>(new Error(
+                "Guild.NotFound", "User has no guild.", ErrorType.NotFound));
+        }
+
+        return new GuildProfileDto
+        {
+            Name = guild.Name,
+            Level = guild.Level,
+            CurrentXP = guild.CurrentXP,
+            RequiredXP = guild.Level * 1000, // Lógica XP placeholder
+            Wins = guild.Wins,
+            Losses = guild.Losses
+        };
+    }
 }
