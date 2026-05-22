@@ -1,4 +1,5 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Domain.Enums.Combat
 @using GuildArena.Web.Services
 @inject IAssetService AssetService
 
@@ -9,7 +10,7 @@
             📜 BattleLogs
         </button>
 
-        <div class="desktop-tooltip">
+        @* <div class="desktop-tooltip">
             @if (InspectedAbility != null)
             {
                 <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
@@ -41,6 +42,127 @@
                 <div class="tooltip-description">
                     @InspectedAbility.Description
                 </div>
+            }
+            else
+            {
+                <div class="tooltip-placeholder">
+                    Hover an ability to inspect details.
+                </div>
+            }
+        </div> *@
+
+        <div class="desktop-tooltip">
+            @if (InspectedAbility != null)
+            {
+                <!-- LINHA 1: Ícone, Nome, AP, CD -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(InspectedAbility.Id)');"></div>
+                        <h6 class="tooltip-ability-name text-warning m-0 fw-bold text-uppercase">
+                            @InspectedAbility.Name
+                        </h6>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <span class="badge bg-dark border border-secondary text-light">⚡ @InspectedAbility.ActionPointCost AP</span>
+                        <span class="badge bg-dark border border-secondary text-light">⏳ @InspectedAbility.BaseCooldown CD</span>
+                    </div>
+                </div>
+
+                <!-- LINHA 2: CUSTOS E DESCRIÇÃO (Lado a lado para poupar espaço vertical!) -->
+                @* <div class="d-flex align-items-center gap-2 mb-2">
+                    
+                    <!-- Bloco de Custos (fixo à esquerda) com uma barra divisória (border-end) -->
+                    <div class="d-flex gap-2 align-items-center flex-shrink-0 border-end border-secondary pe-2">
+                        @if (InspectedAbility.HPCost > 0)
+                        {
+                            <div class="d-flex align-items-center" title="HP Cost">
+                                <span class="tooltip-cost-val text-danger fw-bold me-1">@InspectedAbility.HPCost</span>
+                                <div class="tooltip-hp-icon d-flex justify-content-center align-items-center">❤️</div>
+                            </div>
+                        }
+                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
+                        {
+                            <div class="d-flex align-items-center" title="@c.Key">
+                                <span class="tooltip-cost-val text-light fw-bold me-1">@c.Value</span>
+                                <div class="tooltip-essence-icon-compact" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Descrição Narrativa (ocupa o resto do espaço à direita) -->
+                    <div class="tooltip-narrative text-light mb-0">
+                        @InspectedAbility.Description
+                    </div>
+                </div> *@
+                <!-- LINHA 2: DESCRIÇÃO E CUSTOS (Descrição à Esq, Custos à Dir) -->
+                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+
+                    <!-- Descrição Narrativa (ocupa o espaço à esquerda) -->
+                    <div class="tooltip-narrative text-light mb-0 flex-grow-1">
+                        @InspectedAbility.Description
+                    </div>
+
+                    <!-- Bloco de Custos (fixo à direita) com barra divisória (border-start) -->
+                    <div class="d-flex gap-2 align-items-center flex-shrink-0 border-start border-secondary ps-2">
+                        @if (InspectedAbility.HPCost > 0)
+                        {
+                            <div class="d-flex align-items-center" title="HP Cost">
+                                <span class="tooltip-cost-val text-danger fw-bold me-1">@InspectedAbility.HPCost</span>
+                                <div class="tooltip-hp-icon d-flex justify-content-center align-items-center">❤️</div>
+                            </div>
+                        }
+                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
+                        {
+                            <div class="d-flex align-items-center" title="@c.Key">
+                                <span class="tooltip-cost-val text-light fw-bold me-1">@c.Value</span>
+                                <div class="tooltip-essence-icon-compact" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- LINHA 3: EFEITOS E MATEMÁTICA -->
+                @if(InspectedAbility.Effects != null && InspectedAbility.Effects.Any())
+                {
+                    <div class="tooltip-effects-box p-1 rounded border border-secondary mt-auto">
+                        @foreach(var eff in InspectedAbility.Effects)
+                        {
+                            @if (eff.Type == EffectType.DAMAGE || eff.Type == EffectType.HEAL)
+                            {
+                                var isHeal = eff.Type == EffectType.HEAL;
+                                var colorClass = isHeal ? "text-success" : "text-danger";
+                                var actionText = isHeal ? "Healing" : "Damage";
+
+                                <div class="d-flex justify-content-between align-items-center tooltip-effect-title">
+                                    <span>
+                                        <span class="@colorClass fw-bold">@eff.PredictedValue</span> 
+                                        <span class="text-light">@actionText</span>
+                                    </span>
+                                    <span class="tooltip-effect-math">
+                                        (Base @eff.BaseAmount + @((int)Math.Round(eff.ScalingFactor * 100))% @eff.ScalingStat)
+                                    </span>
+                                </div>
+                            }
+                            else if (eff.Type == EffectType.APPLY_MODIFIER && !string.IsNullOrEmpty(eff.ModifierName))
+                            {
+                                <div class="d-flex flex-column tooltip-effect-title mt-1">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="text-warning fw-bold">🛡️ Applies @eff.ModifierName</span>
+                                        @if (eff.DurationInTurns == -1)
+                                        {
+                                            <span class="text-info fw-bold tooltip-effect-duration">Perm</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-info fw-bold tooltip-effect-duration">@eff.DurationInTurns Turn@(eff.DurationInTurns > 1 ? "s" : "")</span>
+                                        }
+                                    </div>
+                                    <span class="tooltip-effect-desc mb-0">@eff.ModifierDescription</span>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
             }
             else
             {
