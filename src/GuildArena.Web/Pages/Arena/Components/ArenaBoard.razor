@@ -26,7 +26,8 @@
                                    IsSelectedTarget="TargetingState.IsSelected(hero.Id)"
                                    OnAbilityActivated="OnAbilityActivated"
                                    OnCombatantClicked="OnCombatantClicked"
-                                   OnInspectAbility="OnInspectAbility" />
+                                   OnInspectAbility="OnInspectAbility"
+                                   OnCombatantHovered="OnCombatantHovered" /> 
                 }
             </div>
         }
@@ -62,7 +63,8 @@
                                        IsSelectedTarget="TargetingState.IsSelected(enemy.Id)"
                                        OnAbilityActivated="OnAbilityActivated"
                                        OnCombatantClicked="OnCombatantClicked"
-                                       OnInspectAbility="OnInspectAbility" />
+                                       OnInspectAbility="OnInspectAbility"
+                                       OnCombatantHovered="OnCombatantHovered" /> 
                     </div>
                 }
             </div>
@@ -80,6 +82,8 @@
     [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
     [Parameter] public EventCallback<CombatantDto> OnCombatantClicked { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
+    
+    [Parameter] public EventCallback<CombatantDto?> OnCombatantHovered { get; set; }
 
     private IEnumerable<CombatantDto> MyTeam =>
         GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();

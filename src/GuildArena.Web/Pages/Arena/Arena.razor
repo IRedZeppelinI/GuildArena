@@ -17,7 +17,7 @@
         <div class="startup-box">
             <h3 class="text-warning">No active combat</h3>
             <p class="text-light">Please select your heroes in the Lobby first.</p>
-            <a class="btn btn-outline-info mt-3" href="/">Go to Lobby</a>
+            <a class="btn btn-outline-info mt-3" href="/encounters">Go to Encounters</a>
         </div>
     </div>
 }
@@ -43,9 +43,11 @@ else
                 OnExchangeRequested="() => _showExchangeModal = true"
                 OnAbilityActivated="StartTargeting"
                 OnCombatantClicked="SelectTarget"
-                OnInspectAbility="ShowTooltip" />
+                OnInspectAbility="ShowAbilityTooltip" 
+                OnCombatantHovered="ShowCombatantTooltip" /> 
 
     <ArenaFooter InspectedAbility="_inspectedAbility"
+                 InspectedCombatant="_inspectedCombatant" 
                  BattleLogs="CombatState.BattleLogs"
                  IsLocalPlayerTurn="IsLocalPlayerTurn"
                  IsTargetingActive="_targetingState.IsActive"
@@ -63,6 +65,8 @@ else
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
 
     private AbilitySummaryDto? _inspectedAbility;
+    private CombatantDto? _inspectedCombatant; 
+    
     private readonly TargetingStateManager _targetingState = new();
 
     private int LocalPlayerId => 1;
@@ -83,14 +87,26 @@ else
         CombatState.OnChange -= StateHasChanged;
     }
 
-    private void ShowTooltip(AbilitySummaryDto ability) => _inspectedAbility = ability;
+    // Quando passas o rato na Magia, guarda a Magia e "apaga" o Herói da memória
+    private void ShowAbilityTooltip(AbilitySummaryDto? ability)
+    {
+        if (ability != null)
+        {
+            _inspectedAbility = ability;
+            _inspectedCombatant = null;
+        }
+    }
 
+    // Quando passas o rato na Carta do Herói, guarda o Herói e "apaga" a Magia da memória
+    private void ShowCombatantTooltip(CombatantDto? combatant)
+    {
+        if (combatant != null)
+        {
+            _inspectedCombatant = combatant;
+            _inspectedAbility = null;
+        }
+    }
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
-
-    // private async Task StartCombatAsync()
-    // {
-    //     await CombatState.StartPveCombatAsync("ENC_TUTORIAL_01", new List<int> { 101, 103, 104 });
-    // }
 
     private async Task EndTurnAsync()
     {

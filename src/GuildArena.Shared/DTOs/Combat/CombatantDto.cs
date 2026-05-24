@@ -22,6 +22,15 @@ public class CombatantDto
     /// </summary>
     public int MaxActions { get; set; }
 
+    //Stats
+    public int Attack { get; set; }
+    public int Defense { get; set; }
+    public int Agility { get; set; }
+    public int Magic { get; set; }
+    public int MagicDefense { get; set; }
+    //
+
+
     public int Position { get; set; }
 
     public AbilitySummaryDto? SpecialAbility { get; set; }

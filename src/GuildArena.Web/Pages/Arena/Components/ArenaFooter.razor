@@ -9,47 +9,7 @@
         <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="OnToggleMobileLogs">
             📜 BattleLogs
         </button>
-
-        @* <div class="desktop-tooltip">
-            @if (InspectedAbility != null)
-            {
-                <div class="tooltip-title-row d-flex justify-content-center align-items-center gap-2">
-                    <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(InspectedAbility.Id)');"></div>
-                    <span class="tooltip-title text-warning m-0">@InspectedAbility.Name</span>
-                </div>
-
-                <div class="tooltip-stats-row">
-                    <div class="tooltip-costs">
-                        @if (InspectedAbility.HPCost > 0)
-                        {
-                            <span class="badge bg-danger border border-light me-2">HP: @InspectedAbility.HPCost</span>
-                        }
-
-                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
-                        {
-                            <div class="tooltip-cost-item" title="@c.Key">
-                                <span class="cost-number">@c.Value</span>
-                                <div class="tooltip-essence-icon" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
-                            </div>
-                        }
-                    </div>
-                    <div class="tooltip-cd text-end">
-                        CD: @InspectedAbility.BaseCooldown | AP: @InspectedAbility.ActionPointCost
-                    </div>
-                </div>
-
-                <hr class="tooltip-divider" />
-                <div class="tooltip-description">
-                    @InspectedAbility.Description
-                </div>
-            }
-            else
-            {
-                <div class="tooltip-placeholder">
-                    Hover an ability to inspect details.
-                </div>
-            }
-        </div> *@
+        
 
         <div class="desktop-tooltip">
             @if (InspectedAbility != null)
@@ -67,33 +27,7 @@
                         <span class="badge bg-dark border border-secondary text-light">⏳ @InspectedAbility.BaseCooldown CD</span>
                     </div>
                 </div>
-
-                <!-- LINHA 2: CUSTOS E DESCRIÇÃO (Lado a lado para poupar espaço vertical!) -->
-                @* <div class="d-flex align-items-center gap-2 mb-2">
-                    
-                    <!-- Bloco de Custos (fixo à esquerda) com uma barra divisória (border-end) -->
-                    <div class="d-flex gap-2 align-items-center flex-shrink-0 border-end border-secondary pe-2">
-                        @if (InspectedAbility.HPCost > 0)
-                        {
-                            <div class="d-flex align-items-center" title="HP Cost">
-                                <span class="tooltip-cost-val text-danger fw-bold me-1">@InspectedAbility.HPCost</span>
-                                <div class="tooltip-hp-icon d-flex justify-content-center align-items-center">❤️</div>
-                            </div>
-                        }
-                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
-                        {
-                            <div class="d-flex align-items-center" title="@c.Key">
-                                <span class="tooltip-cost-val text-light fw-bold me-1">@c.Value</span>
-                                <div class="tooltip-essence-icon-compact" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
-                            </div>
-                        }
-                    </div>
-
-                    <!-- Descrição Narrativa (ocupa o resto do espaço à direita) -->
-                    <div class="tooltip-narrative text-light mb-0">
-                        @InspectedAbility.Description
-                    </div>
-                </div> *@
+                
                 <!-- LINHA 2: DESCRIÇÃO E CUSTOS (Descrição à Esq, Custos à Dir) -->
                 <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
 
@@ -164,10 +98,68 @@
                     </div>
                 }
             }
+            else if (InspectedCombatant != null)
+            {
+                <!-- TOPO: Retrato, Nome, Raça, HP e AP -->
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="tooltip-combatant-portrait" style="background-image: url('@AssetService.GetPortraitUrl(InspectedCombatant.DefinitionId)');"></div>
+                        <div>
+                            <h6 class="text-warning m-0 fw-bold text-uppercase" style="font-family: 'Cinzel', serif; letter-spacing: 1px; line-height: 1;">
+                                @InspectedCombatant.Name
+                            </h6>
+                            <!-- Como a Raça vem como "RACE_HUMAN", cortamos o "RACE_" no ecrã para ficar limpo -->
+                            <span class="text-info" style="font-size: 0.75rem;">@InspectedCombatant.RaceId.Replace("RACE_", "")</span>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1">
+                        <span class="badge bg-danger border border-dark" style="font-size: 0.75rem;">❤️ @InspectedCombatant.CurrentHP / @InspectedCombatant.MaxHP</span>
+                        <span class="badge bg-warning text-dark border border-dark" style="font-size: 0.75rem;">⚡ @InspectedCombatant.MaxActions AP</span>
+                    </div>
+                </div>
+
+                <!-- MEIO: STATS EM LINHA (Lado a Lado) -->
+                <div class="d-flex justify-content-between align-items-center bg-black p-2 rounded border border-secondary mb-3 shadow-sm">
+                    <div class="text-center" title="Attack"><span class="fs-6 d-block">⚔️</span><span class="fw-bold text-light" style="font-size: 0.85rem;">@InspectedCombatant.Attack</span></div>
+                    <div class="text-center" title="Defense"><span class="fs-6 d-block">🛡️</span><span class="fw-bold text-secondary" style="font-size: 0.85rem;">@InspectedCombatant.Defense</span></div>
+                    <div class="text-center" title="Agility"><span class="fs-6 d-block">💨</span><span class="fw-bold text-success" style="font-size: 0.85rem;">@InspectedCombatant.Agility</span></div>
+                    <div class="text-center" title="Magic"><span class="fs-6 d-block">🔮</span><span class="fw-bold text-info" style="font-size: 0.85rem;">@InspectedCombatant.Magic</span></div>
+                    <div class="text-center" title="Magic Def"><span class="fs-6 d-block">🧿</span><span class="fw-bold text-primary" style="font-size: 0.85rem;">@InspectedCombatant.MagicDefense</span></div>
+                </div>
+
+                <!-- FUNDO: ACTIVE MODIFIERS (Buffs e Debuffs em Tempo Real) -->
+                @if (InspectedCombatant.ActiveModifiers.Any())
+                {
+                    <div class="tooltip-effects-box p-2 rounded border border-secondary mt-auto">
+                        <h6 class="text-warning mb-2 border-bottom border-dark pb-1" style="font-size: 0.7rem; text-transform: uppercase;">Active Effects</h6>
+                        @foreach (var mod in InspectedCombatant.ActiveModifiers)
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.75rem;">
+                                <!-- Limpamos a string para mostrar "GARRET TRAIT" em vez de "MOD_GARRET_TRAIT" -->
+                                <span class="text-info fw-bold">@mod.DefinitionId.Replace("MOD_", "").Replace("_", " ")</span>
+
+                                <div class="d-flex gap-2 align-items-center">
+                                    @if (mod.StackCount > 1)
+                                    {
+                                        <span class="text-warning fw-bold">x@mod.StackCount</span>
+                                    }
+                                    @if (mod.CurrentBarrierValue > 0)
+                                    {
+                                        <span class="text-primary fw-bold">🛡️ @mod.CurrentBarrierValue</span>
+                                    }
+                                    <span class="text-muted fst-italic" style="font-size: 0.65rem;">
+                                        @(mod.TurnsRemaining == -1 ? "Perm" : $"{mod.TurnsRemaining} Turn(s)")
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
             else
             {
                 <div class="tooltip-placeholder">
-                    Hover an ability to inspect details.
+                    Hover over a combatant or ability to inspect details.
                 </div>
             }
         </div>
@@ -211,6 +203,7 @@
 
 @code {
     [Parameter] public AbilitySummaryDto? InspectedAbility { get; set; }
+    [Parameter] public CombatantDto? InspectedCombatant { get; set; }
     [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
     [Parameter] public bool IsLocalPlayerTurn { get; set; }
     [Parameter] public bool IsTargetingActive { get; set; }

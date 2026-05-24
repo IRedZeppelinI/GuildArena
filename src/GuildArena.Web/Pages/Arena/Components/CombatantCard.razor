@@ -4,10 +4,8 @@
 
 <div class="combatant-card @(Combatant.IsAlive ? "" : "dead") @(IsTargetingMode ? "targeting-mode" : "") @(IsValidTarget ? "valid-target" : "") @(IsSelectedTarget ? "selected-target" : "")"
      @onclick="OnCardClicked">
-
-    <!-- COLUNA ESQUERDA: Retrato e Modifiers -->
-    <div class="card-left">
-        <!-- O URL é gerado dinamicamente usando o DefinitionId (ex: HERO_GARRET) -->
+    <!-- COLUNA ESQUERDA: Retrato e Modifiers (ZONA 1 DE HOVER DO HERÓI) -->
+    <div class="card-left" @onmouseenter="() => OnCombatantHovered.InvokeAsync(Combatant)">
         <div class="portrait-placeholder" style="background-image: url('@AssetService.GetPortraitUrl(Combatant.DefinitionId)');">
         </div>
 
@@ -21,7 +19,9 @@
 
     <!-- COLUNA DIREITA: Info e Habilidades -->
     <div class="card-right">
-        <div class="info-top">
+
+        <!-- INFO TOPO: Nome e HP (ZONA 2 DE HOVER DO HERÓI) -->
+        <div class="info-top" @onmouseenter="() => OnCombatantHovered.InvokeAsync(Combatant)">
             <div class="name">@Combatant.Name</div>
             <div class="hp-container">
                 <div class="hp-fill" style="width: @(HpPercentage)%"></div>
@@ -29,12 +29,13 @@
             </div>
         </div>
 
+        <!-- ZONA DAS MAGIAS  -->
         <div class="abilities-zone">
             @foreach (var ability in AllAbilities)
             {
                 <AbilityButton Ability="ability"
                                OnAbilityClicked="HandleAbilityClick"
-                               OnInspectStart="OnInspectAbility"/>
+                               OnInspectStart="OnInspectAbility" />
             }
         </div>
     </div>
@@ -59,9 +60,11 @@
     [Parameter]
     public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
 
-    [Parameter] 
+    [Parameter]
     public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
-    
+
+    [Parameter]
+    public EventCallback<CombatantDto?> OnCombatantHovered { get; set; }
 
     private int HpPercentage => Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
 
@@ -78,7 +81,6 @@
     {
         if (IsTargetingMode && IsValidTarget && !IsSelectedTarget)
         {
-            // Passa o objeto completo para a Arena o poder processar
             await OnCombatantClicked.InvokeAsync(Combatant);
         }
     }

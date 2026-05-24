@@ -2,6 +2,7 @@
 using GuildArena.Application.Abstractions;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Definitions;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.Enums.Targeting;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.Resources;
@@ -20,6 +21,7 @@ public class CombatStateMapperTests
     private readonly ITargetResolutionService _targetServiceMock;
     private readonly IEssenceService _essenceServiceMock;
     private readonly IEffectTooltipService _tooltipServiceMock;
+    private readonly IStatCalculationService _statServiceMock; 
     private readonly CombatStateMapper _mapper;
 
     public CombatStateMapperTests()
@@ -27,10 +29,25 @@ public class CombatStateMapperTests
         _targetServiceMock = Substitute.For<ITargetResolutionService>();
         _essenceServiceMock = Substitute.For<IEssenceService>();
         _tooltipServiceMock = Substitute.For<IEffectTooltipService>();
+        _statServiceMock = Substitute.For<IStatCalculationService>();
         // Ensure the mock returns a valid empty object to avoid null references in tests
         _tooltipServiceMock.GeneratePreview(Arg.Any<Combatant>(), Arg.Any<EffectDefinition>())
             .Returns(new AbilityEffectSummaryDto());
-        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock, _tooltipServiceMock);
+        // Ensinamos o Mock a ler as MaxActions que foram configuradas no bloco ARRANGE de cada teste!
+        _statServiceMock.GetStatValue(Arg.Any<Combatant>(), Arg.Any<StatType>())
+            .Returns(callInfo =>
+            {
+                var combatant = callInfo.Arg<Combatant>();
+                var statType = callInfo.Arg<StatType>();
+
+                if (statType == StatType.MaxActions)
+                {
+                    return combatant.BaseStats.MaxActions;
+                }
+
+                return 10f; 
+            });
+        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock, _tooltipServiceMock, _statServiceMock);
     }
 
     [Fact]

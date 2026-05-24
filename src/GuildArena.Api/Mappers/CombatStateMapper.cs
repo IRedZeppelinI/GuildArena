@@ -2,6 +2,7 @@
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.State;
 using GuildArena.Shared.DTOs.Combat;
@@ -17,15 +18,18 @@ public class CombatStateMapper : ICombatStateMapper
     private readonly ITargetResolutionService _targetService;
     private readonly IEssenceService _essenceService;
     private readonly IEffectTooltipService _tooltipService;
+    private readonly IStatCalculationService _statService;
 
     public CombatStateMapper(
         ITargetResolutionService targetService,
         IEssenceService essenceService,
-        IEffectTooltipService tooltipService)
+        IEffectTooltipService tooltipService,
+        IStatCalculationService statService)
     {
         _targetService = targetService;
         _essenceService = essenceService;
         _tooltipService = tooltipService;
+        _statService = statService;
     }
 
     public GameStateDto MapToDto(GameState state)
@@ -59,8 +63,15 @@ public class CombatStateMapper : ICombatStateMapper
             MaxHP = c.MaxHP,
             CurrentHP = c.CurrentHP,
             ActionsTakenThisTurn = c.ActionsTakenThisTurn,
-            MaxActions = (int)c.BaseStats.MaxActions,
+            //MaxActions = (int)c.BaseStats.MaxActions,
             Position = c.Position,
+
+            MaxActions = (int)_statService.GetStatValue(c, StatType.MaxActions),
+            Attack = (int)_statService.GetStatValue(c, StatType.Attack),
+            Defense = (int)_statService.GetStatValue(c, StatType.Defense),
+            Agility = (int)_statService.GetStatValue(c, StatType.Agility),
+            Magic = (int)_statService.GetStatValue(c, StatType.Magic),
+            MagicDefense = (int)_statService.GetStatValue(c, StatType.MagicDefense),
 
             SpecialAbility = c.SpecialAbility != null
                 ? MapAbility(c.SpecialAbility, c, state) : null,
@@ -88,7 +99,9 @@ public class CombatStateMapper : ICombatStateMapper
         bool isMyTurn = state.CurrentPlayerId == source.OwnerId;
         bool hasEssence = ownerPlayer != null && _essenceService.HasEnoughEssence(ownerPlayer, def.Costs);
         bool hasHP = source.CurrentHP > def.HPCost;
-        bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= source.BaseStats.MaxActions;
+        //bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= source.BaseStats.MaxActions;
+        int currentMaxActions = (int)_statService.GetStatValue(source, StatType.MaxActions);
+        bool hasAP = (source.ActionsTakenThisTurn + def.ActionPointCost) <= currentMaxActions;
 
         bool isAffordable = isMyTurn && hasEssence && hasHP && hasAP;
 
