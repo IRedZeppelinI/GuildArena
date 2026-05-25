@@ -37,22 +37,26 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * **AI Orchestrator:** A background service (`IAiTurnOrchestrator`) that manages AI turns asynchronously, utilizing an `IAiBehavior` strategy to evaluate valid targets and costs without cheating.
 
 ### Persistence & Meta-Game
-* **Entity Framework Core & Identity:** Secure user authentication linked to persistent player profiles (Guilds).
-* **Match History:** Relational tracking of PvE and PvP matches, including exact hero compositions used, to support complex quest requirements (e.g., "Win with 2 Kymera heroes").
+* **Entity Framework Core & Identity:** Secure user authentication using ASP.NET Core Identity API Endpoints with **HTTP-Only Cookies** (zero-trust frontend architecture preventing XSS attacks).
+* **Custom Claims Factory:** The player's `GuildId` is injected directly into the encrypted auth cookie via a custom `UserClaimsPrincipalFactory`, eliminating redundant database queries during normal site navigation.
+* **Match & Roster History:** Relational tracking of player progression (XP, Level, Wins/Losses) and dynamic Roster management.
 
-### Frontend Architecture (BFF Pattern)
+### Frontend Architecture (BFF Pattern & Predictor)
 * **Backend-Driven UI:** The Blazor WebAssembly client acts as a "Thin Client". Complex validations (Targeting, Affordability, Taunt, Stealth) are pre-calculated by the API (`CombatStateMapper`) and sent via DTOs.
+* **Predictor Pattern (Dynamic Tooltips):** The backend utilizes an `IEffectTooltipService` to pre-calculate ability math (Damage/Heals) and extract modifier lore based on the hero's *current* active buffs. The UI merely renders these predicted values, guaranteeing the frontend never duplicates combat formulas.
 * **Real-Time Sync:** WebSockets (SignalR) push state updates and narrative `BattleLogs` to the client instantly.
 * **Dynamic Asset Resolution:** A dedicated `AssetService` dynamically fetches portraits, ability icons, and backgrounds from Azure Blob Storage using naming conventions based on Definition IDs.
 
 ### Roadmap
 * [x] Core Combat Engine & Unit Tests.
-* [x] Relational Database Schema (EF Core) & Identity.
+* [x] Relational Database Schema (EF Core) & Secure Identity (HTTP-Only Cookies).
 * [x] SignalR Integration for Real-Time feedback.
 * [x] Blazor WebAssembly Frontend (Combat Arena UI & State Machine).
+* [x] Dynamic Meta-Game UI (Lobby, Roster, and Real-time Mathematical Tooltips).
 * [x] Basic AI for PvE encounters (RandomBehavior & Orchestrator).
 * [ ] Smart AI (Tactical evaluation algorithms).
-* [ ] Shop, Gold Economy & Hero Unlocks.
+* [ ] Hero Tavern (Shop), Gold Economy & Unlock Conditions.
+* [ ] Dungeon Mode (Sequential PvE battles with persistent HP).
 
 ## Testing
 

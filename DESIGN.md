@@ -53,6 +53,13 @@ O projeto segue estritamente os princípios da **Clean Architecture** e **Domain
 Para evitar acoplamento entre o ORM (EF Core) e o motor de jogo, o `GuildArena.Domain` está estritamente dividido:
 * **`Domain.Entities`:** Classes mapeadas para o PostgreSQL (`ApplicationUser`, `Guild`, `Hero`, `Match`). Guardam apenas estado persistente a longo prazo.
 * **`Domain.Combat`:** Classes mapeadas para o Redis (`GameState`, `Combatant`, `CombatPlayer`). Representam o estado de runtime de uma batalha. A ponte entre os dois mundos é feita apenas no início do combate (pela `CombatantFactory`).
+
+
+### 2.4. Segurança e Identidade (Autenticação Web)
+O sistema utiliza os **Identity API Endpoints** (.NET 8/9) com **Cookies HTTP-Only**. 
+Isto significa que o Blazor WebAssembly nunca tem acesso a *tokens* no lado do cliente, mitigando ataques de XSS. Para otimizar a navegação na UI sem sobrecarregar a base de dados:
+* Foi criado um `CustomUserClaimsPrincipalFactory` que interceta o evento de Login, vai ao PostgreSQL buscar a Guilda do utilizador, e injeta o `GuildId` diretamente dentro do Cookie encriptado.
+* Os Controladores da API conseguem aceder à Guilda do jogador instantaneamente lendo o contexto HTTP.
 ---
 
 ## 3. O Motor de Combate (Core Mechanics)
@@ -153,11 +160,14 @@ Para permitir combates PvE fluídos sem bloquear a API REST, o sistema utiliza u
 
 O Blazor WebAssembly foi desenhado estritamente como um **Thin Client**. 
 
-### 8.1. O Padrão Backend-For-Frontend (BFF)
-Para evitar duplicar as regras de negócio complexas do motor de jogo (ex: Raças, Taunt, Stealth) no JavaScript/C# do cliente, implementámos um `CombatStateMapper` robusto na API.
-* Antes de enviar o `GameStateDto` para o SignalR, a API pré-calcula a propriedade `IsAffordable` (avaliando se o jogador tem HP, AP e Essence para a magia).
-* A API pré-calcula a propriedade `ValidTargetIds` para cada regra de *Targeting*.
-* O Blazor apenas lê estes dados para escurecer botões ou ativar a "mira" (Crosshair) nas cartas correspondentes, não tomando qualquer decisão lógica.
+### 8.1. O Padrão Backend-For-Frontend (BFF) e Predictor Pattern
+Para evitar duplicar as regras de negócio complexas do motor de jogo (ex: Raças, Taunt, Stealth, Matemática de Dano) no C#/HTML do cliente, implementámos um sistema de Mapeamento e Previsão robusto na API.
+
+* **Affordability & Targeting:** Antes de enviar o `GameStateDto` para o SignalR, a API pré-calcula a propriedade `IsAffordable` e os `ValidTargetIds` para cada regra de *Targeting*. O Blazor apenas lê estes dados para escurecer botões ou desenhar miras (Crosshairs).
+* **Predictor Pattern (Tooltips Inteligentes):** A UI precisa de mostrar o dano real que uma magia vai causar, mas não pode conhecer as fórmulas. Criou-se o `IEffectTooltipService` no Backend:
+    * **Em Combate (`CombatStateMapper`):** O serviço lê os *Stats* e *Buffs* do lutador real (ex: Garret com *Adrenaline* ativo) e devolve a matemática do turno exato.
+    * **Fora de Combate (`CharacterService`):** Ao inspecionar heróis no Roster ou na Taverna, o serviço cria um **"Dummy Combatant"** (Fantasma) em memória, injeta-lhe as *Passivas* e os *Stats Base*, e passa-o pelo mesmo motor matemático. 
+Isto garante 100% de coerência visual em todo o jogo sem duplicação de lógica, consolidando o Blazor como um verdadeiro "Thin Client".
 
 ### 8.2. Gestão de Assets (Azure Blob Storage)
 As imagens não permanentes e que variam de combate para combate (Cenários, Portraits, Ícones de Habilidades) não são incluídas no código fonte para não penalizar o tempo de carregamento da *Single Page Application*. 
