@@ -69,5 +69,15 @@ public class GuildRepository : IGuildRepository
         _dbContext.Guilds.Update(guild);
         await _dbContext.SaveChangesAsync();
     }
-    
+
+    public async Task<Guild?> GetGuildWithHistoryAsync(string applicationUserId)
+    {
+        return await _dbContext.Guilds
+            
+            .Include(g => g.Heroes)
+            .Include(g => g.MatchHistory)
+                .ThenInclude(mh => mh.HeroesUsed) 
+            .FirstOrDefaultAsync(g => g.ApplicationUserId == applicationUserId);
+    }
+
 }

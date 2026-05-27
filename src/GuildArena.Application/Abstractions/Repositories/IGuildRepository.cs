@@ -36,5 +36,11 @@ public interface IGuildRepository
     /// <summary>
     /// Updates an existing Guild profile (e.g., adding wins/losses, MMR, or Gold).
     /// </summary>
-    Task UpdateGuildAsync(Guild guild);    
+    Task UpdateGuildAsync(Guild guild);
+
+    /// <summary>
+    /// Retrieves the Guild profile including Heroes and Match History.
+    /// Does NOT use AsNoTracking, making it safe for updates (e.g. deductions of gold).
+    /// </summary>
+    Task<Guild?> GetGuildWithHistoryAsync(string applicationUserId);
 }

@@ -1,0 +1,52 @@
+﻿.page-header {
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 1px;
+}
+
+.tavern-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden; /* Para que o border-radius corte a imagem corretamente */
+}
+
+    .tavern-card:hover:not(.hero-locked) {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 15px rgba(255, 216, 0, 0.15) !important;
+    }
+
+.hero-portrait {
+    height: 220px;
+    background-color: #1a1d20;
+    background-size: cover;
+    background-position: top center;
+    border-bottom: 2px solid #444;
+}
+
+/* Efeito visual para heróis que ainda não cumprem os requisitos */
+.hero-locked .hero-portrait {
+    filter: grayscale(80%) brightness(0.6);
+}
+
+.hero-locked .card-title {
+    color: #6c757d !important; /* Cinzento muted em vez de Info */
+}
+
+.owned-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.conditions-box {
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+.gold-display {
+    min-width: 150px;
+}

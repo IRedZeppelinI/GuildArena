@@ -69,6 +69,7 @@ public static class DependencyInjection
         //SQL
         //services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<IGuildRepository, GuildRepository>();
+        services.AddScoped<IHeroPurchaseRepository, HeroPurchaseRepository>();
 
 
         return services;

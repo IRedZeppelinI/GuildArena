@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IEncounterService, EncounterService>();
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IEffectTooltipService, EffectTooltipService>();
+        services.AddScoped<IHeroUnlockEvaluator, HeroUnlockEvaluator>();
 
         return services;
     }

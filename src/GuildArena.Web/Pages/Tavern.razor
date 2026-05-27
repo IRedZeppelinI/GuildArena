@@ -1,0 +1,196 @@
+﻿@page "/tavern"
+@attribute [Authorize]
+@using GuildArena.Shared.DTOs.Shop
+@using GuildArena.Domain.Enums.UnlockHero
+@using GuildArena.Web.Services
+@inject HttpClient Http
+@inject IAssetService AssetService
+@inject NavigationManager NavManager
+
+<PageTitle>Hero Tavern</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+
+    <div class="page-header d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+        <div>
+            <h2 class="title text-warning mb-0">🍻 The Tavern</h2>
+            <p class="subtitle mb-0">Spend your hard-earned gold to recruit new heroes.</p>
+        </div>
+
+        @if (_shopData != null)
+        {
+            <div class="gold-display bg-dark border border-warning rounded p-2 px-4 shadow-sm text-center">
+                <span class="text-muted small d-block">Guild Funds</span>
+                <span class="fs-4 fw-bold text-warning">@_shopData.GuildGold 🪙</span>
+            </div>
+        }
+    </div>
+
+    @if (_errorMessage != null)
+    {
+        <div class="alert alert-danger shadow-sm border-danger">
+            <h5 class="text-danger fw-bold">Notice</h5><p class="mb-0">@_errorMessage</p>
+        </div>
+    }
+
+    @if (_shopData == null)
+    {
+        <div class="text-center mt-5"><p><em>The barkeep is fetching the roster...</em></p></div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var hero in _shopData.Heroes)
+            {
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card tavern-card bg-dark border-secondary h-100 shadow d-flex flex-column @(hero.Status == HeroStatus.Locked ? "hero-locked" : "")">
+
+                        <!-- Imagem do Herói -->
+                        <div class="card-img-top hero-portrait position-relative" style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)');">
+                            @if (hero.Status == HeroStatus.Owned)
+                            {
+                                <div class="owned-overlay d-flex justify-content-center align-items-center">
+                                    <span class="badge bg-success fs-6 px-3 py-2 border border-light shadow">Recruited</span>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Informação Principal -->
+                        <div class="card-body text-center p-3 d-flex flex-column flex-grow-1">
+                            <h5 class="card-title text-info fw-bold mb-0">@hero.Name</h5>
+                            <p class="card-text small text-muted mb-3">@hero.RaceName</p>
+
+                            <!-- Secção Dinâmica (Condições vs Preço) -->
+                            <div class="mt-auto">
+                                @if (hero.Status == HeroStatus.Locked)
+                                {
+                                    <div class="conditions-box text-start bg-black p-2 rounded border border-secondary mb-3">
+                                        <p class="text-danger small fw-bold mb-1 border-bottom border-dark pb-1">Requirements:</p>
+                                        @foreach (var cond in hero.UnlockConditions)
+                                        {
+                                            var isMet = cond.CurrentValue >= cond.RequiredValue;
+                                            <div class="mb-2">
+                                                <div class="d-flex justify-content-between small">
+                                                    <span class="@(isMet ? "text-success" : "text-light")" style="font-size: 0.7rem;">@cond.Description</span>
+                                                    <span class="@(isMet ? "text-success" : "text-warning") fw-bold" style="font-size: 0.7rem;">
+                                                        @(Math.Min(cond.CurrentValue, cond.RequiredValue)) / @cond.RequiredValue
+                                                    </span>
+                                                </div>
+                                                <div class="progress" style="height: 4px; background-color: #333;">
+                                                    <div class="progress-bar @(isMet ? "bg-success" : "bg-warning")"
+                                                         role="progressbar"
+                                                         style="width: @((Math.Min(cond.CurrentValue, cond.RequiredValue) * 100) / cond.RequiredValue)%">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    <button class="btn btn-secondary w-100 fw-bold" disabled>
+                                        <span class="fs-6">🔒 @hero.GoldCost 🪙</span>
+                                    </button>
+                                }
+                                else if (hero.Status == HeroStatus.Owned)
+                                {
+                                    <button class="btn btn-success w-100 fw-bold border border-light" @onclick="() => GoToHeroDetails(hero.DefinitionId)">
+                                        View in Roster
+                                    </button>
+                                }
+                                else if (hero.Status == HeroStatus.Available)
+                                {
+                                    var canAfford = _shopData.GuildGold >= hero.GoldCost;
+                                    var btnClass = canAfford ? "btn-warning" : "btn-outline-danger";
+                                    var isPurchasing = _purchasingHeroId == hero.DefinitionId;
+
+                                    <button class="btn @btnClass w-100 fw-bold d-flex justify-content-between align-items-center px-3"
+                                            disabled="@(!canAfford || _isProcessingPurchase)"
+                                            @onclick="() => PurchaseHeroAsync(hero.DefinitionId)">
+                                        @if (isPurchasing)
+                                        {
+                                            <span>Signing Contract...</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Recruit</span>
+                                            <span>@hero.GoldCost 🪙</span>
+                                        }
+                                    </button>
+                                    @if (!canAfford)
+                                    {
+                                        <div class="text-danger small mt-1 fw-bold">Not enough gold</div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private TavernShopDto? _shopData;
+    private string? _errorMessage;
+    private bool _isProcessingPurchase = false;
+    private string? _purchasingHeroId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadShopDataAsync();
+    }
+
+    private async Task LoadShopDataAsync()
+    {
+        try
+        {
+            _errorMessage = null;
+            _shopData = await Http.GetFromJsonAsync<TavernShopDto>("api/tavern");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "Failed to communicate with the Tavern. The barkeep might be sleeping.";
+        }
+    }
+
+    private async Task PurchaseHeroAsync(string definitionId)
+    {
+        _isProcessingPurchase = true;
+        _purchasingHeroId = definitionId;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new PurchaseHeroRequest { HeroId = definitionId };
+            var response = await Http.PostAsJsonAsync("api/tavern/purchase", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PurchaseHeroResponse>();
+                if (result != null && result.Success)
+                {
+                    // Em vez de recarregar tudo do servidor, atualizamos o estado local para ser mais rápido (Opcional, mas aqui vou recarregar para garantir sincronia)
+                    await LoadShopDataAsync();
+                }
+            }
+            else
+            {
+                // Extrair o erro do formato ProblemDetails que a tua API gera (RFC 7807)
+                _errorMessage = "Could not complete the purchase. Make sure you meet all requirements.";
+            }
+        }
+        catch
+        {
+            _errorMessage = "Connection error while attempting to purchase.";
+        }
+        finally
+        {
+            _isProcessingPurchase = false;
+            _purchasingHeroId = null;
+        }
+    }
+
+    private void GoToHeroDetails(string definitionId)
+    {
+        NavManager.NavigateTo($"/hero/{definitionId}");
+    }
+}

@@ -15,6 +15,7 @@ public class GuildArenaDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Guild> Guilds => Set<Guild>();
     public DbSet<Hero> Heroes => Set<Hero>();
     public DbSet<Match> Matches => Set<Match>();
+    public DbSet<HeroPurchase> HeroPurchases => Set<HeroPurchase>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {        

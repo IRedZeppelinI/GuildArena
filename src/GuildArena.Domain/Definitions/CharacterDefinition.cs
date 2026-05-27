@@ -1,4 +1,5 @@
 ﻿using GuildArena.Domain.ValueObjects.Stats;
+using GuildArena.Domain.ValueObjects.UnlockHero;
 
 namespace GuildArena.Domain.Definitions;
 
@@ -50,4 +51,10 @@ public class CharacterDefinition
     /// The list of Ability IDs that this character knows by default.
     /// </summary>
     public List<string> AbilityIds { get; set; } = new();
+
+    /// <summary>
+    /// The unlock and purchase requirements for this hero.
+    /// If null, the hero is a starter and is automatically granted to all new guilds.
+    /// </summary>
+    public HeroUnlockRequirements? UnlockRequirements { get; set; }
 }

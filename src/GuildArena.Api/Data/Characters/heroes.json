@@ -126,7 +126,23 @@
       "ABIL_VEX_CHAOS",
       "ABIL_VEX_FUEL",
       "ABIL_VEX_DECIMATE"
-    ]
+    ],
+    "UnlockRequirements": {
+      "GoldCost": 1200,
+      "Conditions": [
+        {
+          "Type": "GuildLevel",
+          "MinLevel": 1,
+          "Description": "Guild reaches Level 1."
+        },
+        {
+          "Type": "MatchesPlayedWithRace",
+          "RaceId": "RACE_HUMAN",
+          "MinCount": 5,
+          "Description": "Play 5 matches with a Human hero."
+        }
+      ]
+    }
   },
   { //  NYX
     "Id": "HERO_NYX",
@@ -159,6 +175,22 @@
       "ABIL_NYX_SHROUD",
       "ABIL_NYX_GAZE",
       "ABIL_NYX_ULTI"
-    ]
+    ],
+    "UnlockRequirements": {
+      "GoldCost": 1500,
+      "Conditions": [
+        {
+          "Type": "GuildLevel",
+          "MinLevel": 2,
+          "Description": "Guild reaches Level 2."
+        },
+        {
+          "Type": "MatchesWonWithRace",
+          "RaceId": "RACE_VALDRIN",
+          "MinCount": 3,
+          "Description": "Win 3 matches with a Valdrin hero."
+        }
+      ]
+    }
   }
 ]
