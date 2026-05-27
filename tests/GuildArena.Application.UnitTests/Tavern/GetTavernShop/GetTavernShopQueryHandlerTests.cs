@@ -43,7 +43,7 @@ public class GetTavernShopQueryHandlerTests
     {
         _currentUser.GuildId.Returns(1);
         _currentUser.UserId.Returns("user1");
-        _guildRepo.GetGuildByUserIdAsync("user1").Returns((Guild?)null);
+        _guildRepo.GetGuildWithHistoryAsync("user1").Returns((Guild?)null);
 
         var result = await _handler.Handle(new GetTavernShopQuery(), CancellationToken.None);
         result.IsFailure.ShouldBeTrue();
@@ -58,7 +58,7 @@ public class GetTavernShopQueryHandlerTests
         _currentUser.UserId.Returns("user1");
 
         var guild = new Guild { Id = 1, ApplicationUserId = "user1", Name = "G", Level = 1, Gold = 1000 };
-        _guildRepo.GetGuildByUserIdAsync("user1").Returns(guild);
+        _guildRepo.GetGuildWithHistoryAsync("user1").Returns(guild);
 
         var garretDef = CreateHeroDef("HERO_GARRET", "RACE_HUMAN", null);
         var vexDef = CreateHeroDef("HERO_VEX", "RACE_KYMERA", new HeroUnlockRequirements

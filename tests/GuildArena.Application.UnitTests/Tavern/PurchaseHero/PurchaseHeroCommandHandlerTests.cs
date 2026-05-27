@@ -44,7 +44,7 @@ public class PurchaseHeroCommandHandlerTests
     {
         _currentUser.GuildId.Returns(1);
         _currentUser.UserId.Returns("user1");
-        _guildRepo.GetGuildByUserIdAsync("user1").Returns((Guild?)null);
+        _guildRepo.GetGuildWithHistoryAsync("user1").Returns((Guild?)null);
 
         var result = await _handler.Handle(new PurchaseHeroCommand { HeroId = "HERO_VEX" }, CancellationToken.None);
         result.IsFailure.ShouldBeTrue();
@@ -154,12 +154,12 @@ public class PurchaseHeroCommandHandlerTests
         result.Value.Success.ShouldBeTrue();
         result.Value.UpdatedGold.ShouldBe(800);
         guild.Gold.ShouldBe(800);
-        // Guild update chamado apenas uma vez, após todas as modificações
+
         await _guildRepo.Received(1).UpdateGuildAsync(guild);
-        // Hero added
+
         guild.Heroes.ShouldHaveSingleItem();
         guild.Heroes.First().CharacterDefinitionId.ShouldBe("HERO_VEX");
-        // Purchase recorded
+
         await _purchaseRepo.Received(1).AddAsync(Arg.Is<HeroPurchase>(p =>
             p.GuildId == 1 && p.CharacterDefinitionId == "HERO_VEX" && p.GoldPaid == 1200
         ), Arg.Any<CancellationToken>());
@@ -170,7 +170,7 @@ public class PurchaseHeroCommandHandlerTests
         _currentUser.GuildId.Returns(guildId);
         _currentUser.UserId.Returns(userId);
         guild = new Guild { Id = guildId, ApplicationUserId = userId, Name = "G", Level = 1, Gold = 1000 };
-        _guildRepo.GetGuildByUserIdAsync(userId).Returns(guild);
+        _guildRepo.GetGuildWithHistoryAsync(userId).Returns(guild);
     }
 
     private CharacterDefinition CreateDefWithUnlock(string id, int goldCost) =>
