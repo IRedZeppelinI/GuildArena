@@ -2,19 +2,23 @@
 @attribute [Authorize]
 @using GuildArena.Shared.DTOs.GuildAndHeroes
 @using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Shared.DTOs.Shop
+@using GuildArena.Shared.Requests
 @using GuildArena.Domain.Enums.Stats
 @using GuildArena.Domain.Enums.Combat
+@using GuildArena.Domain.Enums.UnlockHero
 @using GuildArena.Web.Services
 @inject HttpClient Http
 @inject IAssetService AssetService
 @inject NavigationManager NavManager
+@inject IJSRuntime JS
 
 <PageTitle>Hero Details</PageTitle>
 
 <div class="container mt-4 text-light pb-5">
 
-    <button class="btn btn-outline-secondary mb-4" @onclick='() => NavManager.NavigateTo("/guild")'>
-        ← Back to Roster
+    <button class="btn btn-outline-secondary mb-4" @onclick="GoBack">
+        ← Back
     </button>
 
     @if (_errorMessage != null)
@@ -23,16 +27,16 @@
             <h5 class="text-danger fw-bold">Error loading hero</h5><p class="mb-0">@_errorMessage</p>
         </div>
     }
-    else if (_hero == null)
+    else if (_hero == null || _tavernInfo == null)
     {
         <div class="text-center mt-5"><p><em>Loading Hero Records...</em></p></div>
     }
     else
     {
-        <!-- BLOCO SUPERIOR: Retrato (Esq) | Stats + Traits (Dir) -->
+        <!-- BLOCO SUPERIOR: Retrato + Loja (Esq) | Stats + Traits (Dir) -->
         <div class="row mb-5">
 
-            <!-- COLUNA ESQUERDA: Retrato -->
+            <!-- COLUNA ESQUERDA: Retrato e Widget da Taverna -->
             <div class="col-lg-3 col-md-4 mb-4 mb-md-0">
                 <div class="card bg-dark border-secondary shadow-lg hero-portrait-card">
                     <img src="@AssetService.GetPortraitUrl(_hero.DefinitionId)" class="card-img-top hero-details-img" alt="@_hero.Name" />
@@ -45,6 +49,75 @@
                             <span class="badge bg-danger fs-6 border border-secondary" title="Max Health Points">❤️ @_hero.MaxHP</span>
                             <span class="badge bg-warning text-dark fs-6 border border-secondary" title="Action Points">⚡ @_hero.MaxActions</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- WIDGET DA TAVERNA -->
+                <div class="card bg-dark border-secondary shadow-lg mt-3 tavern-widget">
+                    <div class="card-body p-3 text-center">
+                        <h5 class="text-warning border-bottom border-secondary pb-2 mb-3">Recruitment</h5>
+
+                        @if (_purchaseSuccess != null)
+                        {
+                            <div class="alert alert-success small p-2 mb-3 border-success">@_purchaseSuccess</div>
+                        }
+                        @if (_purchaseError != null)
+                        {
+                            <div class="alert alert-danger small p-2 mb-3 border-danger">@_purchaseError</div>
+                        }
+
+                        @if (_tavernInfo.Status == HeroStatus.Owned)
+                        {
+                            <div class="badge bg-success fs-6 py-2 px-3 w-100 border border-light shadow-sm">
+                                ✅ In Roster
+                            </div>
+                        }
+                        else
+                        {
+                            @if (_tavernInfo.Status == HeroStatus.Locked)
+                            {
+                                <div class="conditions-box text-start bg-black p-2 rounded border border-secondary mb-3">
+                                    <p class="text-danger small fw-bold mb-1 border-bottom border-dark pb-1">Requirements:</p>
+                                    @foreach (var cond in _tavernInfo.UnlockConditions)
+                                    {
+                                        var isMet = cond.CurrentValue >= cond.RequiredValue;
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between small">
+                                                <span class="@(isMet ? "text-success" : "text-light")" style="font-size: 0.7rem;">@cond.Description</span>
+                                                <span class="@(isMet ? "text-success" : "text-warning") fw-bold" style="font-size: 0.7rem;">
+                                                    @(Math.Min(cond.CurrentValue, cond.RequiredValue)) / @cond.RequiredValue
+                                                </span>
+                                            </div>
+                                            <div class="progress" style="height: 4px; background-color: #333;">
+                                                <div class="progress-bar @(isMet ? "bg-success" : "bg-warning")"
+                                                     role="progressbar"
+                                                     style="width: @((Math.Min(cond.CurrentValue, cond.RequiredValue) * 100) / cond.RequiredValue)%">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <button class="btn btn-secondary w-100 fw-bold" disabled>
+                                    <span class="fs-6">🔒 @_tavernInfo.GoldCost 🪙</span>
+                                </button>
+                            }
+                            else if (_tavernInfo.Status == HeroStatus.Available)
+                            {
+                                <button class="btn btn-warning w-100 fw-bold d-flex justify-content-between align-items-center px-3"
+                                        disabled="@_isPurchasing"
+                                        @onclick="PurchaseHeroAsync">
+                                    @if (_isPurchasing)
+                                    {
+                                        <span>Signing...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Recruit</span>
+                                        <span>@_tavernInfo.GoldCost 🪙</span>
+                                    }
+                                </button>
+                            }
+                        }
                     </div>
                 </div>
             </div>
@@ -79,8 +152,6 @@
                                         <span class="text-light"> - </span>
                                         <span class="text-info">@trait.Name</span>
                                     </h6>
-                                    @* <p class="text-light small mb-0 trait-desc">@trait.Description</p> *@
-                                    <!-- O HTML mastiga a lista que o Backend lhe deu! -->
                                     <div class="text-light small mb-0">
                                         @foreach(var line in trait.DescriptionLines)
                                         {
@@ -112,12 +183,11 @@
                     {
                         <div class="col-xl-6 col-lg-12 mb-3">
                             <div class="card bg-dark border-secondary shadow-sm d-flex flex-row overflow-hidden h-100 ability-card">
-                                <!-- A imagem de fundo tem mesmo de ser inline style -->
                                 <div class="ability-icon-col" style="background-image: url('@AssetService.GetAbilityIconUrl(ability.Id)');"></div>
 
                                 <div class="card-body p-3 d-flex flex-column justify-content-between w-100">
                                     <div>
-                                        <!-- TOPO: Nome da Habilidade e Badges de AP/CD bem visíveis -->
+                                        <!-- TOPO: Nome da Habilidade e Badges de AP/CD -->
                                         <div class="d-flex justify-content-between align-items-start mb-2">
                                             <h5 class="text-info fw-bold mb-0">@ability.Name</h5>
                                             <div class="d-flex gap-2">
@@ -134,7 +204,7 @@
                                         </div>
                                         <p class="card-text text-light small mb-2">@ability.Description</p>
 
-                                        <!-- MATEMÁTICA E MODIFICADORES (Com a duração dinâmica!) -->
+                                        <!-- MATEMÁTICA E MODIFICADORES -->
                                         @if(ability.Effects != null && ability.Effects.Any())
                                         {
                                             <div class="effect-math-box p-2 mb-2 rounded border border-secondary">
@@ -214,12 +284,79 @@
     public string DefinitionId { get; set; } = string.Empty;
 
     private HeroDetailsDto? _hero;
+    private TavernHeroDto? _tavernInfo;
+    
     private string? _errorMessage;
+    private string? _purchaseError;
+    private string? _purchaseSuccess;
+    private bool _isPurchasing = false;
 
     protected override async Task OnInitializedAsync()
     {
-        try { _hero = await Http.GetFromJsonAsync<HeroDetailsDto>($"api/character/{DefinitionId}"); }
-        catch (Exception ex) { _errorMessage = ex.Message; }
+        await LoadHeroDataAsync();
+    }
+
+    private async Task LoadHeroDataAsync()
+    {
+        try 
+        { 
+            // Paraleliza os pedidos ao Backend
+            var heroTask = Http.GetFromJsonAsync<HeroDetailsDto>($"api/character/{DefinitionId}");
+            var tavernTask = Http.GetFromJsonAsync<TavernHeroDto>($"api/tavern/{DefinitionId}");
+
+            await Task.WhenAll(heroTask, tavernTask);
+
+            _hero = heroTask.Result;
+            _tavernInfo = tavernTask.Result;
+        }
+        catch (Exception ex) 
+        { 
+            _errorMessage = "Failed to load hero details. They might not exist."; 
+        }
+    }
+
+    private async Task PurchaseHeroAsync()
+    {
+        _isPurchasing = true;
+        _purchaseError = null;
+        _purchaseSuccess = null;
+
+        try
+        {
+            var request = new PurchaseHeroRequest { HeroId = DefinitionId };
+            var response = await Http.PostAsJsonAsync("api/tavern/purchase", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PurchaseHeroResponse>();
+                if (result != null && result.Success)
+                {
+                    _purchaseSuccess = "Hero successfully recruited to your Guild!";
+                    
+                    // Recarregar os dados para atualizar a UI do widget da taverna para "Owned"
+                    await LoadHeroDataAsync();
+                }
+            }
+            else
+            {
+                // A nossa API devolve códigos 400 com RFC 7807 ProblemDetails se faltar dinheiro ou condições
+                _purchaseError = "Could not complete the purchase. Check if you have enough gold.";
+            }
+        }
+        catch
+        {
+            _purchaseError = "Connection error while attempting to purchase.";
+        }
+        finally
+        {
+            _isPurchasing = false;
+        }
+    }
+
+    private async Task GoBack()
+    {
+        // Interop mágico com JS nativo. Devolve o jogador para a Taverna ou Guilda consoante de onde veio.
+        await JS.InvokeVoidAsync("history.back");
     }
 
     private RenderFragment StatBox(string icon, string name, int value, string colorClass) => __builder =>

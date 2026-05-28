@@ -85,3 +85,13 @@
     font-size: 0.8rem;
     font-style: italic;
 }
+
+
+/* ======= NOVOS ESTILOS PARA O WIDGET DA TAVERNA ======= */
+.tavern-widget {
+    transition: transform 0.3s ease;
+}
+
+.conditions-box {
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
