@@ -1,4 +1,5 @@
-﻿using GuildArena.Application.Tavern.GetTavernShop;
+﻿using GuildArena.Application.Tavern.GetTavernHero;
+using GuildArena.Application.Tavern.GetTavernShop;
 using GuildArena.Application.Tavern.PurchaseHero;
 using GuildArena.Shared.DTOs.Shop;
 using MediatR;
@@ -40,6 +41,18 @@ public class TavernController : BaseApiController
             HeroId = request.HeroId
         };
         var result = await _mediator.Send(command);
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Returns the tavern state for a single hero (purchase status, cost, conditions).
+    /// Used by the hero details page to render the purchase section without depending on the full shop list.
+    /// </summary>
+    [HttpGet("{definitionId}")]
+    public async Task<IActionResult> GetTavernHeroInfo(string definitionId)
+    {
+        var query = new GetTavernHeroQuery { DefinitionId = definitionId };
+        var result = await _mediator.Send(query);
         return HandleResult(result);
     }
 }
