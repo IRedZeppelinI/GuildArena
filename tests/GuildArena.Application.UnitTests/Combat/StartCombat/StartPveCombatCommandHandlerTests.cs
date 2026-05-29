@@ -2,6 +2,7 @@
 using GuildArena.Application.Abstractions.Repositories;
 using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Application.Combat.StartCombat;
+using GuildArena.Application.Combat.StartCombat.StartEncounterCombat;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Abstractions.Factories;
 using GuildArena.Domain.Abstractions.Repositories;
@@ -24,13 +25,13 @@ public class StartPveCombatCommandHandlerTests
     private readonly ICurrentUserService _currentUserMock;
     private readonly ICombatantFactory _factoryMock;
     private readonly IEssenceService _essenceServiceMock;
-    private readonly ILogger<StartPveCombatCommandHandler> _loggerMock;
+    private readonly ILogger<StartEncounterCombatCommandHandler> _loggerMock;
     private readonly IRandomProvider _rngMock;
     private readonly ITriggerProcessor _triggerProcessorMock;
     private readonly ICombatEngine _combatEngineMock;
     private readonly IAiTurnQueue _aiQueueMock;
     private readonly IBattleLogService _battleLogMock;
-    private readonly StartPveCombatCommandHandler _handler;
+    private readonly StartEncounterCombatCommandHandler _handler;
 
     public StartPveCombatCommandHandlerTests()
     {
@@ -40,14 +41,14 @@ public class StartPveCombatCommandHandlerTests
         _currentUserMock = Substitute.For<ICurrentUserService>();
         _factoryMock = Substitute.For<ICombatantFactory>();
         _essenceServiceMock = Substitute.For<IEssenceService>();
-        _loggerMock = Substitute.For<ILogger<StartPveCombatCommandHandler>>();
+        _loggerMock = Substitute.For<ILogger<StartEncounterCombatCommandHandler>>();
         _rngMock = Substitute.For<IRandomProvider>();
         _triggerProcessorMock = Substitute.For<ITriggerProcessor>();
         _combatEngineMock = Substitute.For<ICombatEngine>();
         _aiQueueMock = Substitute.For<IAiTurnQueue>();
         _battleLogMock = Substitute.For<IBattleLogService>();
 
-        _handler = new StartPveCombatCommandHandler(
+        _handler = new StartEncounterCombatCommandHandler(
             _combatStateRepoMock,
             _guildRepoMock,
             _encounterRepoMock,
@@ -93,7 +94,7 @@ public class StartPveCombatCommandHandlerTests
 
         _battleLogMock.GetAndClearLogs().Returns(new List<string> { "Combat Started" });
 
-        var command = new StartPveCombatCommand { EncounterId = encounterId, HeroInstanceIds = heroIds };
+        var command = new StartEncounterCombatCommand { EncounterId = encounterId, HeroInstanceIds = heroIds };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -136,7 +137,7 @@ public class StartPveCombatCommandHandlerTests
 
         _rngMock.Next(2).Returns(1);
 
-        var command = new StartPveCombatCommand { EncounterId = "E", HeroInstanceIds = heroIds };
+        var command = new StartEncounterCombatCommand { EncounterId = "E", HeroInstanceIds = heroIds };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -152,7 +153,7 @@ public class StartPveCombatCommandHandlerTests
     public async Task Handle_ShouldReturnUnauthorized_WhenUserNotAuthenticated()
     {
         _currentUserMock.UserId.Returns((string?)null);
-        var command = new StartPveCombatCommand { EncounterId = "ANY", HeroInstanceIds = new() { 1 } };
+        var command = new StartEncounterCombatCommand { EncounterId = "ANY", HeroInstanceIds = new() { 1 } };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -165,7 +166,7 @@ public class StartPveCombatCommandHandlerTests
     public async Task Handle_ShouldReturnValidationFailure_WhenNoHeroesSelected()
     {
         _currentUserMock.UserId.Returns("user-123");
-        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int>() };
+        var command = new StartEncounterCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int>() };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -180,7 +181,7 @@ public class StartPveCombatCommandHandlerTests
         _currentUserMock.UserId.Returns("user-123");
         _guildRepoMock.GetGuildByUserIdAsync("user-123").Returns((Guild?)null);
 
-        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int> { 10 } };
+        var command = new StartEncounterCombatCommand { EncounterId = "ENC", HeroInstanceIds = new List<int> { 10 } };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -203,7 +204,7 @@ public class StartPveCombatCommandHandlerTests
         _guildRepoMock.GetHeroesAsync(guildId, requestedIds).
             Returns(new List<Hero> { new() { Id = 10, CharacterDefinitionId = "H", GuildId = guildId } });
 
-        var command = new StartPveCombatCommand { EncounterId = "ENC", HeroInstanceIds = requestedIds };
+        var command = new StartEncounterCombatCommand { EncounterId = "ENC", HeroInstanceIds = requestedIds };
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

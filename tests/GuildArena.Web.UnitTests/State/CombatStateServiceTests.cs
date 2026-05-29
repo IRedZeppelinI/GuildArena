@@ -51,7 +51,7 @@ public class CombatStateServiceTests
         _service.OnChange += () => eventFiredCount++;
 
         // ACT
-        await _service.StartPveCombatAsync("ENC_1", new List<int> { 1 });
+        await _service.StartEncounterCombatAsync("ENC_1", new List<int> { 1 });
 
         // ASSERT
         // O evento deve ser disparado 2 vezes (1 quando começa a ligar, 1 quando termina)
@@ -72,7 +72,7 @@ public class CombatStateServiceTests
         _mockHttpHandler.SetResponse(HttpStatusCode.BadRequest, "Invalid encounter");
 
         // ACT
-        await _service.StartPveCombatAsync("ENC_FAIL", new List<int> { 1 });
+        await _service.StartEncounterCombatAsync("ENC_FAIL", new List<int> { 1 });
 
         // ASSERT
         _service.CombatId.ShouldBeNull();

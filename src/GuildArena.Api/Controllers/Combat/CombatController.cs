@@ -30,15 +30,15 @@ public class CombatController : BaseApiController
     /// <summary>
     /// Initializes a new PvE combat session.
     /// </summary>    
-    [HttpPost("start-pve")]
+    [HttpPost("start-encounter")]
     [ProducesResponseType(typeof(StartCombatResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> StartPveCombat([FromBody] StartPveRequest request)
+    public async Task<IActionResult> StartEncounterCombat([FromBody] StartEncounterRequest request)
     {
         _logger.LogInformation("Request received to start PvE Combat. Encounter: {EncounterId}", request.EncounterId);
 
-        var command = new StartPveCombatCommand
+        var command = new StartEncounterCombatCommand
         {
             EncounterId = request.EncounterId,
             HeroInstanceIds = request.HeroInstanceIds

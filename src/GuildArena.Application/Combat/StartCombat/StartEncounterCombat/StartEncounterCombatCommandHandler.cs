@@ -14,13 +14,13 @@ using GuildArena.Domain.Results;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
-namespace GuildArena.Application.Combat.StartCombat;
+namespace GuildArena.Application.Combat.StartCombat.StartEncounterCombat;
 
 /// <summary>
 /// Initializes a PvE combat session by setting up the game state, applying initial triggers, 
 /// and handling the first turn logic (including AI orchestration if applicable).
 /// </summary>
-public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatCommand, Result<StartCombatResult>>
+public class StartEncounterCombatCommandHandler : IRequestHandler<StartEncounterCombatCommand, Result<StartCombatResult>>
 {
     private readonly ICombatStateRepository _combatStateRepo;
     private readonly IGuildRepository _guildRepo;
@@ -28,21 +28,21 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
     private readonly ICurrentUserService _currentUser;
     private readonly ICombatantFactory _combatantFactory;
     private readonly IEssenceService _essenceService;
-    private readonly ILogger<StartPveCombatCommandHandler> _logger;
+    private readonly ILogger<StartEncounterCombatCommandHandler> _logger;
     private readonly IRandomProvider _rng;
     private readonly ITriggerProcessor _triggerProcessor;
     private readonly ICombatEngine _combatEngine;
     private readonly IAiTurnQueue _aiQueue;
     private readonly IBattleLogService _battleLog;
 
-    public StartPveCombatCommandHandler(
+    public StartEncounterCombatCommandHandler(
         ICombatStateRepository combatStateRepo,
         IGuildRepository guildRepo,
         IEncounterDefinitionRepository encounterRepo,
         ICurrentUserService currentUser,
         ICombatantFactory combatantFactory,
         IEssenceService essenceService,
-        ILogger<StartPveCombatCommandHandler> logger,
+        ILogger<StartEncounterCombatCommandHandler> logger,
         IRandomProvider rng,
         ITriggerProcessor triggerProcessor,
         ICombatEngine combatEngine,
@@ -72,7 +72,7 @@ public class StartPveCombatCommandHandler : IRequestHandler<StartPveCombatComman
     /// A <see cref="Result{T}"/> containing the <see cref="StartCombatResult"/> on success. 
     /// Returns a failure result if validation fails (e.g., heroes not owned, encounter not found).
     /// </returns>
-    public async Task<Result<StartCombatResult>> Handle(StartPveCombatCommand request, CancellationToken cancellationToken)
+    public async Task<Result<StartCombatResult>> Handle(StartEncounterCombatCommand request, CancellationToken cancellationToken)
     {
         // 1. Validar utilizador autenticado (GUID)
         var accountId = _currentUser.UserId;

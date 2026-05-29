@@ -29,20 +29,20 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task StartPveCombatAsync(string encounterId, List<int> heroInstanceIds)
+    public async Task StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds)
     {
         IsConnecting = true;
         NotifyStateChanged();
 
         try
         {
-            var request = new StartPveRequest
+            var request = new StartEncounterRequest
             {
                 EncounterId = encounterId,
                 HeroInstanceIds = heroInstanceIds
             };
 
-            var response = await _http.PostAsJsonAsync("api/combat/start-pve", request);
+            var response = await _http.PostAsJsonAsync("api/combat/start-encounter", request);
 
             if (response.IsSuccessStatusCode)
             {

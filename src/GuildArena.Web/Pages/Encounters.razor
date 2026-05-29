@@ -141,7 +141,7 @@
     {
         if (CanStartMatch)
         {
-            await CombatService.StartPveCombatAsync(_selectedEncounterId!, _selectedHeroIds);
+            await CombatService.StartEncounterCombatAsync(_selectedEncounterId!, _selectedHeroIds);
             NavManager.NavigateTo("/arena");
         }
     }

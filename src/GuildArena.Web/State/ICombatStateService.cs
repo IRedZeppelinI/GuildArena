@@ -23,7 +23,7 @@ public interface ICombatStateService
     /// <summary>
     /// Initializes a PvE combat session by calling the API and establishing a SignalR connection.
     /// </summary>
-    Task StartPveCombatAsync(string encounterId, List<int> heroInstanceIds);
+    Task StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds);
 
     /// <summary>
     /// Signals the API that the local player has ended their turn.

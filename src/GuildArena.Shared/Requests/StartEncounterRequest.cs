@@ -3,7 +3,7 @@
 /// <summary>
 /// Data contract for initiating a PvE combat session against a specific encounter.
 /// </summary>
-public class StartPveRequest
+public class StartEncounterRequest
 {
     /// <summary>
     /// The unique ID of the encounter configuration (e.g. "ENC_TUTORIAL_01").
