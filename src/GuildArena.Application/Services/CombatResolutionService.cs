@@ -46,20 +46,31 @@ public class CombatResolutionService : ICombatResolutionService
 
         int playerSeatId = player.PlayerId;
 
-        // ----- 2. Determine victory -----
-        bool isWinner = DetermineIsWinner(state, playerSeatId);
+        // ----- 2. Determine victory and Update Stats -----
+        // Segurança: Se for Surrender, é garantidamente derrota.
+        bool isWinner = isSurrender ? false : DetermineIsWinner(state, playerSeatId);
+
+        if (isWinner) guild.Wins++;
+        else guild.Losses++;
 
         // ----- 3. Apply rewards via strategy -----
+        // Guardamos o nível antigo para validar se o ecrã de Level Up deve aparecer
+        int previousLevel = guild.Level;
+
         var calculator = _rewardCalculators.FirstOrDefault(c => c.CanHandle(state.MatchType));
         MatchRewardResult rewardResult = calculator?.CalculateAndApplyRewards(state, guild, isWinner)
             ?? new MatchRewardResult(); // no rewards if no calculator
 
-        // ----- 4. Build Match history -----
+        // Se o nível da guilda não subiu, devolvemos 0 para a UI ignorar
+        int newGuildLevel = guild.Level > previousLevel ? guild.Level : 0;
+
+        // ----- 4. Build Match history (Optimized for Storage) -----
         var match = new Match
         {
             Id = Guid.NewGuid(),
             OccurredAt = DateTime.UtcNow,
-            Type = state.MatchType
+            Type = state.MatchType,
+            Participants = new List<MatchParticipant>()
         };
 
         // Player participant
@@ -68,7 +79,8 @@ public class CombatResolutionService : ICombatResolutionService
             Id = Guid.NewGuid(),
             MatchId = match.Id,
             GuildId = guild.Id,
-            IsWinner = isWinner
+            IsWinner = isWinner,
+            HeroesUsed = new List<MatchHeroEntry>()
         };
 
         foreach (var combatant in state.Combatants.Where(c => c.OwnerId == playerSeatId))
@@ -82,34 +94,22 @@ public class CombatResolutionService : ICombatResolutionService
             });
         }
 
-        // Opponent participant (AI for now)
-        int opponentSeatId = state.Players.First(p => p.PlayerId != playerSeatId).PlayerId;
-        var opponentParticipant = new MatchParticipant
-        {
-            Id = Guid.NewGuid(),
-            MatchId = match.Id,
-            GuildId = null,          // AI
-            IsWinner = !isWinner
-        };
-
-        foreach (var combatant in state.Combatants.Where(c => c.OwnerId == opponentSeatId))
-        {
-            opponentParticipant.HeroesUsed.Add(new MatchHeroEntry
-            {
-                Id = Guid.NewGuid(),
-                MatchParticipantId = opponentParticipant.Id,
-                HeroDefinitionId = combatant.DefinitionId,
-                LevelSnapshot = combatant.Level
-            });
-        }
-
         match.Participants.Add(playerParticipant);
-        match.Participants.Add(opponentParticipant);
+
+        /* 
+         * NOTA DE ARQUITETURA: 
+         * A criação do "Opponent Participant" (AI) foi removida.
+         * Mobs de IA não necessitam de ser persistidos, poupando imenso espaço na base de dados.
+         * No futuro, para PvP readicionar esta lógica com uma validação: 
+         * if (opponent.Type == CombatPlayerType.Human) { ... build participant ... } 
+         */
 
         // ----- 5. Persist everything -----
         await _guildRepo.UpdateGuildAsync(guild);
         await _matchRepo.SaveMatchAsync(match, ct);
         await _combatStateRepo.DeleteAsync(combatId);
+
+        _logger.LogInformation("Combat {CombatId} resolved. User {UserId} Won: {IsWinner}", combatId, userId, isWinner);
 
         // ----- 6. Build result DTO -----
         return new CombatResultDto
@@ -117,7 +117,7 @@ public class CombatResolutionService : ICombatResolutionService
             IsWinner = isWinner,
             XpGained = rewardResult.XpEarned,
             GoldGained = rewardResult.GoldEarned,
-            NewGuildLevel = guild.Level,
+            NewGuildLevel = newGuildLevel,
             IsSurrender = isSurrender
         };
     }
