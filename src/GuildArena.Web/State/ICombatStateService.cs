@@ -19,6 +19,7 @@ public interface ICombatStateService
     GameStateDto? GameState { get; }
     IReadOnlyList<string> BattleLogs { get; }
     bool IsConnecting { get; }
+    CombatResultDto? CombatResult { get; }
 
     /// <summary>
     /// Initializes a PvE combat session by calling the API and establishing a SignalR connection.
@@ -50,4 +51,6 @@ public interface ICombatStateService
     /// Gracefully disconnects from the SignalR hub and resets the local state.
     /// </summary>
     Task DisconnectAsync();
+
+    Task SurrenderAsync();
 }

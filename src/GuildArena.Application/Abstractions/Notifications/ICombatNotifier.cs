@@ -22,4 +22,10 @@ public interface ICombatNotifier
     /// <param name="combatId">The unique ID of the combat session.</param>
     /// <param name="state">The current domain state of the combat.</param>
     Task SendGameStateUpdateAsync(string combatId, GameState state);
+
+
+    /// <summary>
+    /// Notifies clients that the combat has ended, providing the final result.
+    /// </summary>
+    Task SendCombatEndedAsync(string combatId, Shared.DTOs.Combat.CombatResultDto result);
 }

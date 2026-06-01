@@ -1,4 +1,6 @@
-﻿namespace GuildArena.Domain.Gameplay;
+﻿using GuildArena.Domain.Enums.Combat;
+
+namespace GuildArena.Domain.Gameplay;
 
 public class GameState
 {
@@ -23,4 +25,20 @@ public class GameState
     public int CurrentPlayerId { get; set; }
 
     public string BackgroundId { get; set; } = string.Empty;
+
+
+    /// <summary>
+    /// Current combat resolution status.
+    /// </summary>
+    public CombatStatus Status { get; set; } = CombatStatus.Ongoing;
+
+    /// <summary>
+    /// The type of match being played (Encounter, Dungeon, PvP).
+    /// </summary>
+    public GuildArena.Domain.Enums.Matches.MatchType MatchType { get; set; }
+
+    /// <summary>
+    /// Context identifier (e.g., the EncounterId for PvE fights).
+    /// </summary>
+    public string ContextId { get; set; } = string.Empty;
 }

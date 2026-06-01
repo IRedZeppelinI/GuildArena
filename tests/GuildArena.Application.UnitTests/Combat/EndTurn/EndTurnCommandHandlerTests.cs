@@ -6,6 +6,7 @@ using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.Results;
+using GuildArena.Shared.DTOs.Combat;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -21,6 +22,7 @@ public class EndTurnCommandHandlerTests
     private readonly IBattleLogService _battleLogMock;
     private readonly IAiTurnQueue _aiQueueMock;
     private readonly ILogger<EndTurnCommandHandler> _loggerMock;
+    private readonly ICombatResolutionService _resolutionServiceMock;
     private readonly EndTurnCommandHandler _handler;
 
     public EndTurnCommandHandlerTests()
@@ -31,6 +33,7 @@ public class EndTurnCommandHandlerTests
         _notifierMock = Substitute.For<ICombatNotifier>();
         _battleLogMock = Substitute.For<IBattleLogService>();
         _aiQueueMock = Substitute.For<IAiTurnQueue>();
+        _resolutionServiceMock = Substitute.For<ICombatResolutionService>();
         _loggerMock = Substitute.For<ILogger<EndTurnCommandHandler>>();
 
         _handler = new EndTurnCommandHandler(
@@ -40,6 +43,7 @@ public class EndTurnCommandHandlerTests
             _notifierMock,
             _battleLogMock,
             _aiQueueMock,
+            _resolutionServiceMock,
             _loggerMock
         );
     }
@@ -198,5 +202,59 @@ public class EndTurnCommandHandlerTests
         result.IsFailure.ShouldBeTrue();
         result.Error.Type.ShouldBe(ErrorType.Forbidden);
         result.Error.Code.ShouldBe("Combat.NotYourTurn");
+    }
+
+
+    [Fact]
+    public async Task Handle_ShouldResolveAndNotify_WhenCombatEndsAfterTurn()
+    {
+        // ARRANGE
+        var combatId = "C-END";
+        var userId = "user-1";
+        var seatId = 1;
+
+        _currentUserMock.UserId.Returns(userId);
+
+        var player = new CombatPlayer { PlayerId = seatId, UserId = userId, Type = CombatPlayerType.Human };
+        var ai = new CombatPlayer { PlayerId = -1, UserId = null, Type = CombatPlayerType.AI };
+
+        var gameState = new GameState
+        {
+            CurrentPlayerId = seatId,
+            Players = new List<CombatPlayer> { player, ai },
+            Status = CombatStatus.Player1Won   // combate já terminou (ex.: último inimigo morreu por DoT no início do turno)
+        };
+
+        _combatRepoMock.GetAsync(combatId).Returns(gameState);
+        _battleLogMock.GetAndClearLogs().Returns(new List<string>());
+
+        var expectedDto = new CombatResultDto
+        {
+            IsWinner = true,
+            XpGained = 50,
+            GoldGained = 100,
+            NewGuildLevel = 2,
+            IsSurrender = false
+        };
+        _resolutionServiceMock
+            .ResolveCombatAsync(combatId, gameState, userId, false, Arg.Any<CancellationToken>())
+            .Returns(expectedDto);
+
+        var command = new EndTurnCommand { CombatId = combatId };
+
+        // ACT
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // ASSERT
+        result.IsSuccess.ShouldBeTrue();
+
+        // O turno ainda avança (comportamento atual do handler)
+        _turnManagerMock.Received(1).AdvanceTurn(gameState);
+
+        // A resolução deve ser chamada uma vez
+        await _resolutionServiceMock.Received(1).ResolveCombatAsync(combatId, gameState, userId, false, Arg.Any<CancellationToken>());
+
+        // A notificação de fim de combate deve ser enviada
+        await _notifierMock.Received(1).SendCombatEndedAsync(combatId, expectedDto);
     }
 }

@@ -22,6 +22,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
     public GameStateDto? GameState { get; private set; }
     public IReadOnlyList<string> BattleLogs => _battleLogs.AsReadOnly();
     public bool IsConnecting { get; private set; }
+    public CombatResultDto? CombatResult { get; private set; }
 
     public CombatStateService(HttpClient http, ILogger<CombatStateService> logger)
     {
@@ -164,6 +165,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
             _hubConnection = null;
         }
 
+        CombatResult = null;
         CombatId = null;
         GameState = null;
         _battleLogs.Clear();
@@ -197,8 +199,34 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
             NotifyStateChanged();
         });
 
+        _hubConnection.On<CombatResultDto>("ReceiveCombatEnded", (result) =>
+        {
+            CombatResult = result;
+            NotifyStateChanged();
+        });
+
+
         await _hubConnection.StartAsync();
         await _hubConnection.InvokeAsync("JoinCombat", combatId);
+    }
+
+    public async Task SurrenderAsync()
+    {
+        if (string.IsNullOrEmpty(CombatId)) return;
+
+        try
+        {
+            var response = await _http.PostAsync($"api/combat/{CombatId}/surrender", null);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("Surrender request failed. API returned {StatusCode}: {Error}", response.StatusCode, error);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An unexpected error occurred while surrendering.");
+        }
     }
 
     private void NotifyStateChanged() => OnChange?.Invoke();

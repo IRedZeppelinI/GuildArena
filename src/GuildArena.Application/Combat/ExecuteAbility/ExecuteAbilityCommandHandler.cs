@@ -2,6 +2,7 @@
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Results;
 using GuildArena.Domain.ValueObjects.Targeting;
 using MediatR;
@@ -20,6 +21,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
     private readonly ICombatEngine _combatEngine;
     private readonly IBattleLogService _battleLog;
     private readonly ICombatNotifier _notifier;
+    private readonly ICombatResolutionService _resolutionService;
     private readonly ILogger<ExecuteAbilityCommandHandler> _logger;
 
     public ExecuteAbilityCommandHandler(
@@ -29,6 +31,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         ICombatEngine combatEngine,
         IBattleLogService battleLog,
         ICombatNotifier notifier,
+        ICombatResolutionService resolutionService,
         ILogger<ExecuteAbilityCommandHandler> logger)
     {
         _combatStateRepo = combatStateRepo;
@@ -37,6 +40,7 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         _combatEngine = combatEngine;
         _battleLog = battleLog;
         _notifier = notifier;
+        _resolutionService = resolutionService;
         _logger = logger;
     }
 
@@ -164,6 +168,14 @@ public class ExecuteAbilityCommandHandler : IRequestHandler<ExecuteAbilityComman
         _logger.LogInformation(
             "Ability {Ability} executed successfully by {Source} in Combat {CombatId}.",
             request.AbilityId, sourceCombatant.Name, request.CombatId);
+
+        // Auto-resolution if combat ended
+        if (gameState.Status != CombatStatus.Ongoing)
+        {
+            var resultDto = await _resolutionService.ResolveCombatAsync(
+                request.CombatId, gameState, requestUserId, isSurrender: false, cancellationToken);
+            await _notifier.SendCombatEndedAsync(request.CombatId, resultDto);
+        }
 
         return Result.Success();
     }

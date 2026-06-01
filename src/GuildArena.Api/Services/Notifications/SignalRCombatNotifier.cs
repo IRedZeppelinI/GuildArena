@@ -39,4 +39,11 @@ public class SignalRCombatNotifier : ICombatNotifier
 
         await _hubContext.Clients.Group(combatId).SendAsync("ReceiveGameStateUpdate", dto);
     }
+
+
+    public async Task SendCombatEndedAsync(string combatId, Shared.DTOs.Combat.CombatResultDto result)
+    {
+        _logger.LogInformation("Broadcasting combat ended for {CombatId}.", combatId);
+        await _hubContext.Clients.Group(combatId).SendAsync("ReceiveCombatEnded", result);
+    }
 }

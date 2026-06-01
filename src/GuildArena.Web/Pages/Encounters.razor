@@ -1,5 +1,7 @@
 ﻿@page "/encounters"
 @attribute [Authorize]
+@using GuildArena.Shared.DTOs.GuildAndHeroes
+@using GuildArena.Shared.DTOs.Encounters
 @using GuildArena.Web.State
 @inject HttpClient Http
 @inject ICombatStateService CombatService
@@ -7,7 +9,7 @@
 
 <PageTitle>World Encounters</PageTitle>
 
-<div class="container mt-4 text-light">
+<div class="container mt-4 text-light pb-5">
 
     <div class="page-header">
         <h2 class="title text-danger">⚔️ Encounters</h2>
@@ -15,7 +17,7 @@
     </div>
 
     <!-- LISTA DE ENCOUNTERS (Dinâmica da API) -->
-    @if (_availableEncounters == null)
+    @if (_availableEncounters == null || _guildProfile == null)
     {
         <p class="text-center"><em>Loading bounties...</em></p>
     }
@@ -25,10 +27,11 @@
             @foreach (var encounter in _availableEncounters)
             {
                 var isEncounterSelected = _selectedEncounterId == encounter.Id;
+                var isLocked = _guildProfile.Level < encounter.RequiredGuildLevel;
 
                 <div class="col-md-6 mb-3">
-                    <div class="card encounter-card @(isEncounterSelected ? "border-danger shadow-lg" : "border-secondary") bg-dark"
-                         @onclick="() => SelectEncounter(encounter.Id)">
+                    <div class="card encounter-card @(isLocked ? "encounter-locked" : (isEncounterSelected ? "border-danger shadow-lg" : "border-secondary")) bg-dark"
+                         @onclick="() => { if (!isLocked) SelectEncounter(encounter.Id); }">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
@@ -41,7 +44,11 @@
                                         }
                                     </div>
                                 </div>
-                                @if (isEncounterSelected)
+                                @if (isLocked)
+                                {
+                                    <span class="badge bg-secondary border border-light">🔒 Requires Lv @encounter.RequiredGuildLevel</span>
+                                }
+                                else if (isEncounterSelected)
                                 {
                                     <span class="badge bg-danger">Selected</span>
                                 }
@@ -101,6 +108,7 @@
 @code {
     private List<EncounterSummaryDto>? _availableEncounters;
     private List<HeroDto>? _heroes;
+    private GuildProfileDto? _guildProfile;
 
     private string? _selectedEncounterId;
     private List<int> _selectedHeroIds = new();
@@ -115,11 +123,13 @@
         {
             var fetchEncountersTask = Http.GetFromJsonAsync<List<EncounterSummaryDto>>("api/encounter");
             var fetchHeroesTask = Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
+            var fetchProfileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile"); // Pedido Novo
 
-            await Task.WhenAll(fetchEncountersTask, fetchHeroesTask);
+            await Task.WhenAll(fetchEncountersTask, fetchHeroesTask, fetchProfileTask);
 
             _availableEncounters = fetchEncountersTask.Result;
             _heroes = fetchHeroesTask.Result;
+            _guildProfile = fetchProfileTask.Result;
         }
         catch { }
     }
@@ -140,7 +150,7 @@
     private async Task StartMatchAsync()
     {
         if (CanStartMatch)
-        {
+        {            
             await CombatService.StartEncounterCombatAsync(_selectedEncounterId!, _selectedHeroIds);
             NavManager.NavigateTo("/arena");
         }

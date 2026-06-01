@@ -6,11 +6,13 @@ using GuildArena.Core.Combat.Actions;
 using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Entities;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.Results;
 using GuildArena.Domain.ValueObjects.Stats;
 using GuildArena.Domain.ValueObjects.Targeting;
+using GuildArena.Shared.DTOs.Combat;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Shouldly;
@@ -27,6 +29,7 @@ public class ExecuteAbilityCommandHandlerTests
     private readonly IBattleLogService _battleLogMock;
     private readonly ILogger<ExecuteAbilityCommandHandler> _loggerMock;
     private readonly ICombatNotifier _notifierMock;
+    private readonly ICombatResolutionService _resolutionServiceMock;
     private readonly ExecuteAbilityCommandHandler _handler;
 
     public ExecuteAbilityCommandHandlerTests()
@@ -38,10 +41,11 @@ public class ExecuteAbilityCommandHandlerTests
         _battleLogMock = Substitute.For<IBattleLogService>();
         _loggerMock = Substitute.For<ILogger<ExecuteAbilityCommandHandler>>();
         _notifierMock = Substitute.For<ICombatNotifier>();
+        _resolutionServiceMock = Substitute.For<ICombatResolutionService>();
 
         _handler = new ExecuteAbilityCommandHandler(
             _combatRepoMock, _userMock, _abilityRepoMock, _engineMock,
-            _battleLogMock, _notifierMock, _loggerMock
+            _battleLogMock, _notifierMock, _resolutionServiceMock, _loggerMock
         );
     }
 
@@ -195,5 +199,60 @@ public class ExecuteAbilityCommandHandlerTests
 
         await _notifierMock.Received(1).SendBattleLogsAsync(combatId, Arg.Is<List<string>>(logs => logs.Contains("Not enough mana.")));
         await _combatRepoMock.DidNotReceiveWithAnyArgs().SaveAsync(default!, default!);
+    }
+
+
+    [Fact]
+    public async Task Handle_ShouldResolveAndNotify_WhenCombatEndsAfterAbility()
+    {
+        // Arrange
+        var combatId = "C-END";
+        var userId = "user-123";
+        _userMock.UserId.Returns(userId);
+
+        var player = new CombatPlayer { PlayerId = 1, UserId = userId };
+        var combatant = new Combatant
+        {
+            Id = 10,
+            OwnerId = 1,
+            Name = "Hero",
+            RaceId = "H",
+            BaseStats = new BaseStats(),
+            Abilities = new List<AbilityDefinition> { new() { Id = "A1", Name = "Kill" } }
+        };
+
+        var gameState = new GameState
+        {
+            CurrentPlayerId = 1,
+            Players = new List<CombatPlayer> { player },
+            Combatants = new List<Combatant> { combatant },
+            Status = CombatStatus.Player1Won    // ← combate já terminou após a execução
+        };
+
+        _combatRepoMock.GetAsync(combatId).Returns(gameState);
+        _abilityRepoMock.TryGetDefinition("A1", out Arg.Any<AbilityDefinition>())
+            .Returns(x => { x[1] = new AbilityDefinition { Id = "A1", Name = "Kill" }; return true; });
+
+        // Engine executa com sucesso e não altera o status (já estava terminado)
+        _engineMock.ExecuteAbility(default!, default!, default!, default!, default!)
+            .ReturnsForAnyArgs(new List<CombatActionResult> { new() { IsSuccess = true } });
+
+        var resultDto = new CombatResultDto { IsWinner = true, XpGained = 50, GoldGained = 100, NewGuildLevel = 2, IsSurrender = false };
+        _resolutionServiceMock.ResolveCombatAsync(combatId, gameState, userId, false, Arg.Any<CancellationToken>())
+            .Returns(resultDto);
+
+        var command = new ExecuteAbilityCommand { CombatId = combatId, SourceId = 10, AbilityId = "A1" };
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+
+        // Verifica que a resolução foi chamada
+        await _resolutionServiceMock.Received(1).ResolveCombatAsync(combatId, gameState, userId, false, Arg.Any<CancellationToken>());
+        // Verifica que o estado foi guardado e o resultado final foi enviado
+        await _combatRepoMock.Received(1).SaveAsync(combatId, gameState);
+        await _notifierMock.Received(1).SendCombatEndedAsync(combatId, resultDto);
     }
 }

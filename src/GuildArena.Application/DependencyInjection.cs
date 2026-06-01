@@ -2,6 +2,7 @@
 using GuildArena.Application.Combat.AI;
 using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Application.Combat.AI.Behaviors;
+using GuildArena.Application.Combat.Resolution;
 using GuildArena.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
@@ -30,6 +31,12 @@ public static class DependencyInjection
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IEffectTooltipService, EffectTooltipService>();
         services.AddScoped<IHeroUnlockEvaluator, HeroUnlockEvaluator>();
+        // Guild progression
+        services.AddScoped<IGuildProgressionService, GuildProgressionService>();
+        // Match reward strategies
+        services.AddScoped<IMatchRewardCalculator, EncounterRewardCalculator>();
+
+        services.AddScoped<ICombatResolutionService, CombatResolutionService>();
 
         return services;
     }

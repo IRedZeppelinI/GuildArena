@@ -1,0 +1,105 @@
+﻿.result-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.9);
+    z-index: 3000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.5s ease;
+}
+
+.result-modal-content {
+    width: 90%;
+    max-width: 500px;
+    border-radius: 10px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+    position: relative;
+    overflow: hidden;
+}
+
+/* VICTORY THEME */
+.victory {
+    background: linear-gradient(135deg, #1a1500, #332b00);
+    border: 2px solid #ffd800;
+    box-shadow: 0 0 30px rgba(255, 216, 0, 0.4);
+}
+
+    .victory .result-title {
+        color: #ffd800;
+        text-shadow: 0 0 15px rgba(255, 216, 0, 0.8);
+    }
+
+    .victory .return-btn {
+        background-color: #ffd800;
+        color: #000;
+        font-weight: bold;
+        border: none;
+    }
+
+        .victory .return-btn:hover {
+            background-color: #ffea00;
+        }
+
+/* DEFEAT THEME */
+.defeat {
+    background: linear-gradient(135deg, #220000, #110000);
+    border: 2px solid #ff3333;
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+}
+
+    .defeat .result-title {
+        color: #ff4444;
+        text-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+    }
+
+    .defeat .return-btn {
+        background-color: #440000;
+        color: #fff;
+        border: 1px solid #ff3333;
+    }
+
+        .defeat .return-btn:hover {
+            background-color: #660000;
+        }
+
+.result-title {
+    font-family: 'Cinzel', serif;
+    font-size: 3rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+}
+
+.rewards-box {
+    background: rgba(0,0,0,0.6);
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.level-up-alert {
+    background: rgba(46, 204, 113, 0.2);
+    color: #2ecc71;
+    border: 1px solid #2ecc71;
+    padding: 10px;
+    border-radius: 5px;
+    font-weight: bold;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

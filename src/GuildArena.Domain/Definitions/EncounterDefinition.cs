@@ -1,4 +1,6 @@
-﻿namespace GuildArena.Domain.Definitions;
+﻿using GuildArena.Domain.ValueObjects.Encounters;
+
+namespace GuildArena.Domain.Definitions;
 
 /// <summary>
 /// Defines a static PvE encounter configuration.
@@ -28,6 +30,17 @@ public class EncounterDefinition
     /// The list of enemies present in this encounter.
     /// </summary>
     public List<EncounterEnemy> Enemies { get; set; } = new();
+
+    /// <summary>
+    /// The minimum guild level required to attempt this encounter.
+    /// </summary>
+    public int RequiredGuildLevel { get; set; } = 1;
+
+    /// <summary>
+    /// Base rewards granted upon completing the encounter.
+    /// </summary>
+    public EncounterRewards Rewards { get; set; } = new();
+
 
     // ==========================================
     // NESTED CLASSES

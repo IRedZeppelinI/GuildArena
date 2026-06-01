@@ -70,6 +70,7 @@ public static class DependencyInjection
         //services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<IGuildRepository, GuildRepository>();
         services.AddScoped<IHeroPurchaseRepository, HeroPurchaseRepository>();
+        services.AddScoped<IMatchRepository, MatchRepository>();
 
 
         return services;

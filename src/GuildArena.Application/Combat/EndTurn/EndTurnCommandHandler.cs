@@ -2,6 +2,7 @@
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Combat.AI.BackgroundServices;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Results;
 using MediatR;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
     private readonly ICombatNotifier _notifier;
     private readonly IBattleLogService _battleLog;
     private readonly IAiTurnQueue _aiQueue;
+    private readonly ICombatResolutionService _resolutionService;
     private readonly ILogger<EndTurnCommandHandler> _logger;
 
     public EndTurnCommandHandler(
@@ -30,6 +32,7 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
         ICombatNotifier notifier,
         IBattleLogService battleLog,
         IAiTurnQueue aiQueue,
+        ICombatResolutionService resolutionService,
         ILogger<EndTurnCommandHandler> logger)
     {
         _turnManagerService = turnManagerService;
@@ -38,6 +41,7 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
         _notifier = notifier;
         _battleLog = battleLog;
         _aiQueue = aiQueue;
+        _resolutionService = resolutionService;
         _logger = logger;
     }
 
@@ -108,6 +112,14 @@ public class EndTurnCommandHandler : IRequestHandler<EndTurnCommand, Result>
         {
             var aiRequest = new AiTurnRequest(request.CombatId, nextPlayer.PlayerId);
             await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
+        }
+
+        // End of turn could have resulted in a death that finished the game, so check
+        if (gameState.Status != CombatStatus.Ongoing)
+        {
+            var resultDto = await _resolutionService.ResolveCombatAsync(
+                request.CombatId, gameState, requestUserId, isSurrender: false, cancellationToken);
+            await _notifier.SendCombatEndedAsync(request.CombatId, resultDto);
         }
 
         return Result.Success();

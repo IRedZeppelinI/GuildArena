@@ -29,3 +29,16 @@
     .hero-select-card:hover {
         transform: scale(1.03);
     }
+
+
+
+.encounter-locked {
+    filter: grayscale(80%) brightness(0.7);
+    cursor: not-allowed;
+    border-color: #333 !important;
+}
+
+    .encounter-locked:hover {
+        transform: none; /* Desativa a animação de hover */
+        box-shadow: none !important;
+    }

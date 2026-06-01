@@ -9,4 +9,5 @@ public class EncounterSummaryDto
     public required string Name { get; set; }
     public string? Description { get; set; }
     public int DifficultyRating { get; set; }
+    public int RequiredGuildLevel { get; set; }
 }

@@ -1,0 +1,61 @@
+﻿@using GuildArena.Shared.DTOs.Combat
+
+<div class="result-modal-backdrop">
+    <div class="result-modal-content @(Result.IsWinner ? "victory" : "defeat")">
+
+        <h1 class="result-title">
+            @(Result.IsSurrender ? "SURRENDERED" : (Result.IsWinner ? "VICTORY!" : "DEFEAT"))
+        </h1>
+
+        @if (Result.IsWinner)
+        {
+            <p class="result-subtitle">The Arena claims another legend.</p>
+
+            <div class="rewards-box">
+                <h4 class="mb-3 border-bottom border-secondary pb-2">Rewards</h4>
+                <div class="d-flex justify-content-around">
+                    <div class="text-center">
+                        <span class="d-block fs-3">🪙</span>
+                        <span class="fw-bold text-warning fs-4">+@Result.GoldGained</span>
+                    </div>
+                    <div class="text-center">
+                        <span class="d-block fs-3">⭐</span>
+                        <span class="fw-bold text-info fs-4">+@Result.XpGained XP</span>
+                    </div>
+                </div>
+
+                @if (Result.NewGuildLevel > 0)
+                {
+                    <div class="level-up-alert mt-4 animate-pulse">
+                        🎉 GUILD LEVEL UP! You are now Level @Result.NewGuildLevel!
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="result-subtitle text-muted">You fall back to the shadows...</p>
+
+            <div class="rewards-box defeat-box">
+                <h5 class="text-secondary mb-3">Consolation Rewards</h5>
+                <div class="text-center">
+                    <span class="text-warning fw-bold">+@Result.GoldGained Gold</span>
+                    <span class="mx-2 text-light">|</span>
+                    <span class="text-info fw-bold">+@Result.XpGained XP</span>
+                </div>
+            </div>
+        }
+
+        <button class="btn btn-lg return-btn mt-4 w-100" @onclick="OnReturnClicked">
+            Return to Guild
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required CombatResultDto Result { get; set; }
+
+    [Parameter]
+    public EventCallback OnReturnClicked { get; set; }
+}

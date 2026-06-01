@@ -9,6 +9,7 @@ using GuildArena.Domain.Entities;
 using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Enums.Resources;
+using GuildArena.Domain.Enums.Matches;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.Results;
 using MediatR;
@@ -117,7 +118,10 @@ public class StartEncounterCombatCommandHandler : IRequestHandler<StartEncounter
             CurrentTurnNumber = 1,
             BackgroundId = selectedBg,
             Combatants = new List<Combatant>(),
-            Players = new List<CombatPlayer>()
+            Players = new List<CombatPlayer>(),
+            Status = CombatStatus.Ongoing,
+            MatchType = GuildArena.Domain.Enums.Matches.MatchType.Encounter,
+            ContextId = request.EncounterId
         };
 
         // HUMAN PLAYER (Cadeira 1)

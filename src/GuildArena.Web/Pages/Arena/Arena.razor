@@ -7,9 +7,16 @@
 @using GuildArena.Web.Pages.Arena.State
 @using GuildArena.Web.State
 @inject ICombatStateService CombatState
+@inject NavigationManager NavManager
 @implements IDisposable
 
 <PageTitle>Battle Arena</PageTitle>
+
+@if (CombatState.CombatResult != null)
+{
+    <CombatResultModal Result="CombatState.CombatResult" OnReturnClicked="LeaveArena" />
+}
+
 
 @if (string.IsNullOrEmpty(CombatState.CombatId))
 {
@@ -225,5 +232,11 @@ else
     {
         await CombatState.ExchangeEssenceAsync(payload.Spent, payload.Gained);
         _showExchangeModal = false;
+    }
+
+    private async Task LeaveArena()
+    {
+        await CombatState.DisconnectAsync();
+        NavManager.NavigateTo("/guild");
     }
 }

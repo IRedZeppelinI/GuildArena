@@ -1,6 +1,7 @@
 ﻿using GuildArena.Core.Combat.Abstractions;
 using GuildArena.Core.Combat.ValueObjects;
 using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Domain.ValueObjects.State;
@@ -56,6 +57,8 @@ public class DeathService : IDeathService
         // --- FASE 4: Limpeza Interna (Corpse Cleanup) ---
         // Remove buffs temporários do morto, mantendo Traits permanentes (Ressurreição friendly).
         CleanupInternalState(victim);
+
+        CheckGameOver(gameState);
     }
 
     private void CleanupExternalLinks(Combatant deadUnit, GameState gameState)
@@ -112,5 +115,47 @@ public class DeathService : IDeathService
 
         _logger.LogDebug("Cleanup: Removed {Count} temporary modifiers from corpse {Name}.",
             toRemove.Count, deadUnit.Name);
+    }
+
+
+    /// <summary>
+    /// Determines if the combat has ended by checking which teams still have alive combatants.
+    /// Updates the game state status and logs the outcome accordingly.
+    /// This logic is agnostic to match type (PvE or PvP).
+    /// </summary>
+    /// <param name="gameState">The current combat state.</param>
+    private void CheckGameOver(GameState gameState)
+    {
+        // Identify which player IDs still have at least one living combatant
+        var survivingTeamIds = gameState.Combatants
+            .Where(c => c.IsAlive)
+            .Select(c => c.OwnerId)
+            .Distinct()
+            .ToList();
+
+        if (survivingTeamIds.Count == 0)
+        {
+            // Edge case: last unit died to a reactive effect (e.g., thorns)
+            gameState.Status = CombatStatus.Draw;
+            _battleLog.Log("All combatants have fallen! The battle ends in a draw.");
+        }
+        else if (survivingTeamIds.Count == 1)
+        {
+            int winningOwnerId = survivingTeamIds.First();
+
+            // Map the winning owner to the corresponding player slot (Player1Won or Player2Won)
+            if (gameState.Players.Count > 0 && winningOwnerId == gameState.Players[0].PlayerId)
+            {
+                gameState.Status = CombatStatus.Player1Won;
+            }
+            else
+            {
+                gameState.Status = CombatStatus.Player2Won;
+            }
+
+            var winnerName = gameState.Players.FirstOrDefault(p => p.PlayerId == winningOwnerId)?.Name ?? "Unknown";
+            _battleLog.Log($"The battle is over! {winnerName} has achieved victory!");
+        }
+        // If survivingTeamIds.Count > 1, the combat continues; no status change.
     }
 }

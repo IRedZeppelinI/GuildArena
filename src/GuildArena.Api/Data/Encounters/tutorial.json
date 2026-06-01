@@ -4,7 +4,12 @@
     "Name": "Bandit Ambush",
     "Description": "A group of bandits jumps from the bushes!",
     "DifficultyRating": 1,
+    "RequiredGuildLevel": 1,
     "BackgroundIds": [ "bg_forest", "bg_forest2" ],
+    "Rewards": {
+      "BaseGuildXp": 50,
+      "BaseGold": 100
+    },
     "Enemies": [
       {
         "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
