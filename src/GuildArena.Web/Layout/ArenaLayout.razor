@@ -11,7 +11,7 @@
             <button class="btn btn-sm btn-outline-light me-2">Options</button>
             @if (!string.IsNullOrEmpty(CombatState.CombatId))
             {
-                <button class="btn btn-sm btn-outline-danger" @onclick="SurrenderAsync">Surrender</button>
+                <button class="btn btn-sm btn-outline-danger" @onclick="PromptSurrender">Surrender</button>
             }
         </div>
     </header>
@@ -21,7 +21,26 @@
     </main>
 </div>
 
+<!-- Modal de Confirmação de Surrender -->
+@if (_showSurrenderModal)
+{
+    <div class="surrender-modal-backdrop" @onclick="CancelSurrender">
+        <div class="surrender-modal-content" @onclick:stopPropagation="true">
+            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Retreat?</h4>
+            <p class="text-light">Are you sure you want to surrender this battle?</p>
+            <p class="small" style="color: #adb5bd;">This will count as a defeat and you will only receive consolation rewards.</p>
+
+            <div class="d-flex justify-content-center mt-4 gap-3">
+                <button class="btn btn-secondary px-4" @onclick="CancelSurrender">Cancel</button>
+                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmSurrender">Yes, Surrender</button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private bool _showSurrenderModal = false;
+
     protected override void OnInitialized()
     {
         CombatState.OnChange += StateHasChanged;
@@ -32,8 +51,19 @@
         CombatState.OnChange -= StateHasChanged;
     }
 
-    private async Task SurrenderAsync()
+    private void PromptSurrender()
     {
-        await CombatState.SurrenderAsync();
+        _showSurrenderModal = true;
+    }
+
+    private void CancelSurrender()
+    {
+        _showSurrenderModal = false;
+    }
+
+    private async Task ConfirmSurrender()
+    {
+        _showSurrenderModal = false;
+        await CombatState.SurrenderAsync(); 
     }
 }

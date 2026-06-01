@@ -19,3 +19,43 @@
     flex-direction: column;
     overflow: hidden;
 }
+
+
+/* --- Modal de Surrender --- */
+.surrender-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.85);
+    z-index: 4000; /* Fica acima de tudo na arena */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.surrender-modal-content {
+    background: #1a1a1a;
+    width: 90%;
+    max-width: 400px;
+    border: 2px solid #dc3545; /* Borda vermelha (danger) */
+    border-radius: 8px;
+    padding: 25px;
+    color: #ddd;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3); /* Brilho vermelho escuro */
+    animation: popIn 0.2s ease-out;
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

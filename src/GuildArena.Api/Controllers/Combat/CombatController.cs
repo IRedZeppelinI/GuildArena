@@ -3,6 +3,7 @@ using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Application.Combat.ExchangeEssence;
 using GuildArena.Application.Combat.ExecuteAbility;
 using GuildArena.Application.Combat.StartCombat;
+using GuildArena.Application.Combat.Surrender;
 using GuildArena.Shared.Requests;
 using GuildArena.Shared.Responses;
 using MediatR;
@@ -136,6 +137,20 @@ public class CombatController : BaseApiController
             EssenceToGain = request.EssenceToGain
         };
 
+        var result = await _mediator.Send(command);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Desiste do combate atual.
+    /// </summary>
+    [HttpPost("{combatId}/surrender")]
+    public async Task<IActionResult> Surrender(string combatId)
+    {
+        _logger.LogInformation("Request received to Surrender for Combat: {CombatId}", combatId);
+
+        var command = new SurrenderCommand(combatId);
         var result = await _mediator.Send(command);
 
         return HandleResult(result);
