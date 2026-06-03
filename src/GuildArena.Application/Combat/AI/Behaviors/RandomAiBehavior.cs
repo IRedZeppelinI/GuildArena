@@ -63,22 +63,35 @@ public class RandomAiBehavior : IAiBehavior
                 bool hasValidTargets = true;
 
                 foreach (var rule in ability.TargetingRules)
-                {
-                    // A MAGIA ESTÁ AQUI: Usamos o método novo para "espreitar" as opções
+                {                    
                     var validTargets = _targetService.GetValidCandidates(rule, combatant, gameState);
 
-                    if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0)
+                    // Verificar se é magia em Área (AoE)
+                    bool isAoE = rule.Type == TargetType.All ||
+                                 rule.Type == TargetType.AllEnemies ||
+                                 rule.Type == TargetType.AllAllies ||
+                                 rule.Type == TargetType.AllFriendlies;
+
+                    // Se for alvo Manual (Single Target), precisa de ter alvos válidos exatos
+                    if (rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0 && !isAoE)
                     {
                         if (validTargets.Count < rule.Count)
                         {
                             hasValidTargets = false;
                             break;
                         }
-                        // IA escolhe aleatoriamente de entre os válidos
+                        // Escolhe aleatoriamente X alvos válidos
                         validTargets = validTargets.OrderBy(x => _random.NextDouble()).Take(rule.Count).ToList();
                     }
+                    // Se for AoE (ou Random/LowestHP), basta ter pelo menos 1 alvo válido para não bater no vazio
+                    else if (validTargets.Count == 0)
+                    {
+                        hasValidTargets = false;
+                        break;
+                    }
 
-                    targetSelections[rule.RuleId] = validTargets.Select(t => t.Id).ToList();
+                    targetSelections[rule.RuleId] = validTargets
+                        .Select(t => t.Id).ToList();
                     flattenedTargets.AddRange(validTargets);
                 }
 
