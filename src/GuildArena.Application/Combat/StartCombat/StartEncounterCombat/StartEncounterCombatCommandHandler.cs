@@ -107,6 +107,15 @@ public class StartEncounterCombatCommandHandler : IRequestHandler<StartEncounter
             return Result.Failure<StartCombatResult>(new Error("Combat.EncounterNotFound", $"Encounter '{request.EncounterId}' not found.", ErrorType.NotFound));
         }
 
+        //TODO: falta adicionar teste a esta verificacao
+        if (guild.Level < encounterDef.RequiredGuildLevel)
+        {
+            return Result.Failure<StartCombatResult>(new Error(
+                "Combat.LevelTooLow",
+                $"Your guild must be at least level {encounterDef.RequiredGuildLevel} to start this encounter.",
+                ErrorType.Forbidden));
+        }
+
         var combatId = Guid.NewGuid().ToString();
 
         string selectedBg = encounterDef.BackgroundIds.Any()

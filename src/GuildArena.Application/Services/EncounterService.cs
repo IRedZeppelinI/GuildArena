@@ -23,7 +23,8 @@ public class EncounterService : IEncounterService
             Id = e.Id,
             Name = e.Name,
             Description = e.Description,
-            DifficultyRating = e.DifficultyRating
+            DifficultyRating = e.DifficultyRating,
+            RequiredGuildLevel = e.RequiredGuildLevel
         }).ToList();
 
         return dtos; // Conversão implícita para Result.Success

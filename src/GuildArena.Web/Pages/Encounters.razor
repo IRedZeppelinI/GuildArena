@@ -37,11 +37,7 @@
                                 <div>
                                     <h4 class="text-warning mb-1">@encounter.Name</h4>
                                     <div class="text-light small mb-2">
-                                        Difficulty:
-                                        @for (int i = 0; i < encounter.DifficultyRating; i++)
-                                        {
-                                            <span class="text-warning">★</span>
-                                        }
+                                        Difficulty: <span class="text-warning fw-bold">Tier @encounter.DifficultyRating</span>
                                     </div>
                                 </div>
                                 @if (isLocked)

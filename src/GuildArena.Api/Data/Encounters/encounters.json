@@ -62,7 +62,7 @@
     "Name": "The Warlord",
     "Description": "The bandit leader demands your gold. Show him no mercy.",
     "DifficultyRating": 3,
-    "RequiredGuildLevel": 3,
+    "RequiredGuildLevel": 2,
     "Rewards": {
       "BaseGuildXp": 450,
       "BaseGold": 500
