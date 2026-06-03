@@ -1,0 +1,89 @@
+[
+  {
+    "Id": "ENC_FOREST_01",
+    "Name": "Bandit Ambush",
+    "Description": "A group of bandits jumps from the bushes! Easy prey.",
+    "DifficultyRating": 1,
+    "RequiredGuildLevel": 1,
+    "Rewards": {
+      "BaseGuildXp": 150,
+      "BaseGold": 150
+    },
+    "BackgroundIds": [ "bg_forest", "bg_forest2" ],
+    "Enemies": [
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 3
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 4
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 1,
+        "Position": 5
+      }
+    ]
+  },
+  {
+    "Id": "ENC_FOREST_02",
+    "Name": "Bandit Camp Raid",
+    "Description": "You tracked the bandits to their hideout. Watch out for arrows!",
+    "DifficultyRating": 2,
+    "RequiredGuildLevel": 2,
+    "Rewards": {
+      "BaseGuildXp": 250,
+      "BaseGold": 300
+    },
+    "BackgroundIds": [ "bg_forest", "bg_forest2" ],
+    "Enemies": [
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 2,
+        "Position": 1
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+        "Level": 2,
+        "Position": 2
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_ARCHER",
+        "Level": 2,
+        "Position": 4
+      }
+    ]
+  },
+  {
+    "Id": "ENC_FOREST_03",
+    "Name": "The Warlord",
+    "Description": "The bandit leader demands your gold. Show him no mercy.",
+    "DifficultyRating": 3,
+    "RequiredGuildLevel": 3,
+    "Rewards": {
+      "BaseGuildXp": 450,
+      "BaseGold": 500
+    },
+    "BackgroundIds": [ "bg_forest2" ],
+    "Enemies": [
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_WARLORD",
+        "Level": 3,
+        "Position": 1
+      },
+      {
+        "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
+        "Level": 3,
+        "Position": 3
+      },
+      {
+        "CharacterDefinitionId": "MOB_BANDIT_ARCHER",
+        "Level": 3,
+        "Position": 5
+      }
+    ]
+  }
+]

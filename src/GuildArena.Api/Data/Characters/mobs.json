@@ -1,5 +1,5 @@
 [
-  {
+  { // Bandit Recruit
     "Id": "MOB_BANDIT_RECRUIT",
     "Name": "Bandit Recruit",
     "RaceId": "RACE_HUMAN",
@@ -22,7 +22,7 @@
       "MaxActions": 0,
       "MaxHP": 5
     },
-    "AbilityIds": [ "ABIL_COMMON_SLASH" ] 
+    "AbilityIds": [ "ABIL_COMMON_SLASH" ]
   },
   {
     "Id": "MOB_STONE_SENTINEL",
@@ -48,5 +48,80 @@
       "MaxHP": 10
     },
     "AbilityIds": [ "ABIL_COMMON_SMASH" ]
+  },
+  { // Bandit Archer
+    "Id": "MOB_BANDIT_ARCHER",
+    "Name": "Bandit Archer",
+    "RaceId": "RACE_HUMAN",
+    "TraitModifierId": null,
+    "BaseStats": {
+      "Attack": 2,
+      "Defense": 1,
+      "Agility": 10,
+      "Magic": 0,
+      "MagicDefense": 2,
+      "MaxActions": 1,
+      "MaxHP": 30
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 0,
+      "Defense": 0.5,
+      "Agility": 2,
+      "Magic": 0,
+      "MagicDefense": 0.5,
+      "MaxActions": 0,
+      "MaxHP": 4
+    },
+    "AbilityIds": [ "ABIL_COMMON_PIERCING_ARROW" ]
+  },
+  { // Rogue Acolyte
+    "Id": "MOB_CULTIST_ACOLYTE",
+    "Name": "Rogue Acolyte",
+    "RaceId": "RACE_PSYLIAN",
+    "TraitModifierId": null,
+    "BaseStats": {
+      "Attack": 1,
+      "Defense": 1,
+      "Agility": 3,
+      "Magic": 8,
+      "MagicDefense": 6,
+      "MaxActions": 1,
+      "MaxHP": 25
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 0,
+      "Defense": 0,
+      "Agility": 0.5,
+      "Magic": 2,
+      "MagicDefense": 1,
+      "MaxActions": 0,
+      "MaxHP": 3
+    },
+    "AbilityIds": [ "ABIL_COMMON_ARCANE_BOLT", "ABIL_COMMON_LESSER_HEAL" ]
+  },
+  { // Bandit Warlord
+    "Id": "MOB_BANDIT_WARLORD",
+    "Name": "Bandit Warlord",
+    "RaceId": "RACE_HUMAN",
+    "TraitModifierId": null,
+    "BaseStats": {
+      "Attack": 12,
+      "Defense": 6,
+      "Agility": 6,
+      "Magic": 0,
+      "MagicDefense": 4,
+      "MaxActions": 1,
+      "MaxHP": 100
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 2,
+      "Defense": 1,
+      "Agility": 1,
+      "Magic": 0,
+      "MagicDefense": 0.5,
+      "MaxActions": 0,
+      "MaxHP": 15
+    },
+    "AbilityIds": [ "ABIL_COMMON_SLASH", "ABIL_COMMON_CLEAVE" ]
   }
 ]

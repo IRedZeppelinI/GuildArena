@@ -168,5 +168,143 @@
         ]
       }
     ]
+  },
+  {
+    "Id": "ABIL_COMMON_PIERCING_ARROW",
+    "Name": "Piercing Arrow",
+    "Description": "Fires a swift arrow that ignores part of the target's armor.",
+    "Tags": [ "Physical", "Ranged", "Piercing" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Random"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Ranged",
+        "BaseAmount": 4,
+        "ScalingStat": "Agility",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT",
+        "DefensePenetration": 0.2,
+        "Tags": [ "Physical", "Piercing" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_COMMON_ARCANE_BOLT",
+    "Name": "Arcane Bolt",
+    "Description": "A concentrated projectile of raw magic.",
+    "Tags": [ "Spell", "Ranged", "Magical" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 0,
+    "HPCost": 0,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Random"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 5,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Magical" ]
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_COMMON_LESSER_HEAL",
+    "Name": "Mend Wounds",
+    "Description": "Uses light essence to close the wounds of the most injured ally.",
+    "Tags": [ "Spell", "Heal" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 2,
+    "HPCost": 0,
+    "Costs": [
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      },
+      {
+        "Type": "Light",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Friendly",
+        "Count": 1,
+        "Strategy": "LowestHPPercent"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "HEAL",
+        "BaseAmount": 10,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.0,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Heal" ],
+        "CanBeEvaded": false
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_COMMON_CLEAVE",
+    "Name": "Savage Cleave",
+    "Description": "A brutal, wide swing that hits the entire enemy party.",
+    "Tags": [ "Physical", "Melee", "Slashing" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "HPCost": 0,
+    "Costs": [
+      {
+        "Type": "Vigor",
+        "Amount": 1
+      },
+      {
+        "Type": "Neutral",
+        "Amount": 1
+      }
+    ],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "AllEnemies",
+        "Count": 99,
+        "Strategy": "Manual"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 3,
+        "ScalingStat": "Attack",
+        "ScalingFactor": 0.6,
+        "TargetRuleId": "TGT",
+        "Tags": [ "Physical", "Slashing" ]
+      }
+    ]
   }
 ]
