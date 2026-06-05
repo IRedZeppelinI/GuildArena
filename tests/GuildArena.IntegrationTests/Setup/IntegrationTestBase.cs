@@ -52,9 +52,13 @@ public abstract class IntegrationTestBase
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
 
-        // Substituímos o antigo PlayerRepository pelo GuildRepository
+
         var guildRepoMock = Substitute.For<IGuildRepository>();
         services.AddSingleton(guildRepoMock);
+
+        var matchRepoMock = Substitute.For<IMatchRepository>();
+        services.AddSingleton(matchRepoMock);
+
 
         // 5. REGISTAR O FAKE REDIS        
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
