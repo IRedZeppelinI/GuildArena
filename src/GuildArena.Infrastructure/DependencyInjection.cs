@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
+        services.AddSingleton<IDungeonDefinitionRepository, JsonDungeonDefinitionRepository>();
 
         //SQL
         //services.AddScoped<IPlayerRepository, PlayerRepository>();

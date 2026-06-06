@@ -13,4 +13,9 @@ public class GameDataOptions
     public string CharactersFolder { get; set; } = "Characters";
     public string AbilitiesFolder { get; set; } = "Abilities";
     public string EncountersFolder { get; set; } = "Encounters";
+
+    /// <summary>
+    /// The sub-folder containing dungeon JSON files.
+    /// </summary>
+    public string DungeonsFolder { get; set; } = "Dungeons";
 }
