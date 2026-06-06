@@ -33,9 +33,10 @@ public static class DependencyInjection
         services.AddScoped<IHeroUnlockEvaluator, HeroUnlockEvaluator>();
         // Guild progression
         services.AddScoped<IGuildProgressionService, GuildProgressionService>();
-        // Match reward strategies
-        services.AddScoped<IMatchRewardCalculator, EncounterRewardCalculator>();
 
+        //Combat Resolution
+        services.AddScoped<IMatchTypeResolver, EncounterMatchResolver>();
+        services.AddScoped<IMatchTypeResolver, DungeonMatchResolver>();
         services.AddScoped<ICombatResolutionService, CombatResolutionService>();
 
         return services;
