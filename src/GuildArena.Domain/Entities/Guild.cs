@@ -23,4 +23,15 @@ public class Guild
     // Coleções
     public ICollection<Hero> Heroes { get; set; } = new List<Hero>();
     public ICollection<MatchParticipant> MatchHistory { get; set; } = new List<MatchParticipant>();
+
+    //props navegação
+    /// <summary>
+    /// The currently active dungeon run for the guild, if any.
+    /// </summary>
+    public ActiveDungeonRun? ActiveDungeonRun { get; set; }
+
+    /// <summary>
+    /// Historical records of completed dungeon runs.
+    /// </summary>
+    public ICollection<GuildDungeonRecord> DungeonRecords { get; set; } = new List<GuildDungeonRecord>();
 }

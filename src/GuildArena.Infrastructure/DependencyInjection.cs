@@ -72,6 +72,7 @@ public static class DependencyInjection
         services.AddScoped<IGuildRepository, GuildRepository>();
         services.AddScoped<IHeroPurchaseRepository, HeroPurchaseRepository>();
         services.AddScoped<IMatchRepository, MatchRepository>();
+        services.AddScoped<IDungeonRunRepository, DungeonRunRepository>();
 
 
         return services;
