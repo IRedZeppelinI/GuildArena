@@ -1,4 +1,6 @@
-﻿using GuildArena.Application;
+﻿// FILE: tests/GuildArena.IntegrationTests/Setup/IntegrationTestBase.cs
+
+using GuildArena.Application;
 using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Notifications;
 using GuildArena.Application.Abstractions.Repositories;
@@ -32,6 +34,7 @@ public abstract class IntegrationTestBase
             opts.RacesFile = "races.json";
             opts.CharactersFolder = "Characters";
             opts.EncountersFolder = "Encounters";
+            opts.DungeonsFolder = "Dungeons"; // <--- ADICIONAR AQUI
         });
 
         // 2. CONFIGURAR LOGGING
@@ -45,27 +48,32 @@ public abstract class IntegrationTestBase
         services.AddCoreServices();
         services.AddApplicationServices();
 
-        // 4. REGISTAR INFRAESTRUTURA 
+        // 4. REGISTAR INFRAESTRUTURA JSON (Real)
         services.AddSingleton<IModifierDefinitionRepository, JsonModifierDefinitionRepository>();
         services.AddSingleton<IAbilityDefinitionRepository, JsonAbilityDefinitionRepository>();
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
 
+        // <--- ADICIONAR O REPOSITÓRIO DAS DUNGEONS AQUI --->
+        services.AddSingleton<IDungeonDefinitionRepository, JsonDungeonDefinitionRepository>();
 
+        // Repositórios da Base de Dados (Mockados)
         var guildRepoMock = Substitute.For<IGuildRepository>();
         services.AddSingleton(guildRepoMock);
 
         var matchRepoMock = Substitute.For<IMatchRepository>();
         services.AddSingleton(matchRepoMock);
 
+        var dungeonRunRepoMock = Substitute.For<IDungeonRunRepository>();
+        services.AddSingleton(dungeonRunRepoMock);
 
         // 5. REGISTAR O FAKE REDIS        
         services.AddSingleton<ICombatStateRepository, InMemoryCombatStateRepository>();
 
         // 6. SIMULAR UTILIZADOR (Player 1)
         var userMock = Substitute.For<ICurrentUserService>();
-        userMock.UserId.Returns("user-123"); 
+        userMock.UserId.Returns("user-123");
         services.AddSingleton(userMock);
 
         // 7. SIMULAR NOTIFICADOR 
