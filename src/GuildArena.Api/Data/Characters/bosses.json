@@ -1,0 +1,58 @@
+[
+  {
+    "Id": "BOSS_KAELEN",
+    "Name": "Kaelen, Bandit King",
+    "Description": "The ruthless leader of the forest bandits.",
+    "RaceId": "RACE_HUMAN",
+    "BaseStats": {
+      "Attack": 15,
+      "Defense": 8,
+      "Agility": 12,
+      "Magic": 0,
+      "MagicDefense": 5,
+      "MaxActions": 1,
+      "MaxHP": 250
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 3,
+      "Defense": 1,
+      "Agility": 2,
+      "Magic": 0,
+      "MagicDefense": 1,
+      "MaxActions": 0,
+      "MaxHP": 40
+    },
+    "AbilityIds": [
+      "ABIL_COMMON_SLASH",
+      "ABIL_BOSS_KAELEN_DIRTY_TACTICS"
+    ]
+  },
+  {
+    "Id": "BOSS_MALTHUS",
+    "Name": "Malthus, Void Caller",
+    "Description": "A corrupted Psylian serving the Shadow Maw.",
+    "RaceId": "RACE_PSYLIAN",
+    "BaseStats": {
+      "Attack": 5,
+      "Defense": 10,
+      "Agility": 5,
+      "Magic": 18,
+      "MagicDefense": 15,
+      "MaxActions": 2,
+      "MaxHP": 350
+    },
+    "StatsGrowthPerLevel": {
+      "Attack": 1,
+      "Defense": 2,
+      "Agility": 1,
+      "Magic": 4,
+      "MagicDefense": 3,
+      "MaxActions": 0,
+      "MaxHP": 50
+    },
+    "AbilityIds": [
+      "ABIL_COMMON_ARCANE_BOLT",
+      "ABIL_BOSS_MALTHUS_DEVOUR"
+    ]
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "Id": "MOD_BOSS_DIRTY_TACTICS",
+    "Name": "Blinded & Disarmed",
+    "Description": "Cannot use physical attacks and accuracy is reduced.",
+    "Type": "Curse",
+    "GrantedStatusEffects": [ "Blind", "Disarm" ],
+    "HitChanceModifications": [
+      {
+        "Value": -0.25
+      }
+    ]
+  }
+]

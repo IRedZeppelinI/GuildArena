@@ -1,30 +1,33 @@
 [
   {
-    "Id": "DUNGEON_SHADOW_MAW",
-    "Name": "Shadow Maw Depths",
-    "Description": "A forgotten labyrinth beneath the mountains, crawling with cultists and ancient horrors.",
+    "Id": "DUNGEON_BANDIT_CAMP",
+    "Name": "The Bandit King's Hideout",
+    "Description": "Clear out the forest bandits once and for all. Face Kaelen to secure the woods.",
     "RequiredGuildLevel": 2,
     "CompletionRewards": {
-      "BaseGuildXp": 600,
-      "BaseGold": 800,
-      "RewardBannerIds": [ "banner_shadow_maw" ]
+      "BaseGuildXp": 1000,
+      "BaseGold": 500,
+      "RewardBannerIds": []
     },
     "Stages": [
       {
         "StageIndex": 0,
-        "BackgroundId": "bg_dungeon_corridor",
+        "BackgroundId": "bg_forest",
         "IsBossNode": false,
-        "StageRewards": {
-          "BaseGold": 100
-        },
+        "StageRewards": { "BaseGold": 50 },
         "Enemies": [
           {
-            "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
+            "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
+            "Level": 2,
+            "Position": 0
+          },
+          {
+            "CharacterDefinitionId": "MOB_BANDIT_RECRUIT",
             "Level": 2,
             "Position": 2
           },
           {
-            "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
+            "CharacterDefinitionId": "MOB_BANDIT_ARCHER",
             "Level": 2,
             "Position": 4
           }
@@ -32,21 +35,106 @@
       },
       {
         "StageIndex": 1,
-        "BackgroundId": "bg_dungeon_boss_room",
+        "BackgroundId": "bg_forest2",
+        "IsBossNode": false,
+        "StageRewards": { "BaseGold": 100 },
+        "Enemies": [
+          {
+            "CharacterDefinitionId": "MOB_BANDIT_WARLORD",
+            "Level": 3,
+            "Position": 1
+          },
+          {
+            "CharacterDefinitionId": "MOB_BANDIT_ARCHER",
+            "Level": 3,
+            "Position": 3
+          },
+          {
+            "CharacterDefinitionId": "MOB_BANDIT_ARCHER",
+            "Level": 3,
+            "Position": 5
+          }
+        ]
+      },
+      {
+        "StageIndex": 2,
+        "BackgroundId": "bg_forest2",
         "IsBossNode": true,
-        "StageRewards": {
-          "BaseGold": 250
-        },
+        "StageRewards": { "BaseGold": 250 },
         "Enemies": [
           {
             "CharacterDefinitionId": "MOB_BANDIT_WARLORD",
             "Level": 4,
+            "Position": 1
+          },
+          {
+            "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
+            "Level": 4,
+            "Position": 3
+          },
+          {
+            "CharacterDefinitionId": "BOSS_KAELEN",
+            "Level": 5,
+            "Position": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Id": "DUNGEON_SHADOW_MAW",
+    "Name": "Shadow Maw Depths",
+    "Description": "A forgotten labyrinth beneath the mountains, crawling with horrors.",
+    "RequiredGuildLevel": 5,
+    "CompletionRewards": {
+      "BaseGuildXp": 2500,
+      "BaseGold": 1200,
+      "RewardBannerIds": []
+    },
+    "Stages": [
+      {
+        "StageIndex": 0,
+        "BackgroundId": "bg_dungeon_corridor",
+        "IsBossNode": false,
+        "StageRewards": { "BaseGold": 100 },
+        "Enemies": [
+          {
+            "CharacterDefinitionId": "MOB_STONE_SENTINEL",
+            "Level": 5,
+            "Position": 1
+          },
+          {
+            "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
+            "Level": 5,
             "Position": 3
           },
           {
             "CharacterDefinitionId": "MOB_CULTIST_ACOLYTE",
-            "Level": 3,
-            "Position": 1
+            "Level": 5,
+            "Position": 5
+          }
+        ]
+      },
+      {
+        "StageIndex": 1,
+        "BackgroundId": "bg_dungeon_boss_room",
+        "IsBossNode": true,
+        "StageRewards": { "BaseGold": 500 },
+        "Enemies": [
+          {
+            "CharacterDefinitionId": "MOB_STONE_SENTINEL",
+            "Level": 6,
+            "Position": 0
+          },
+          {
+            "CharacterDefinitionId": "MOB_STONE_SENTINEL",
+            "Level": 6,
+            "Position": 2
+          },
+          {
+            "CharacterDefinitionId": "BOSS_MALTHUS",
+            "Level": 7,
+            "Position": 4
           }
         ]
       }

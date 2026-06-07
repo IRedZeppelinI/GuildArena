@@ -1,0 +1,74 @@
+[
+  {
+    "Id": "ABIL_BOSS_KAELEN_DIRTY_TACTICS",
+    "Name": "Dirty Tactics",
+    "Description": "Throws sand and strikes ruthlessly. Blinds and Disarms the target.",
+    "Tags": [ "Physical", "Melee", "Debuff" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "HighestHPPercent"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Physical",
+        "Delivery": "Melee",
+        "BaseAmount": 10,
+        "ScalingStat": "Agility",
+        "ScalingFactor": 1.2,
+        "TargetRuleId": "TGT"
+      },
+      {
+        "Type": "APPLY_MODIFIER",
+        "ModifierDefinitionId": "MOD_BOSS_DIRTY_TACTICS",
+        "DurationInTurns": 2,
+        "TargetRuleId": "TGT"
+      }
+    ]
+  },
+  {
+    "Id": "ABIL_BOSS_MALTHUS_DEVOUR",
+    "Name": "Essence Devour",
+    "Description": "Tears at the target's soul, dealing damage and burning 2 of their owner's essence.",
+    "Tags": [ "Spell", "Shadow" ],
+    "ActionPointCost": 1,
+    "BaseCooldown": 3,
+    "Costs": [],
+    "TargetingRules": [
+      {
+        "RuleId": "TGT",
+        "Type": "Enemy",
+        "Count": 1,
+        "Strategy": "Random"
+      }
+    ],
+    "Effects": [
+      {
+        "Type": "DAMAGE",
+        "DamageCategory": "Magical",
+        "Delivery": "Spell",
+        "BaseAmount": 15,
+        "ScalingStat": "Magic",
+        "ScalingFactor": 1.5,
+        "TargetRuleId": "TGT"
+      },
+      {
+        "Type": "MANIPULATE_ESSENCE",
+        "TargetRuleId": "TGT",
+        "EssenceManipulations": [
+          {
+            "Type": "Random",
+            "Amount": -2
+          }
+        ]
+      }
+    ]
+  }
+]
