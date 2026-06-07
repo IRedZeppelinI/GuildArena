@@ -17,7 +17,6 @@ public class CombatantFactory : ICombatantFactory
     private readonly IModifierDefinitionRepository _modifierRepo;
     private readonly ILogger<CombatantFactory> _logger;
 
-
     public CombatantFactory(
         ICharacterDefinitionRepository charRepo,
         IRaceDefinitionRepository raceRepo,
@@ -32,22 +31,24 @@ public class CombatantFactory : ICombatantFactory
         _logger = logger;
     }
 
-    public Combatant Create(Hero hero, int ownerId, List<string>? loadoutModifierIds = null)
+    /// <inheritdoc />
+    public Combatant Create(
+        Hero hero,
+        int ownerId,
+        List<string>? loadoutModifierIds = null,
+        int? hpOverride = null)
     {
-        // 1. Carregar Definições
+        // 1. Load definitions
         if (!_charRepo.TryGetDefinition(hero.CharacterDefinitionId, out var charDef))
             throw new KeyNotFoundException($"Character '{hero.CharacterDefinitionId}' not found.");
 
         if (!_raceRepo.TryGetDefinition(charDef.RaceId, out var raceDef))
             throw new KeyNotFoundException($"Race '{charDef.RaceId}' not found.");
 
-        // 2. Calcular Base Stats (Incluindo MaxHP, sem misturar Defesa)
-        // A lógica de scaling é aplicada uniformemente a todos os stats.
+        // 2. Calculate standard stats (including MaxHP)
         var finalStats = CalculateStandardStats(charDef, raceDef, hero.CurrentLevel);
 
-        // 3. Instanciar Combatant
-        // O MaxHP é simplesmente o valor que calculámos no passo anterior.
-        // O sistema de stats trata do resto (modifiers passivos, buffs, etc.)
+        // 3. Instantiate Combatant
         int maxHp = (int)finalStats.MaxHP;
         if (maxHp < 1) maxHp = 1;
 
@@ -61,19 +62,16 @@ public class CombatantFactory : ICombatantFactory
             Level = hero.CurrentLevel,
             BaseStats = finalStats,
             MaxHP = maxHp,
-            CurrentHP = maxHp,
+            // Use hpOverride if provided, otherwise default to MaxHP
+            CurrentHP = hpOverride ?? maxHp,
             ActionsTakenThisTurn = 0
         };
 
-        // 4. Configurar Habilidades      
-        // Special Ability
-        // Verifica se o herói tem Guard ou Focus        
+        // 4. Setup abilities (unchanged)
         string? specialId = !string.IsNullOrEmpty(charDef.GuardAbilityId)
             ? charDef.GuardAbilityId
             : charDef.FocusAbilityId;
-
         combatant.SpecialAbility = ResolveAbility(specialId);
-
 
         foreach (var skillId in charDef.AbilityIds)
         {
@@ -81,26 +79,19 @@ public class CombatantFactory : ICombatantFactory
             if (ability != null) combatant.Abilities.Add(ability);
         }
 
-        
-        // Modifiers raça
+        // 5. Apply racial modifiers (unchanged)
         foreach (var modId in raceDef.RacialModifierIds)
-        {
             AddPassiveModifier(combatant, modId);
-        }
 
-        //modifier único de character
+        // 6. Character trait (unchanged)
         if (!string.IsNullOrEmpty(charDef.TraitModifierId))
-        {
             AddPassiveModifier(combatant, charDef.TraitModifierId);
-        }
 
-        // Loadout para combate
+        // 7. Loadout modifiers (unchanged)
         if (loadoutModifierIds != null)
         {
             foreach (var modId in loadoutModifierIds)
-            {
                 AddPassiveModifier(combatant, modId);
-            }
         }
 
         return combatant;
