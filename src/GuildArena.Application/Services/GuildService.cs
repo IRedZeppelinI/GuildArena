@@ -86,7 +86,9 @@ public class GuildService : IGuildService
             CurrentXP = guild.CurrentXP,
             RequiredXP = guild.Level * 1000, // Lógica XP placeholder
             Wins = guild.Wins,
-            Losses = guild.Losses
+            Losses = guild.Losses,
+            DungeonCompletions = guild.DungeonRecords
+                .ToDictionary(r => r.DungeonDefinitionId, r => r.CompletionCount)
         };
     }
 }

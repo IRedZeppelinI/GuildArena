@@ -26,6 +26,8 @@ public interface ICombatStateService
     /// </summary>
     Task StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds);
 
+    Task EnterDungeonCombatAsync();
+
     /// <summary>
     /// Signals the API that the local player has ended their turn.
     /// </summary>

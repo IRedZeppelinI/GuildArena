@@ -18,6 +18,7 @@ public class GuildRepository : IGuildRepository
     {
         return await _dbContext.Guilds
             .AsNoTracking()
+            .Include(g => g.DungeonRecords)
             .FirstOrDefaultAsync(g => g.ApplicationUserId == applicationUserId);
     }
 

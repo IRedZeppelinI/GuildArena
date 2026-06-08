@@ -1,0 +1,73 @@
+﻿.page-header {
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-weight: bold;
+}
+
+.subtitle {
+    color: #e0e0e0;
+}
+
+.dungeon-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    min-height: 150px;
+}
+
+    .dungeon-card:hover:not(.locked) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(255, 216, 0, 0.2) !important;
+    }
+
+    .dungeon-card.locked {
+        filter: grayscale(80%) brightness(0.6);
+        cursor: not-allowed;
+    }
+
+.hero-select-card {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+    .hero-select-card:hover {
+        transform: scale(1.05);
+    }
+
+
+/* --- CAMP UI --- */
+.camp-hero-card {
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    transition: filter 0.3s;
+}
+
+.hero-dead {
+    filter: grayscale(100%) opacity(0.7);
+}
+
+
+/* --- MODAL --- */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.85);
+    z-index: 4000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content-custom {
+    background: #1a1a1a;
+    width: 90%;
+    max-width: 450px;
+    border: 2px solid #dc3545;
+    border-radius: 8px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(220, 53, 69, 0.3);
+}

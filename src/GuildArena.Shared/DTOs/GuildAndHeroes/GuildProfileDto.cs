@@ -12,4 +12,5 @@ public class GuildProfileDto
     public int RequiredXP { get; set; }
     public int Wins { get; set; }
     public int Losses { get; set; }
+    public Dictionary<string, int> DungeonCompletions { get; set; } = new();
 }

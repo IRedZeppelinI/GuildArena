@@ -1,0 +1,297 @@
+﻿@page "/dungeons"
+@attribute [Authorize]
+@using GuildArena.Shared.DTOs.GuildAndHeroes
+@using GuildArena.Shared.DTOs.Dungeons
+@using GuildArena.Web.State
+@using System.Net
+@inject HttpClient Http
+@inject ICombatStateService CombatService
+@inject NavigationManager NavManager
+
+<PageTitle>Dungeons & Camp</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+
+    @if (_isLoading)
+    {
+        <p class="text-center mt-5"><em>Scouting the depths...</em></p>
+    }
+    else if (_activeCamp != null)
+    {
+        <!-- ============================================== -->
+        <!-- MODO ACAMPAMENTO (RUN ATIVA)                   -->
+        <!-- ============================================== -->
+        <div class="camp-header text-center mb-5">
+            <h2 class="text-warning fw-bold" style="font-family: 'Cinzel', serif;">🏕️ Camp: @_activeCamp.DungeonName</h2>
+            <p class="text-light">
+                Stage <span class="text-info fw-bold">@(_activeCamp.CurrentStageIndex + 1)</span>
+                @if (_activeCamp.IsBossNode)
+                {
+                    <span class="badge bg-danger ms-2 shadow">BOSS NODE</span>
+                }
+            </p>
+        </div>
+
+        <div class="row justify-content-center mb-5">
+            @foreach (var hero in _activeCamp.Heroes)
+            {
+                var hpPercentage = hero.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)hero.CurrentHP / hero.MaxHP) * 100, 0, 100);
+                var isDead = hero.CurrentHP <= 0;
+
+                <div class="col-md-3 col-sm-4 mb-3">
+                    <div class="card camp-hero-card bg-dark border-secondary h-100 text-center @(isDead ? "hero-dead" : "")">
+                        <div class="card-body p-3">
+                            <h5 class="text-info fw-bold mb-2">@hero.Name</h5>
+
+                            @if (isDead)
+                            {
+                                <span class="badge bg-danger mb-2">Fallen</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success mb-2">Ready</span>
+                            }
+
+                            <div class="progress border border-dark mt-auto" style="height: 15px;">
+                                <div class="progress-bar @(isDead ? "bg-secondary" : (hpPercentage < 30 ? "bg-danger" : "bg-success"))"
+                                     style="width: @(hpPercentage)%">
+                                </div>
+                            </div>
+                            <small class="text-light fw-bold">@hero.CurrentHP / @hero.MaxHP HP</small>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex justify-content-center gap-4 mt-5 pt-4 border-top border-secondary">
+            <button class="btn btn-outline-danger btn-lg px-4" @onclick="PromptForfeit" disabled="@_isProcessing">
+                Abandon Run
+            </button>
+            <button class="btn btn-warning btn-lg fw-bold px-5" @onclick="EnterStageAsync" disabled="@_isProcessing">
+                @(_isProcessing ? "Entering..." : "Enter Next Stage")
+            </button>
+        </div>
+    }
+    else
+    {
+        <!-- ============================================== -->
+        <!-- MODO LOBBY (SELECÇÃO DE DUNGEON E EQUIPA)      -->
+        <!-- ============================================== -->
+        <div class="page-header text-center mb-5">
+            <h2 class="title text-danger">🏰 Dungeons</h2>
+            <p class="subtitle">Assemble a team of 3 heroes to endure the gauntlet.</p>
+        </div>
+
+        <div class="row mb-5">
+            @if (_availableDungeons != null)
+            {
+                foreach (var dungeon in _availableDungeons)
+                {
+                    var isSelected = _selectedDungeonId == dungeon.Id;
+                    var isLocked = _guildProfile?.Level < dungeon.RequiredGuildLevel;
+                    var clearCount = _guildProfile?.DungeonCompletions.GetValueOrDefault(dungeon.Id, 0) ?? 0;
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card dungeon-card @(isLocked ? "locked" : (isSelected ? "border-warning shadow-lg" : "border-secondary")) bg-dark"
+                             @onclick="() => { if (!isLocked) _selectedDungeonId = dungeon.Id; }">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h4 class="text-warning mb-1" style="font-family: 'Cinzel', serif;">@dungeon.Name</h4>
+                                    @if (isLocked)
+                                    {
+                                        <span class="badge bg-secondary border border-light">🔒 Requires Lv @dungeon.RequiredGuildLevel</span>
+                                    }
+                                    else if (isSelected)
+                                    {
+                                        <span class="badge bg-warning text-dark">Selected</span>
+                                    }
+                                </div>
+                                <p class="text-light small mb-3">@dungeon.Description</p>
+
+                                <div class="d-flex justify-content-between border-top border-secondary pt-2 mt-auto">
+                                    <small class="text-info fw-bold">Completions: @clearCount</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="page-header text-center mb-4 border-top border-secondary pt-4">
+            <h4 class="text-info">Draft Your Expedition</h4>
+            <p class="text-muted">Select exactly 3 heroes.</p>
+        </div>
+
+        <div class="row justify-content-center">
+            @if (_heroes != null)
+            {
+                foreach (var hero in _heroes)
+                {
+                    var isSelected = _selectedHeroIds.Contains(hero.Id);
+                    <div class="col-md-2 col-sm-4 col-6 mb-3">
+                        <div class="card hero-select-card @(isSelected ? "border-warning shadow" : "border-secondary") bg-dark text-center h-100"
+                             @onclick="() => ToggleHeroSelection(hero.Id)">
+                            <div class="card-body p-2 d-flex flex-column justify-content-between">
+                                <h6 class="text-info mb-1" style="font-size: 0.9rem;">@hero.Name</h6>
+                                <p class="small text-muted mb-0">Lv @hero.CurrentLevel</p>
+                                @if (isSelected)
+                                {
+                                    <span class="badge bg-warning text-dark mt-1">Ready</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="text-center mt-4">
+            <h5 class="text-light mb-3">Expedition Size: <span class="@(_selectedHeroIds.Count == 3 ? "text-success" : "text-warning")">@_selectedHeroIds.Count</span> / 3</h5>
+            <button class="btn btn-danger btn-lg fw-bold px-5"
+                    disabled="@(!CanStartDungeon)"
+                    @onclick="StartDungeonAsync">
+                @(_isProcessing ? "Preparing..." : "Embark")
+            </button>
+        </div>
+    }
+</div>
+
+<!-- Modal de Abandono de Run -->
+@if (_showForfeitModal)
+{
+    <div class="modal-backdrop" @onclick="() => _showForfeitModal = false">
+        <div class="modal-content-custom" @onclick:stopPropagation="true">
+            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Abandon Expedition?</h4>
+            <p class="text-light">Are you sure you want to forfeit this run?</p>
+            <p class="text-muted small">You will lose all progress and only receive minor consolation rewards.</p>
+            <div class="d-flex justify-content-center mt-4 gap-3">
+                <button class="btn btn-secondary px-4" @onclick="() => _showForfeitModal = false">Cancel</button>
+                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmForfeit">Yes, Forfeit</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private bool _isProcessing = false;
+    private bool _showForfeitModal = false;
+
+    private List<DungeonSummaryDto>? _availableDungeons;
+    private ActiveDungeonCampDto? _activeCamp;
+    private List<HeroDto>? _heroes;
+    private GuildProfileDto? _guildProfile;
+
+    private string? _selectedDungeonId;
+    private List<int> _selectedHeroIds = new();
+
+    private bool CanStartDungeon => !string.IsNullOrEmpty(_selectedDungeonId)
+                                 && _selectedHeroIds.Count == 3
+                                 && !_isProcessing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStateAsync();
+    }
+
+    private async Task LoadStateAsync()
+    {
+        _isLoading = true;
+        try
+        {
+            // Verificamos primeiro se há um acampamento ativo
+            try
+            {
+                _activeCamp = await Http.GetFromJsonAsync<ActiveDungeonCampDto>("api/dungeon/camp");
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                // Normal: Retorna NotFound se o jogador não tiver uma run ativa
+                _activeCamp = null;
+            }
+
+            // Apenas carregamos o lobby se NÃO estiver num acampamento
+            if (_activeCamp == null)
+            {
+                var fetchDungeonsTask = Http.GetFromJsonAsync<List<DungeonSummaryDto>>("api/dungeon");
+                var fetchHeroesTask = Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
+                var fetchProfileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
+
+                await Task.WhenAll(fetchDungeonsTask, fetchHeroesTask, fetchProfileTask);
+
+                _availableDungeons = fetchDungeonsTask.Result;
+                _heroes = fetchHeroesTask.Result;
+                _guildProfile = fetchProfileTask.Result;
+            }
+        }
+        catch { }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleHeroSelection(int heroId)
+    {
+        if (_selectedHeroIds.Contains(heroId))
+            _selectedHeroIds.Remove(heroId);
+        else if (_selectedHeroIds.Count < 3)
+            _selectedHeroIds.Add(heroId);
+    }
+
+    private async Task StartDungeonAsync()
+    {
+        if (!CanStartDungeon) return;
+        _isProcessing = true;
+
+        try
+        {
+            var req = new GuildArena.Shared.Requests.StartDungeonRequest
+            {
+                DungeonId = _selectedDungeonId!,
+                HeroInstanceIds = _selectedHeroIds
+            };
+            var res = await Http.PostAsJsonAsync("api/dungeon/start", req);
+
+            if (res.IsSuccessStatusCode)
+            {
+                // Iniciou! Recarregamos o ecrã para ver a UI do Camp.
+                await LoadStateAsync();
+                _selectedHeroIds.Clear();
+                _selectedDungeonId = null;
+            }
+        }
+        finally { _isProcessing = false; }
+    }
+
+    private void PromptForfeit() => _showForfeitModal = true;
+
+    private async Task ConfirmForfeit()
+    {
+        _isProcessing = true;
+        _showForfeitModal = false;
+        try
+        {
+            await Http.PostAsync("api/dungeon/forfeit", null);
+            await LoadStateAsync(); // Abandona e volta ao Lobby
+        }
+        finally { _isProcessing = false; }
+    }
+
+    private async Task EnterStageAsync()
+    {
+        _isProcessing = true;
+        try
+        {
+            // Usamos o serviço para orquestrar a ligação ao Hub
+            await CombatService.EnterDungeonCombatAsync();
+
+            // Depois de ter a ligação feita e o GameState recebido, saltamos para a Arena
+            NavManager.NavigateTo("/arena");
+        }
+        finally { _isProcessing = false; }
+    }
+}
