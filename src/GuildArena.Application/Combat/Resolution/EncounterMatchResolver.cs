@@ -19,6 +19,7 @@ public class EncounterMatchResolver : IMatchTypeResolver
     private readonly IEncounterDefinitionRepository _encounterRepo;
     private readonly IGuildProgressionService _progressionService;
     private readonly IMatchRepository _matchRepo;
+    private readonly IQuestService _questService;
     private readonly ILogger<EncounterMatchResolver> _logger;
 
     public EncounterMatchResolver(
@@ -26,12 +27,14 @@ public class EncounterMatchResolver : IMatchTypeResolver
     IEncounterDefinitionRepository encounterRepo,
     IGuildProgressionService progressionService,
     IMatchRepository matchRepo,
+    IQuestService questService,
     ILogger<EncounterMatchResolver> logger)
     {
         _guildRepo = guildRepo;
         _encounterRepo = encounterRepo;
         _progressionService = progressionService;
         _matchRepo = matchRepo;
+        _questService = questService;
         _logger = logger;
     }
 
@@ -100,6 +103,7 @@ public class EncounterMatchResolver : IMatchTypeResolver
                 }
             }
         };
+        await _questService.ProcessMatchEndAsync(guild, match, isWinner);
 
         await _guildRepo.UpdateGuildAsync(guild);
         await _matchRepo.SaveMatchAsync(match, ct);
