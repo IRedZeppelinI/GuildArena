@@ -18,4 +18,9 @@ public class GameDataOptions
     /// The sub-folder containing dungeon JSON files.
     /// </summary>
     public string DungeonsFolder { get; set; } = "Dungeons";
+
+    /// <summary>
+    /// File name (inside RootFolder) containing quest definitions.
+    /// </summary>
+    public string QuestsFile { get; set; } = "quests.json";
 }

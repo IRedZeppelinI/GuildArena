@@ -19,6 +19,7 @@ public class GuildArenaDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<ActiveDungeonRun> ActiveDungeonRuns { get; set; }
     public DbSet<DungeonHeroState> DungeonHeroStates { get; set; }
     public DbSet<GuildDungeonRecord> GuildDungeonRecords { get; set; }
+    public DbSet<ActiveQuest> ActiveQuests { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {        
