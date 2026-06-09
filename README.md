@@ -40,6 +40,8 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * **Entity Framework Core & Identity:** Secure user authentication using ASP.NET Core Identity API Endpoints with **HTTP-Only Cookies** (zero-trust frontend architecture preventing XSS attacks).
 * **Custom Claims Factory:** The player's `GuildId` is injected directly into the encrypted auth cookie via a custom `UserClaimsPrincipalFactory`, eliminating redundant database queries during normal site navigation.
 * **Match & Roster History:** Relational tracking of player progression (XP, Level, Wins/Losses) and dynamic Roster management.
+* **Dynamic Unlock System:** Heroes in the Tavern are gated by a flexible evaluation engine (`IHeroUnlockEvaluator`) that checks the Guild's progression and match history (e.g., "Win 2 matches using a Kymera").
+* **Dungeon Runs:** Long-form PvE content where hero HP persists between stages. Handled via dedicated SQL entities (`ActiveDungeonRun`) that act as a checkpoint ("Camp") before generating the volatile `GameState` in Redis for the actual combat.
 
 ### Frontend Architecture (BFF Pattern & Predictor)
 * **Backend-Driven UI:** The Blazor WebAssembly client acts as a "Thin Client". Complex validations (Targeting, Affordability, Taunt, Stealth) are pre-calculated by the API (`CombatStateMapper`) and sent via DTOs.
@@ -54,9 +56,10 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * [x] Blazor WebAssembly Frontend (Combat Arena UI & State Machine).
 * [x] Dynamic Meta-Game UI (Lobby, Roster, and Real-time Mathematical Tooltips).
 * [x] Basic AI for PvE encounters (RandomBehavior & Orchestrator).
+* [x] Hero Tavern (Shop), Guild Progression (Level/XP) & Unlock Conditions.
+* [x] Dungeon Mode (Sequential PvE battles with persistent HP & Boss Nodes).
 * [ ] Smart AI (Tactical evaluation algorithms).
-* [ ] Hero Tavern (Shop), Gold Economy & Unlock Conditions.
-* [ ] Dungeon Mode (Sequential PvE battles with persistent HP).
+* [ ] PvP Matchmaking.
 
 ## Testing
 

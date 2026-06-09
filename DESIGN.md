@@ -44,8 +44,8 @@ O projeto segue estritamente os princípios da **Clean Architecture** e **Domain
 ### 2.2. Estratégia de Dados
 | Tipo de Dados | Tecnologia | Descrição |
 | :--- | :--- | :--- |
-| **Estático (Blueprints)** | **JSON** | Definições de Heróis, Habilidades, Raças e Modificadores. Carregados para memória no arranque através do `IModifierDefinitionRepository`, etc. |
-| **Persistente (Meta)** | **PostgreSQL (EF Core)** | Contas de utilizador (ASP.NET Identity), perfis (`Guild`), coleção dinâmica de heróis (`Hero`), e histórico de combates (`Match`). |
+| **Estático (Blueprints)** | **JSON** | Definições de Heróis, Bosses, Dungeons, Habilidades, Raças e Modificadores. Carregados para memória no arranque. |
+| **Persistente (Meta)** | **PostgreSQL (EF Core)** | Contas, perfis (`Guild`), coleção dinâmica (`Hero`), histórico (`Match`), e estado do acampamento (`ActiveDungeonRun`, `DungeonHeroState`). |
 | **Volátil (Combate)** | **Redis** | O estado de uma batalha ativa (`GameState`). Otimizado para leitura/escrita rápida (não relacional). |
 
 
@@ -89,6 +89,13 @@ A narrativa do combate é gerida por um serviço Scoped (IBattleLogService).
 * **`TriggerProcessor`:** Ouve eventos e agenda reações. Filtra eventos globais usando `ValidateCondition`. 
 * **`IDeathService`:** Isola a responsabilidade da morte. Quando o HP chega a 0, este serviço orquestra os triggers de `ON_DEATH` e limpa as "Linked Dependencies" (ex: remove um debuff de um inimigo se o mago que o conjurou morrer).
 ---
+### 3.4. Resolução de Combate (Match Resolvers)
+O fim de um combate é processado independentemente das mecânicas de luta, utilizando o **Strategy Pattern**.
+Quando um combate termina, o `CombatResolutionService` avalia o `MatchType` e delega a lógica a um `IMatchTypeResolver`:
+* **`EncounterMatchResolver`:** Dá XP/Gold baseados no multiplicador de vitória/derrota e grava o histórico.
+* **`DungeonMatchResolver`:** Lida com a persistência de HP. Se não for um Boss Node, guarda o estado dos heróis sobreviventes no `ActiveDungeonRun` e avança o *Stage*. Só no Boss Node (ou na derrota) é que atribui as recompensas de conclusão e encerra a run.
+
+
 
 ## 4. Economia de Essence (Mana System)
 
@@ -172,3 +179,5 @@ Isto garante 100% de coerência visual em todo o jogo sem duplicação de lógic
 ### 8.2. Gestão de Assets (Azure Blob Storage)
 As imagens não permanentes e que variam de combate para combate (Cenários, Portraits, Ícones de Habilidades) não são incluídas no código fonte para não penalizar o tempo de carregamento da *Single Page Application*. 
 O `AssetService` utiliza "Convenção sobre Configuração", pegando no `DefinitionId` da entidade e gerando dinamicamente o URL apontado para os contentores do Azure Blob Storage. Os elementos estáticos de UI (Molduras 9-Slice, Ícones de Essence) mantêm-se em `wwwroot` para garantir a integridade estrutural no milissegundo em que a página carrega.
+### 8.3. Máquina de Estados de Dungeons (Camp UI)
+O ecrã de Dungeons opera como uma máquina de estados gerida pelo Backend. Se a API indicar que existe uma `ActiveDungeonRun`, o Blazor renderiza a UI de Acampamento (Camp), permitindo ao jogador curar-se (futuramente) ou entrar no próximo Stage. Se não houver run ativa, renderiza o Lobby para fazer *Draft* de uma nova equipa.

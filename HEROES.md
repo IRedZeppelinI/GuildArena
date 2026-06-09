@@ -178,7 +178,7 @@ Qualquer alteração de balanceamento deve ser registada aqui.
     *   *Mecânica:* `EvasionModifications` no `HitChanceService`.
 *   **Role:** Assassin / Evasion Tank
 *   **Afinidade:** Shadow (Void)
-*   **Estado:** *A Implementar*
+*   **Estado:** ✅ Implementado
 
 ### Trait: Phase Shift
 *   **Reactivo:** Sempre que a Nyx se esquiva (Evade/Miss) de um ataque, ganha **+10% Agility**  por 2 turnos. Acumula.
@@ -222,3 +222,11 @@ Qualquer alteração de balanceamento deve ser registada aqui.
 *   **Raça:** Aureon (Divine Shell: Resistência a Status)
 *   **Afinidade:** Light (Buffs / Anti-CC)
 *   **Conceito:** Paladino de suporte puro.
+
+
+
+
+
+## 10. Bosses (PvE Exclusives)
+*   **Kaelen, Bandit King:** Focado em dano físico em área e debuffs de controlo (Blind e Disarm via `Dirty Tactics`).
+*   **Malthus, Void Caller:** Focado em dano mágico e `MANIPULATE_ESSENCE` (remove Essence aleatória da pool do jogador).
