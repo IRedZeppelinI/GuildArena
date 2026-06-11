@@ -35,7 +35,7 @@ public class RerollQuestCommandHandler : IRequestHandler<RerollQuestCommand, Res
             return Result.Failure(new Error(
                 "Auth.Unauthorized", "User not authenticated.", ErrorType.Unauthorized));
 
-        var guild = await _guildRepo.GetGuildWithHistoryAsync(userId);
+        var guild = await _guildRepo.GetGuildWithQuestsAsync(userId);
         if (guild == null)
             return Result.Failure(new Error(
                 "Guild.NotFound", "No guild found.", ErrorType.NotFound));

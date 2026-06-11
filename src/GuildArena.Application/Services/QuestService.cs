@@ -119,40 +119,31 @@ public class QuestService : IQuestService
         if (quest == null)
         {
             return Result.Failure(new Error(
-                "Quests.NotFound",
-                "Quest not found.",
-                ErrorType.NotFound));
+                "Quests.NotFound", "Quest not found.", ErrorType.NotFound));
         }
 
         if (quest.IsCompleted)
         {
             return Result.Failure(new Error(
-                "Quests.AlreadyCompleted",
-                "Cannot reroll a completed quest.",
-                ErrorType.Validation));
+                "Quests.AlreadyCompleted", "Cannot reroll a completed quest.", ErrorType.Validation));
         }
 
         var today = DateTime.UtcNow.Date;
-        if (guild.LastQuestRerollAt.HasValue &&
-            guild.LastQuestRerollAt.Value.Date >= today)
+        if (guild.LastQuestRerollAt.HasValue && guild.LastQuestRerollAt.Value.Date >= today)
         {
             return Result.Failure(new Error(
-                "Quests.RerollUsed",
-                "You have already rerolled a quest today.",
-                ErrorType.Conflict));
+                "Quests.RerollUsed", "You have already rerolled a quest today.", ErrorType.Conflict));
         }
 
-        // Remove the old quest
-        guild.ActiveQuests.Remove(quest);
-
-        // Pick a new one (smart filter)
+        // 1. Obtém as quests que a guilda pode fazer
         var candidatePool = GetFilteredQuestDefinitions(guild);
 
-        // Exclude current active definition IDs to avoid duplicates
+        // 2. Filtra para não saírem quests que o jogador já tem ativas (incluindo a que ele está a fazer Reroll)
         var activeDefIds = guild.ActiveQuests
             .Where(q => !q.IsCompleted)
             .Select(q => q.QuestDefinitionId)
             .ToHashSet();
+
         candidatePool = candidatePool
             .Where(d => !activeDefIds.Contains(d.Id))
             .ToList();
@@ -161,12 +152,10 @@ public class QuestService : IQuestService
         {
             _logger.LogWarning("No valid quests to reroll into for Guild {GuildId}.", guild.Id);
             return Result.Failure(new Error(
-                "Quests.NoValidPool",
-                "No available quests match your guild's current state.",
-                ErrorType.Validation));
+                "Quests.NoValidPool", "No available quests match your guild's current state.", ErrorType.Validation));
         }
 
-
+        // 3. Escolhe a nova quest e ATUALIZA a existente
         int index = _random.Next(candidatePool.Count);
         var pickedDef = candidatePool[index];
 
@@ -174,7 +163,8 @@ public class QuestService : IQuestService
         quest.CurrentProgress = 0;
 
         guild.LastQuestRerollAt = DateTime.UtcNow;
-        _logger.LogInformation("Guild {GuildId} rerolled quest. New Def: {NewId}", guild.Id, pickedDef.Id);
+        _logger.LogInformation("Guild {GuildId} rerolled quest {OldId}. New: {NewId}",
+            guild.Id, quest.Id, pickedDef.Id);
 
         return Result.Success();
     }
