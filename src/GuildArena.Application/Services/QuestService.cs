@@ -166,20 +166,15 @@ public class QuestService : IQuestService
                 ErrorType.Validation));
         }
 
+
         int index = _random.Next(candidatePool.Count);
         var pickedDef = candidatePool[index];
 
-        var newQuest = new ActiveQuest
-        {
-            GuildId = guild.Id,
-            QuestDefinitionId = pickedDef.Id,
-            CurrentProgress = 0
-        };
-        guild.ActiveQuests.Add(newQuest);
+        quest.QuestDefinitionId = pickedDef.Id;
+        quest.CurrentProgress = 0;
 
         guild.LastQuestRerollAt = DateTime.UtcNow;
-        _logger.LogInformation("Guild {GuildId} rerolled quest {OldId}. New: {NewId}",
-            guild.Id, quest.Id, newQuest.QuestDefinitionId);
+        _logger.LogInformation("Guild {GuildId} rerolled quest. New Def: {NewId}", guild.Id, pickedDef.Id);
 
         return Result.Success();
     }

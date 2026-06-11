@@ -43,4 +43,9 @@ public interface IGuildRepository
     /// Does NOT use AsNoTracking, making it safe for updates (e.g. deductions of gold).
     /// </summary>
     Task<Guild?> GetGuildWithHistoryAsync(string applicationUserId);
+
+    /// <summary>
+    /// Retrieves the Guild profile including Quests.
+    /// </summary>
+    Task<Guild?> GetGuildWithQuestsAsync(string applicationUserId);
 }

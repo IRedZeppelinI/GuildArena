@@ -76,9 +76,16 @@ public class GuildRepository : IGuildRepository
         return await _dbContext.Guilds
             
             .Include(g => g.Heroes)
-            .Include(g => g.ActiveQuests)
             .Include(g => g.MatchHistory)
                 .ThenInclude(mh => mh.HeroesUsed) 
+            .FirstOrDefaultAsync(g => g.ApplicationUserId == applicationUserId);
+    }
+
+    public async Task<Guild?> GetGuildWithQuestsAsync(string applicationUserId)
+    {
+        return await _dbContext.Guilds
+            .Include(g => g.Heroes)
+            .Include(g => g.ActiveQuests)
             .FirstOrDefaultAsync(g => g.ApplicationUserId == applicationUserId);
     }
 
