@@ -54,6 +54,7 @@ public abstract class IntegrationTestBase
         services.AddSingleton<IRaceDefinitionRepository, JsonRaceDefinitionRepository>();
         services.AddSingleton<ICharacterDefinitionRepository, JsonCharacterDefinitionRepository>();
         services.AddSingleton<IEncounterDefinitionRepository, JsonEncounterDefinitionRepository>();
+        services.AddSingleton<IQuestDefinitionRepository, JsonQuestDefinitionRepository>();
 
         // <--- ADICIONAR O REPOSITÓRIO DAS DUNGEONS AQUI --->
         services.AddSingleton<IDungeonDefinitionRepository, JsonDungeonDefinitionRepository>();
