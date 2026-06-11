@@ -1,0 +1,79 @@
+[
+  {
+    "Id": "QUEST_WIN_3",
+    "Name": "Path of the Victor",
+    "Description": "Win 3 combat encounters or dungeon stages.",
+    "RewardGold": 150,
+    "RewardXP": 300,
+    "RequirementType": "WinMatch",
+    "TargetValue": 3,
+    "RequiredRaceId": null,
+    "RequiredHeroDefinitionId": null
+  },
+  {
+    "Id": "QUEST_PLAY_5",
+    "Name": "Arena Veteran",
+    "Description": "Participate in 5 battles, regardless of the outcome.",
+    "RewardGold": 100,
+    "RewardXP": 200,
+    "RequirementType": "PlayMatch",
+    "TargetValue": 5,
+    "RequiredRaceId": null,
+    "RequiredHeroDefinitionId": null
+  },
+  {
+    "Id": "QUEST_RACE_HUMAN",
+    "Name": "Human Resolve",
+    "Description": "Play 2 matches with at least one Human in your team.",
+    "RewardGold": 120,
+    "RewardXP": 250,
+    "RequirementType": "PlayWithRace",
+    "TargetValue": 2,
+    "RequiredRaceId": "RACE_HUMAN",
+    "RequiredHeroDefinitionId": null
+  },
+  {
+    "Id": "QUEST_RACE_VALDRIN",
+    "Name": "Stone and Fury",
+    "Description": "Play 2 matches with at least one Valdrin in your team.",
+    "RewardGold": 120,
+    "RewardXP": 250,
+    "RequirementType": "PlayWithRace",
+    "TargetValue": 2,
+    "RequiredRaceId": "RACE_VALDRIN",
+    "RequiredHeroDefinitionId": null
+  },
+  {
+    "Id": "QUEST_RACE_PSYLIAN",
+    "Name": "Mind over Matter",
+    "Description": "Play 2 matches with at least one Psylian in your team.",
+    "RewardGold": 120,
+    "RewardXP": 250,
+    "RequirementType": "PlayWithRace",
+    "TargetValue": 2,
+    "RequiredRaceId": "RACE_PSYLIAN",
+    "RequiredHeroDefinitionId": null
+  },
+  {
+    "Id": "QUEST_HERO_VEX",
+    "Name": "Unstable Elements",
+    "Description": "Draft Vex into your party and participate in 2 matches.",
+    "RewardGold": 250,
+    "RewardXP": 400,
+    "RequirementType": "PlayWithHero",
+    "TargetValue": 2,
+    "RequiredRaceId": null,
+    "RequiredHeroDefinitionId": "HERO_VEX"
+  },
+  {
+    "Id": "QUEST_HERO_NYX",
+    "Name": "From the Shadows",
+    "Description": "Draft Vesper (Nyx) into your party and participate in 2 matches.",
+    "RewardGold": 250,
+    "RewardXP": 400,
+    "RequirementType": "PlayWithHero",
+    "TargetValue": 2,
+    "RequiredRaceId": null,
+    "RequiredHeroDefinitionId": "HERO_NYX"
+  }
+]

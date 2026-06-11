@@ -46,30 +46,52 @@ public class QuestService : IQuestService
     {
         var today = DateTime.UtcNow.Date;
 
-        // Already granted today? (null safe)
+        // Já processou as quests hoje?
         if (guild.LastDailyQuestGrantedAt.HasValue &&
             guild.LastDailyQuestGrantedAt.Value.Date >= today)
         {
             return;
         }
 
-        // Count currently incomplete quests
+        // Quantos slots livres temos?
         int activeCount = guild.ActiveQuests.Count(q => !q.IsCompleted);
         int slotsAvailable = MaxActiveQuests - activeCount;
+
         if (slotsAvailable <= 0)
         {
-            // still mark as granted to avoid repeated checks
+            // O Log está cheio, mas atualizamos a data para não voltar a verificar hoje
             guild.LastDailyQuestGrantedAt = DateTime.UtcNow;
             return;
         }
 
-        _logger.LogInformation("Granting daily quests to Guild {GuildId}. Slots: {Slots}",
-            guild.Id, slotsAvailable);
+        //  1 Quest por Dia (Acumula se não fizer login) 
+        int questsToGrant = 1;
+
+        if (guild.LastDailyQuestGrantedAt.HasValue)
+        {
+            // Se ele não entra no jogo há 2 dias, ganha 2 quests (até ao limite de slots)
+            int missedDays = (int)(today - guild.LastDailyQuestGrantedAt.Value.Date).TotalDays;
+            questsToGrant = missedDays;
+        }
+
+        // Nunca podemos dar mais quests do que os slots disponíveis
+        questsToGrant = Math.Min(questsToGrant, slotsAvailable);
+
+        if (questsToGrant <= 0)
+        {
+            guild.LastDailyQuestGrantedAt = DateTime.UtcNow;
+            return;
+        }
+        // ------------------------------------------------------------------
+
+        _logger.LogInformation("Granting {Count} daily quests to Guild {GuildId}. Slots available: {Slots}",
+            questsToGrant, guild.Id, slotsAvailable);
 
         var candidatePool = GetFilteredQuestDefinitions(guild);
 
         int granted = 0;
-        while (granted < slotsAvailable && candidatePool.Count > 0)
+        // O ciclo agora obedece à variável questsToGrant em vez do slotsAvailable
+        while (granted < questsToGrant && candidatePool.Count > 0)
         {
             int index = _random.Next(candidatePool.Count);
             var pickedDef = candidatePool[index];
@@ -82,7 +104,7 @@ public class QuestService : IQuestService
             };
 
             guild.ActiveQuests.Add(newQuest);
-            candidatePool.RemoveAt(index); // prevent duplicate definition
+            candidatePool.RemoveAt(index); // Evitar dar a mesma quest 2 vezes no mesmo dia
             granted++;
         }
 

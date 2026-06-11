@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IEffectTooltipService, EffectTooltipService>();
         services.AddScoped<IHeroUnlockEvaluator, HeroUnlockEvaluator>();
+        services.AddScoped<IQuestService, QuestService>();
+
         // Guild progression
         services.AddScoped<IGuildProgressionService, GuildProgressionService>();
 

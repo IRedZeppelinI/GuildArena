@@ -33,10 +33,9 @@ public class JsonQuestDefinitionRepository : IQuestDefinitionRepository
         }
 
         string json = File.ReadAllText(filePath);
-        var list = JsonSerializer.Deserialize<List<QuestDefinition>>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        }) ?? new List<QuestDefinition>();
+        var jsonOptions = JsonOptionsFactory.Create();
+        var list = JsonSerializer.Deserialize<List<QuestDefinition>>(json, jsonOptions)
+                   ?? new List<QuestDefinition>();
 
         // Fail Fast on duplicate IDs
         var duplicates = list
