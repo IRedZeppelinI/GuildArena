@@ -181,3 +181,16 @@ As imagens não permanentes e que variam de combate para combate (Cenários, Por
 O `AssetService` utiliza "Convenção sobre Configuração", pegando no `DefinitionId` da entidade e gerando dinamicamente o URL apontado para os contentores do Azure Blob Storage. Os elementos estáticos de UI (Molduras 9-Slice, Ícones de Essence) mantêm-se em `wwwroot` para garantir a integridade estrutural no milissegundo em que a página carrega.
 ### 8.3. Máquina de Estados de Dungeons (Camp UI)
 O ecrã de Dungeons opera como uma máquina de estados gerida pelo Backend. Se a API indicar que existe uma `ActiveDungeonRun`, o Blazor renderiza a UI de Acampamento (Camp), permitindo ao jogador curar-se (futuramente) ou entrar no próximo Stage. Se não houver run ativa, renderiza o Lobby para fazer *Draft* de uma nova equipa.
+
+
+### 9.1. Lazy Evaluation (Sem Cron Jobs)
+Em vez de utilizar processos em *background* pesados (como o Hangfire) para renovar quests à meia-noite, a GuildArena utiliza **Lazy Evaluation**.
+O modelo `Guild` possui a propriedade `LastDailyQuestGrantedAt`. Quando o jogador acede ao ecrã de Quests ou termina um combate, a API verifica se a data registada é anterior ao dia atual. Só nessa eventualidade o motor calcula e injeta uma (ou mais) novas quests no perfil. As quests concluídas no dia anterior são eliminadas automaticamente durante esta reavaliação.
+
+### 9.2. Smart Quest Generation (Prevenção de Quest Lock)
+Para impedir a atribuição de missões impossíveis de concluir (ex: *"Vence com um Herói Valdrin"* para um jogador que não possui nenhum herói dessa raça), o `QuestService` aplica um filtro inteligente. 
+Antes de sortear uma Quest do repositório JSON, o serviço carrega o *Roster* atual da Guilda. Se uma quest exigir uma `RequiredRaceId` ou `RequiredHeroDefinitionId` específica, essa quest é excluída da *pool* caso a Guilda não tenha a unidade correspondente.
+
+### 9.3. Eficiência de Repositórios
+Para evitar o carregamento massivo de entidades pesadas (como o histórico de todas as partidas) apenas para consultar o progresso de missões, a infraestrutura define consultas especializadas, tais como `GetGuildWithQuestsAsync`. 
+O *Re-roll* de uma missão também opera na ótica da performance de base de dados: em vez de eliminar o registo SQL (`ActiveQuest`) e gerar um novo, a aplicação atualiza in-loco o `QuestDefinitionId` do registo existente, reciclando a chave primária e evitando *overhead* na tabela.

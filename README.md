@@ -58,6 +58,7 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * [x] Basic AI for PvE encounters (RandomBehavior & Orchestrator).
 * [x] Hero Tavern (Shop), Guild Progression (Level/XP) & Unlock Conditions.
 * [x] Dungeon Mode (Sequential PvE battles with persistent HP & Boss Nodes).
+* [x] Daily Quests & Bounties (Smart Roster Filtering & Progress Tracking).
 * [ ] Smart AI (Tactical evaluation algorithms).
 * [ ] PvP Matchmaking.
 
