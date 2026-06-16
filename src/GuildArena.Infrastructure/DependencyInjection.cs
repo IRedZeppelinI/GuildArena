@@ -6,6 +6,7 @@ using GuildArena.Infrastructure.Persistence.Context;
 using GuildArena.Infrastructure.Persistence.Json;
 using GuildArena.Infrastructure.Persistence.Redis;
 using GuildArena.Infrastructure.Persistence.Repositories;
+using GuildArena.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -75,6 +76,8 @@ public static class DependencyInjection
         services.AddScoped<IMatchRepository, MatchRepository>();
         services.AddScoped<IDungeonRunRepository, DungeonRunRepository>();
 
+        //Azure
+        services.AddScoped<IStorageService, AzureBlobStorageService>();
 
         return services;
     }
