@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<IHeroPurchaseRepository, HeroPurchaseRepository>();
         services.AddScoped<IMatchRepository, MatchRepository>();
         services.AddScoped<IDungeonRunRepository, DungeonRunRepository>();
+        services.AddScoped<INewsRepository, NewsRepository>();
 
         //Azure
         services.AddScoped<IStorageService, AzureBlobStorageService>();

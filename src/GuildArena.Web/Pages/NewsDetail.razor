@@ -1,0 +1,61 @@
+﻿@page "/news/{Id:int}"
+@using GuildArena.Shared.DTOs.News
+@inject HttpClient Http
+
+<PageTitle>@(_article?.Title ?? "Loading News...")</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+    <a href="/" class="btn btn-outline-secondary mb-4">← Back to Home</a>
+
+    @if (_isLoading)
+    {
+        <p><em>Loading article...</em></p>
+    }
+    else if (_article == null)
+    {
+        <div class="alert alert-danger border-danger">Article not found.</div>
+    }
+    else
+    {
+        <div class="card bg-dark border-secondary shadow-lg">
+            @if (!string.IsNullOrEmpty(_article.ImageUrl))
+            {
+                <img src="@_article.ImageUrl" class="card-img-top article-hero-img" alt="@_article.Title" />
+            }
+            <div class="card-body p-4">
+                <h2 class="text-warning mb-2 article-title">@_article.Title</h2>
+                <p class="text-muted small border-bottom border-secondary pb-3 mb-4">
+                    Published on @_article.CreatedAt.ToString("MMMM d, yyyy - HH:mm")
+                </p>
+
+                <div class="text-light article-content">
+                    @_article.Content
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private NewsArticleDetailDto? _article;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _article = await Http.GetFromJsonAsync<NewsArticleDetailDto>($"api/news/{Id}");
+        }
+        catch
+        {
+            _article = null;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}

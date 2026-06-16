@@ -1,0 +1,23 @@
+﻿.landing-banner {
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.9)), url('/images/ui/landing-bg.jpg') center/cover;
+}
+
+.landing-title {
+    text-shadow: 0 0 15px rgba(255, 216, 0, 0.5);
+}
+
+.news-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .news-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 6px 15px rgba(0, 229, 255, 0.15) !important;
+    }
+
+.news-card-img {
+    height: 150px;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid #444;
+}
