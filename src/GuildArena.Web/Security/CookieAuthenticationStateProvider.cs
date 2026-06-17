@@ -44,6 +44,14 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
                         claims.Add(new Claim("GuildId", user.GuildId.ToString()!));
                     }
 
+                    if (user.Roles != null)
+                    {
+                        foreach (var role in user.Roles)
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, role));
+                        }
+                    }
+
                     // "Cookies" authentication type tells the system the user is authenticated
                     var identity = new ClaimsIdentity(claims, "Cookies");
                     return new AuthenticationState(new ClaimsPrincipal(identity));

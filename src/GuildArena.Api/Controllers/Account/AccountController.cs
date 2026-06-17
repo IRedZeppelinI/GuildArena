@@ -32,11 +32,15 @@ public class AccountController : BaseApiController
     {
         var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
+        // NOVO: Lê as roles do Cookie no lado do servidor
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
         return Ok(new UserInfoDto
         {
             Id = _currentUserService.UserId!,
             Email = email,
-            GuildId = _currentUserService.GuildId
+            GuildId = _currentUserService.GuildId,
+            Roles = roles // NOVO: Envia para o cliente
         });
     }
 
