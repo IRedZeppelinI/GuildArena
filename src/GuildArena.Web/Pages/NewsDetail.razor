@@ -12,7 +12,8 @@
         <!-- BOTOES DE ADMIN -->
         <AuthorizeView Roles="Admin">
             <Authorized>
-                <div>
+                <div class="d-flex gap-2">
+                    <a href="/admin/news/edit/@Id" class="btn btn-outline-warning">✏️ Edit</a>
                     <button class="btn btn-outline-danger" @onclick="PromptDelete">🗑️ Delete</button>
                 </div>
             </Authorized>

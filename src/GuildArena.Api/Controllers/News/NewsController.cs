@@ -68,8 +68,36 @@ public class NewsController : BaseApiController
         return HandleResult(result);
     }
 
-    // NOTA: Para edição completa (PUT) sugiro omitir a imagem por enquanto para simplificar, 
-    // ou fazeres uma lógica igual ao POST mas a chamar um UpdateNewsCommand.
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateNews(int id, [FromForm] UpdateNewsApiRequest request)
+    {
+        Stream? fileStream = null;
+        string? fileName = null;
+        string? contentType = null;
+
+        if (request.Image != null)
+        {
+            fileStream = request.Image.OpenReadStream();
+            fileName = $"{Guid.NewGuid()}_{request.Image.FileName}";
+            contentType = request.Image.ContentType;
+        }
+
+        var command = new GuildArena.Application.News.UpdateNews.UpdateNewsCommand
+        {
+            Id = id,
+            Title = request.Title,
+            Summary = request.Summary,
+            Content = request.Content,
+            FileStream = fileStream,
+            FileName = fileName,
+            ContentType = contentType
+        };
+
+        var result = await _mediator.Send(command);
+        return HandleResult(result);
+    }
 }
 
 // Request específico da API para aceitar Multipart Form Data
@@ -79,5 +107,14 @@ public class CreateNewsApiRequest
     public required string Title { get; set; }
     public required string Summary { get; set; }
     public required string Content { get; set; }
+    public IFormFile? Image { get; set; }
+}
+
+public class UpdateNewsApiRequest
+{
+    public required string Title { get; set; }
+    public required string Summary { get; set; }
+    public required string Content { get; set; }
+    // A imagem é opcional na edição. Se for null, mantemos a que já está na BD.
     public IFormFile? Image { get; set; }
 }

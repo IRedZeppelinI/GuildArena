@@ -1,0 +1,150 @@
+﻿@page "/admin/news/edit/{Id:int}"
+@attribute [Authorize(Roles = "Admin")]
+@using GuildArena.Shared.DTOs.News
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<PageTitle>Edit News Article</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-warning mb-0">Edit Announcement</h2>
+        <a href="/news/@Id" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+
+    @if (_isLoading)
+    {
+        <p><em>Loading article data...</em></p>
+    }
+    else if (_error != null && !_isSubmitting)
+    {
+        <div class="alert alert-danger p-2">@_error</div>
+    }
+
+    @if (!_isLoading && _article != null)
+    {
+        <div class="card bg-dark border-secondary shadow-lg">
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label text-info">Title</label>
+                    <input class="form-control bg-secondary text-light" @bind="_title" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-info">Summary (Homepage Card)</label>
+                    <textarea class="form-control bg-secondary text-light" rows="2" @bind="_summary"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-info">Full Content</label>
+                    <textarea class="form-control bg-secondary text-light" rows="6" @bind="_content"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label text-info">Header Image (Leave empty to keep current image)</label>
+                    <InputFile class="form-control bg-secondary text-light" OnChange="HandleFileSelected" accept="image/png, image/jpeg" />
+                    @if (!string.IsNullOrEmpty(_article.ImageUrl))
+                    {
+                        <div class="mt-2 small text-muted">Current image exists. Uploading a new one will replace it.</div>
+                    }
+                </div>
+
+                <button class="btn btn-warning w-100 fw-bold" disabled="@_isSubmitting" @onclick="SubmitAsync">
+                    @(_isSubmitting ? "Updating..." : "Save Changes")
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private NewsArticleDetailDto? _article;
+    private string _title = "";
+    private string _summary = "";
+    private string _content = "";
+    private IBrowserFile? _selectedFile;
+
+    private bool _isLoading = true;
+    private bool _isSubmitting = false;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _article = await Http.GetFromJsonAsync<NewsArticleDetailDto>($"api/news/{Id}");
+            if (_article != null)
+            {
+                _title = _article.Title;
+                _summary = _article.Summary;
+                _content = _article.Content;
+            }
+            else
+            {
+                _error = "Article not found.";
+            }
+        }
+        catch
+        {
+            _error = "Failed to load article.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_content))
+        {
+            _error = "Title and Content are required.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _error = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_title), "Title");
+            content.Add(new StringContent(_summary), "Summary");
+            content.Add(new StringContent(_content), "Content");
+
+            if (_selectedFile != null)
+            {
+                var fileContent = new StreamContent(_selectedFile.OpenReadStream(1024 * 1024 * 5));
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
+                content.Add(fileContent, "Image", _selectedFile.Name);
+            }
+
+            var response = await Http.PutAsync($"api/news/{Id}", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                NavManager.NavigateTo($"/news/{Id}");
+            }
+            else
+            {
+                _error = "Failed to update article.";
+            }
+        }
+        catch
+        {
+            _error = "Connection error occurred.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

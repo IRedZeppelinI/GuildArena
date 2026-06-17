@@ -207,7 +207,8 @@ using (var scope = app.Services.CreateScope())
             roleManager,
             userManager,
             logger,
-            app.Environment.IsDevelopment());
+            app.Environment.IsDevelopment(),
+            builder.Configuration);
     }
     catch (Exception ex)
     {

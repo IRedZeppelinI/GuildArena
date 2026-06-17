@@ -28,6 +28,7 @@ public class GetNewsArticleQueryHandler : IRequestHandler<GetNewsArticleQuery, R
         {
             Id = article.Id,
             Title = article.Title,
+            Summary = article.Summary,
             Content = article.Content,
             ImageUrl = article.ImageUrl,
             CreatedAt = article.CreatedAt
