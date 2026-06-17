@@ -17,3 +17,9 @@ output "created_containers" {
   description = "Lista dos containers criados."
   value       = [for container in azurerm_storage_container.containers : container.name]
 }
+
+output "storage_account_connection_string" {
+  description = "A Connection String principal para a Storage Account."
+  value       = azurerm_storage_account.storage.primary_connection_string
+  sensitive   = true 
+}
