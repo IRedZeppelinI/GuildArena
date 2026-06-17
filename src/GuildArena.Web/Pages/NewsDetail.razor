@@ -1,11 +1,23 @@
 ﻿@page "/news/{Id:int}"
 @using GuildArena.Shared.DTOs.News
 @inject HttpClient Http
+@inject NavigationManager NavManager
 
-<PageTitle>@(_article?.Title ?? "Loading News...")</PageTitle>
+<PageTitle>@(_article?.Title ?? "Loading...")</PageTitle>
 
 <div class="container mt-4 text-light pb-5">
-    <a href="/" class="btn btn-outline-secondary mb-4">← Back to Home</a>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="/" class="btn btn-outline-secondary">← Back to Home</a>
+
+        <!-- BOTOES DE ADMIN -->
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div>
+                    <button class="btn btn-outline-danger" @onclick="PromptDelete">🗑️ Delete</button>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </div>
 
     @if (_isLoading)
     {
@@ -36,12 +48,31 @@
     }
 </div>
 
+<!-- Modal de Confirmação -->
+@if (_showDeleteModal)
+{
+    <div class="modal-backdrop" @onclick="() => _showDeleteModal = false">
+        <div class="modal-content-custom" @onclick:stopPropagation="true">
+            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Delete Article?</h4>
+            <p class="text-light">This action cannot be undone.</p>
+            <div class="d-flex justify-content-center mt-4 gap-3">
+                <button class="btn btn-secondary px-4" @onclick="() => _showDeleteModal = false">Cancel</button>
+                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmDelete" disabled="@_isDeleting">
+                    @(_isDeleting ? "Deleting..." : "Yes, Delete")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     [Parameter]
     public int Id { get; set; }
 
     private NewsArticleDetailDto? _article;
     private bool _isLoading = true;
+    private bool _showDeleteModal = false;
+    private bool _isDeleting = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -49,13 +80,27 @@
         {
             _article = await Http.GetFromJsonAsync<NewsArticleDetailDto>($"api/news/{Id}");
         }
-        catch
+        catch { _article = null; }
+        finally { _isLoading = false; }
+    }
+
+    private void PromptDelete() => _showDeleteModal = true;
+
+    private async Task ConfirmDelete()
+    {
+        _isDeleting = true;
+        try
         {
-            _article = null;
+            var response = await Http.DeleteAsync($"api/news/{Id}");
+            if (response.IsSuccessStatusCode)
+            {
+                NavManager.NavigateTo("/");
+            }
         }
         finally
         {
-            _isLoading = false;
+            _isDeleting = false;
+            _showDeleteModal = false;
         }
     }
 }

@@ -36,4 +36,16 @@ public class NewsRepository : INewsRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id && a.IsPublished, ct);
     }
+
+    public async Task UpdateAsync(NewsArticle article, CancellationToken ct = default)
+    {
+        _dbContext.NewsArticles.Update(article);
+        await _dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task DeleteAsync(NewsArticle article, CancellationToken ct = default)
+    {
+        _dbContext.NewsArticles.Remove(article);
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

@@ -59,6 +59,17 @@ public class NewsController : BaseApiController
         var result = await _mediator.Send(command);
         return HandleResult(result);
     }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteNews(int id)
+    {
+        var result = await _mediator.Send(new GuildArena.Application.News.DeleteNews.DeleteNewsCommand(id));
+        return HandleResult(result);
+    }
+
+    // NOTA: Para edição completa (PUT) sugiro omitir a imagem por enquanto para simplificar, 
+    // ou fazeres uma lógica igual ao POST mas a chamar um UpdateNewsCommand.
 }
 
 // Request específico da API para aceitar Multipart Form Data
