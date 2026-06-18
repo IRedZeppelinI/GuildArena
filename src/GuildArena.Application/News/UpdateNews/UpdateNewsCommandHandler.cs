@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 
 namespace GuildArena.Application.News.UpdateNews;
 
+/// <summary>
+/// Handles updating an existing news article, allowing text and image modifications.
+/// </summary>
 public class UpdateNewsCommandHandler : IRequestHandler<UpdateNewsCommand, Result>
 {
     private readonly INewsRepository _newsRepo;
@@ -22,8 +25,16 @@ public class UpdateNewsCommandHandler : IRequestHandler<UpdateNewsCommand, Resul
         _logger = logger;
     }
 
+    /// <summary>
+    /// Updates the title, summary, content and optionally the image of an existing news article.
+    /// </summary>
+    /// <param name="request">The command containing the article ID and updated data.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A <see cref="Result"/> indicating success or a not-found error.</returns>
     public async Task<Result> Handle(UpdateNewsCommand request, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var article = await _newsRepo.GetPublishedByIdAsync(request.Id, cancellationToken);
 
         if (article == null)
