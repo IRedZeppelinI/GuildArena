@@ -21,3 +21,15 @@
     background-position: center;
     border-bottom: 1px solid #444;
 }
+
+/* Correção do contraste do Summary */
+.news-card-summary {
+    color: #e0e0e0; 
+    opacity: 0.85;
+    line-height: 1.5;
+}
+
+/* Correção da Data no rodapé para não ficar invisível */
+.news-card-date {
+    color: #adb5bd; /* Um cinzento mais claro que o text-muted normal */
+}

@@ -1,0 +1,118 @@
+﻿@page "/admin/news/create"
+@attribute [Authorize(Roles = "Admin")]
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<PageTitle>Create News Article</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-warning mb-0">Post New Announcement</h2>
+        <a href="/" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+
+    @if (_error != null)
+    {
+        <div class="alert alert-danger p-2 border-danger shadow-sm">@_error</div>
+    }
+
+    <div class="card bg-dark border-secondary shadow-lg">
+        <div class="card-body p-4">
+            <div class="mb-3">
+                <label class="form-label text-info fw-bold">Title</label>
+                <input class="form-control bg-secondary text-light border-dark" @bind="_title" placeholder="Enter the news title..." />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-info fw-bold">Summary (Homepage Card)</label>
+                <textarea class="form-control bg-secondary text-light border-dark" rows="2" @bind="_summary" placeholder="A short description for the homepage card..."></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label text-info fw-bold">Full Content</label>
+                <textarea class="form-control bg-secondary text-light border-dark" rows="8" @bind="_content" placeholder="Write the full article here..."></textarea>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-info fw-bold">Header Image (Optional)</label>
+                <InputFile class="form-control bg-secondary text-light border-dark" OnChange="HandleFileSelected" accept="image/png, image/jpeg, image/webp" />
+                <div class="small text-muted mt-1">Recommended format: JPG or PNG (Max 5MB).</div>
+            </div>
+
+            <button class="btn btn-warning w-100 fw-bold fs-5 py-2 mt-2 shadow" disabled="@_isSubmitting" @onclick="SubmitAsync">
+                @(_isSubmitting ? "Uploading & Publishing..." : "Publish Article")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _title = "";
+    private string _summary = "";
+    private string _content = "";
+    private IBrowserFile? _selectedFile;
+
+    private bool _isSubmitting = false;
+    private string? _error;
+
+    private void HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _error = null;
+    }
+
+    private async Task SubmitAsync()
+    {
+        // 1. Validação simples
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_summary) || string.IsNullOrWhiteSpace(_content))
+        {
+            _error = "Title, Summary, and Content are required fields.";
+            return;
+        }
+
+        _isSubmitting = true;
+        _error = null;
+
+        try
+        {
+            // 2. Preparar os dados para envio via MultipartFormData (suporta texto + ficheiros binários)
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_title), "Title");
+            content.Add(new StringContent(_summary), "Summary");
+            content.Add(new StringContent(_content), "Content");
+
+            // 3. Adicionar a imagem (se existir)
+            if (_selectedFile != null)
+            {
+                // Limite de segurança do Blazor: 5MB
+                var maxAllowedSize = 1024 * 1024 * 5;
+                var fileContent = new StreamContent(_selectedFile.OpenReadStream(maxAllowedSize));
+
+                // Garantir que os headers de MIME type vão corretos para a API
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
+                content.Add(fileContent, "Image", _selectedFile.Name);
+            }
+
+            // 4. Enviar para a API
+            var response = await Http.PostAsync("api/news", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Sucesso: Voltar à Homepage para ver a nova notícia!
+                NavManager.NavigateTo("/");
+            }
+            else
+            {
+                _error = "Failed to create article. Please check the server logs.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "Connection error occurred while uploading. Ensure the image is under 5MB.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}
