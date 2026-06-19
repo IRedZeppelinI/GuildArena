@@ -23,3 +23,20 @@ output "storage_account_connection_string" {
   value       = azurerm_storage_account.storage.primary_connection_string
   sensitive   = true 
 }
+
+# --- ACA and Static Web App ---
+
+output "container_app_api_name" {
+  description = "Nome da Container App da API"
+  value       = azurerm_container_app.api.name
+}
+
+output "api_url" {
+  description = "O URL público gerado para a API"
+  value       = "https://${azurerm_container_app.api.ingress[0].fqdn}"
+}
+
+output "blazor_url" {
+  description = "O URL público gerado para Static Web App"
+  value       = "https://${azurerm_static_web_app.blazor.default_host_name}"
+}

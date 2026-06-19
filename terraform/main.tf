@@ -42,3 +42,94 @@ resource "azurerm_storage_container" "containers" {
   # Define o acesso como "Blob (anonymous read access for blobs only)"
   container_access_type = "blob" 
 }
+
+# ---------------------------------------------------------------------------
+# INFRAESTRUTURA DA API (Azure Container Apps)
+# ---------------------------------------------------------------------------
+
+# 1. Log Analytics Workspace
+resource "azurerm_log_analytics_workspace" "law" {
+  name                = "law-guildarena"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  tags                = var.common_tags
+}
+
+# 2. Container App Environment
+resource "azurerm_container_app_environment" "env" {
+  name                       = "cae-guildarena"
+  location                   = azurerm_resource_group.rg.location
+  resource_group_name        = azurerm_resource_group.rg.name
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
+  tags                       = var.common_tags
+}
+
+# 3. Container App - API (Backend)
+resource "azurerm_container_app" "api" {
+  name                         = "ca-guildarena-api"
+  container_app_environment_id = azurerm_container_app_environment.env.id
+  resource_group_name          = azurerm_resource_group.rg.name
+  revision_mode                = "Single"
+  tags                         = var.common_tags
+
+  template {
+    container {
+      name   = "api"
+      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest" # Imagem temporária
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name        = "ConnectionStrings__AzureBlobStorage"
+        secret_name = "storage-connection-string"
+      }
+      env {
+        name        = "ConnectionStrings__DefaultConnection" 
+        secret_name = "neon-connection-string"
+      }
+      env {
+        name        = "ConnectionStrings__Redis" 
+        secret_name = "upstash-redis-string"
+      }
+    }
+  }
+
+  secret {
+    name  = "storage-connection-string"
+    value = azurerm_storage_account.storage.primary_connection_string
+  }
+  secret {
+    name  = "neon-connection-string"
+    value = var.neon_connection_string
+  }
+  secret {
+    name  = "upstash-redis-string"
+    value = var.upstash_redis_string
+  }
+
+  ingress {
+    allow_insecure_connections = false
+    external_enabled           = true
+    target_port                = 8080 
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# INFRAESTRUTURA DO BLAZOR WASM (Azure Static Web Apps )
+# ---------------------------------------------------------------------------
+
+resource "azurerm_static_web_app" "blazor" {
+  name                = "swa-guildarena-blazor"
+  resource_group_name = azurerm_resource_group.rg.name
+  # Nota: Static Web Apps tem regiões limitadas. WestEurope funciona perfeitamente.
+  location            = azurerm_resource_group.rg.location 
+  sku_tier            = "Free"
+  sku_size            = "Free"
+  tags                = var.common_tags
+}

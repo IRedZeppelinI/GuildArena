@@ -35,3 +35,15 @@ variable "blob_containers" {
     "modifiers"
   ]
 }
+
+variable "neon_connection_string" {
+  description = "A Connection String da base de dados PostgreSQL no Neon.tech"
+  type        = string
+  sensitive   = true
+}
+
+variable "upstash_redis_string" {
+  description = "A Connection String do Redis no Upstash"
+  type        = string
+  sensitive   = true
+}
