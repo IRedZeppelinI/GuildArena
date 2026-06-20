@@ -77,3 +77,4 @@ $RECYCLE.BIN/
 *.7z
 *Notes.txt
 *GuildArena.txt
+*.env
