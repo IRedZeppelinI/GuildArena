@@ -1,53 +1,73 @@
 version: '3.8'
 
+networks:
+  guildarena_net:
+    driver: bridge
+
 services:
-  # --- REDIS (Estado do Combate) ---
   redis:
     image: redis:alpine
-    container_name: guildarena-redis
     restart: unless-stopped
-    ports:
+    ports: 
       - "6379:6379"
-    volumes:
-      - redis_data:/data
+    networks: 
+      - guildarena_net
 
-  # --- REDIS INSIGHT (GUI para Redis) ---
-  redis-insight:
-    image: redis/redisinsight:latest
-    container_name: guildarena-redis-insight
-    restart: unless-stopped
-    ports:
-      - "5540:5540"
-    depends_on:
-      - redis
-
-  # --- POSTGRES (Dados Persistentes: Players, Guilds) ---
   postgres:
     image: postgres:latest
-    container_name: guildarena-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: GuildArenaDb
-    ports:
+    ports: 
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql
+    networks: 
+      - guildarena_net
 
-  # --- PGADMIN (GUI para Postgres) ---
+  redis-insight:
+    image: redis/redisinsight:latest
+    ports: 
+      - "5540:5540"
+    networks: 
+      - guildarena_net
+    depends_on: 
+      - redis
+
   pgadmin:
     image: dpage/pgadmin4
-    container_name: guildarena-pgadmin
-    restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@guildarena.com
       PGADMIN_DEFAULT_PASSWORD: password123
-    ports:
+    ports: 
       - "5050:80"
+    networks: 
+      - guildarena_net
+    depends_on: 
+      - postgres
+
+  guildarena-api:
+    image: guildarena-api:latest
+    build: 
+      context: .
+      dockerfile: src/GuildArena.Api/Dockerfile
+    ports:
+      - "5016:8080"
+    networks:
+      - guildarena_net
+    profiles: 
+      - apps
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=${ConnectionStrings__DefaultConnection:-Host=postgres;Port=5432;Database=GuildArenaDb;Username=admin;Password=password123}
+      - ConnectionStrings__Redis=${ConnectionStrings__Redis:-redis:6379}
+      - ConnectionStrings__AzureBlobStorage=${ConnectionStrings__AzureBlobStorage}
     depends_on:
       - postgres
+      - redis
 
 volumes:
   redis_data:
   postgres_data:
+    external: true
+    name: guildarena_postgres_data

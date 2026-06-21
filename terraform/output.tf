@@ -40,3 +40,10 @@ output "blazor_url" {
   description = "O URL público gerado para Static Web App"
   value       = "https://${azurerm_static_web_app.blazor.default_host_name}"
 }
+
+
+output "swa_deployment_token" {
+  description = "O token necessário para o GitHub Actions fazer deploy no Static Web App"
+  value       = azurerm_static_web_app.blazor.api_key
+  sensitive   = true 
+}
