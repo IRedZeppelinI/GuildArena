@@ -1,0 +1,120 @@
+name: Deploy GuildArena (API & Blazor)
+
+on:
+  # push:
+  #   branches: [ "main" ]
+  workflow_dispatch:
+
+# Permissões necessárias para o dorny/test-reporter conseguir escrever os resultados no UI do GitHub
+permissions:
+  checks: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  # ==========================================
+  # API BUILD, TEST & DEPLOY
+  # ==========================================
+  deploy-api:
+    runs-on: ubuntu-latest # testar sem self-hosted
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    # Restaurar as ferramentas locais baseado em dotnet-tools.json
+    - name: Restore .NET local tools
+      run: dotnet tool restore
+
+    # Correr Testes Unitários gerando o ficheiro .trx
+    - name: Run Unit Tests
+      
+      run: dotnet test ./tests/ --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+    # Guardar os ficheiros .trx para download manual (Artifacts)
+    - name: Publish Test Results Artifact
+      if: always() # Garante que guarda os logs mesmo se um teste falhar
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: '**/*.trx'
+        retention-days: 7
+
+    # Mostrar o gráfico de resultados no interface do GitHub Actions
+    - name: Report Test Results
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: Relatório de Testes
+        path: '**/*.trx'
+        reporter: dotnet-trx
+        fail-on-error: 'false'
+
+    # Correr as migrações na Base de Dados Neon
+    - name: Run EF Core Migrations
+      env:
+        ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
+      run: dotnet ef database update --project ./src/GuildArena.Infrastructure/GuildArena.Infrastructure.csproj --startup-project ./src/GuildArena.Api/GuildArena.Api.csproj
+
+    # Login no Docker Hub
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # Build e Push da Imagem
+    - name: Build and push API Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./src/GuildArena.Api/Dockerfile
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/guildarena:latest
+
+    # Login no Azure
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}"}'
+
+    # Atualizar o Container App
+    - name: Deploy API to Azure Container Apps
+      run: |
+        az containerapp update \
+          --name ca-guildarena-api \
+          --resource-group rg-guild-arena \
+          --image ${{ secrets.DOCKERHUB_USERNAME }}/guildarena:latest
+
+  # ==========================================
+  # BLAZOR WASM BUILD & DEPLOY
+  # ==========================================
+  deploy-blazor:
+    runs-on: ubuntu-latest # Se encravar, mudar isto para: self-hosted
+    needs: deploy-api # Só faz deploy do Frontend se a API compilar, testar e for enviada com sucesso
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    # Injeta a variável dinamicamente a partir do Secret do GitHub
+    - name: Inject Production API URL
+      run: |
+        sed -i 's|https://localhost:7168/|${{ secrets.PRODUCTION_API_URL }}|g' src/GuildArena.Web/wwwroot/appsettings.json
+
+    - name: Build and Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOYMENT_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "src/GuildArena.Web"
+        output_location: "wwwroot"
