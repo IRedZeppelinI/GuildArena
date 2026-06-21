@@ -33,7 +33,7 @@ jobs:
     # Correr Testes Unitários gerando o ficheiro .trx
     - name: Run Unit Tests
       
-      run: dotnet test ./tests/ --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      run: dotnet test GuildArena.sln --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
     # Guardar os ficheiros .trx para download manual (Artifacts)
     - name: Publish Test Results Artifact
