@@ -58,6 +58,7 @@ jobs:
     - name: Run EF Core Migrations
       env:
         ConnectionStrings__DefaultConnection: ${{ secrets.NEON_CONNECTION_STRING }}
+        ConnectionStrings__Redis: ${{ secrets.UPSTASH_REDIS_STRING }}
       run: dotnet ef database update --project ./src/GuildArena.Infrastructure/GuildArena.Infrastructure.csproj --startup-project ./src/GuildArena.Api/GuildArena.Api.csproj
 
     # Login no Docker Hub
