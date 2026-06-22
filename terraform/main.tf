@@ -97,6 +97,14 @@ resource "azurerm_container_app" "api" {
         name  = "AllowedOrigins__0"        
         value = "https://${azurerm_static_web_app.blazor.default_host_name}"
       }
+      env {
+        name  = "AllowedOrigins__1"
+        value = "https://www.guildarena.xyz" 
+      }
+      env {
+        name  = "AllowedOrigins__2"
+        value = "https://guildarena.xyz" 
+      }
     }
   }
 
