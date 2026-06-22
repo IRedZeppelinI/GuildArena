@@ -93,6 +93,10 @@ resource "azurerm_container_app" "api" {
         name        = "ConnectionStrings__Redis" 
         secret_name = "upstash-redis-string"
       }
+      env {
+        name  = "AllowedOrigins__0"        
+        value = "https://${azurerm_static_web_app.blazor.default_host_name}"
+      }
     }
   }
 

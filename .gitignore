@@ -27,16 +27,11 @@ _ReSharper*/
 
 # Configuração e Segredos Locais
 # -------------------------------------------------------------------
-# É uma boa prática ignorar as configurações de desenvolvimento para
-# evitar partilhar connection strings locais ou outros segredos.
-appsettings.Development.json
 *.secrets.json
 secrets.json
 
 # Ficheiros de Pacotes NuGet
 # -------------------------------------------------------------------
-# O gestor de pacotes NuGet moderno restaura os pacotes com base
-# no ficheiro .csproj, por isso não precisamos de guardar os pacotes.
 packages/
 *.nupkg
 *.nuget.props
