@@ -47,3 +47,16 @@ variable "upstash_redis_string" {
   type        = string
   sensitive   = true
 }
+
+# Conta Admin
+variable "admin_email" {
+  description = "Email do Administrador de Produção"
+  type        = string
+  sensitive   = true
+}
+
+variable "admin_password" {
+  description = "Password do Administrador de Produção"
+  type        = string
+  sensitive   = true
+}

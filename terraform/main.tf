@@ -105,6 +105,14 @@ resource "azurerm_container_app" "api" {
         name  = "AllowedOrigins__2"
         value = "https://guildarena.xyz" 
       }
+      env {
+        name        = "AdminSetup__Email"
+        secret_name = "admin-email"
+      }
+      env {
+        name        = "AdminSetup__Password"
+        secret_name = "admin-password"
+      }
     }
   }
 
@@ -119,6 +127,14 @@ resource "azurerm_container_app" "api" {
   secret {
     name  = "upstash-redis-string"
     value = var.upstash_redis_string
+  }
+  secret {
+    name  = "admin-email"
+    value = var.admin_email
+  }
+  secret {
+    name  = "admin-password"
+    value = var.admin_password
   }
 
   ingress {
