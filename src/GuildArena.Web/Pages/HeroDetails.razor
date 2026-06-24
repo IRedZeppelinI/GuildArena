@@ -309,7 +309,7 @@
             _hero = heroTask.Result;
             _tavernInfo = tavernTask.Result;
         }
-        catch (Exception ex) 
+        catch (Exception) 
         { 
             _errorMessage = "Failed to load hero details. They might not exist."; 
         }

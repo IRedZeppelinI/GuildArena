@@ -56,8 +56,8 @@ public static class DataSeeder
         IConfiguration config)
     {
         // Vai buscar à configuração (Variáveis de Ambiente em Prod, ou hardcoded em Dev)
-        string adminEmail = config["AdminSetup:Email"] ?? (isDevelopment ? "dev@guildarena.com" : null);
-        string adminPass = config["AdminSetup:Password"] ?? (isDevelopment ? "Password123!" : null);
+        string adminEmail = config["AdminSetup:Email"] ?? (isDevelopment ? "dev@guildarena.com" : null)!;
+        string adminPass = config["AdminSetup:Password"] ?? (isDevelopment ? "Password123!" : null)!;
 
         if (string.IsNullOrEmpty(adminEmail) || string.IsNullOrEmpty(adminPass))
         {

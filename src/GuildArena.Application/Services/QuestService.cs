@@ -42,7 +42,7 @@ public class QuestService : IQuestService
     // ─── public members ────────────────────────────────────────────
 
     /// <inheritdoc />
-    public async Task GrantDailyQuestsIfNeededAsync(Guild guild)
+    public Task GrantDailyQuestsIfNeededAsync(Guild guild)
     {
         var today = DateTime.UtcNow.Date;
 
@@ -50,7 +50,7 @@ public class QuestService : IQuestService
         if (guild.LastDailyQuestGrantedAt.HasValue &&
             guild.LastDailyQuestGrantedAt.Value.Date >= today)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         // Quantos slots livres temos?
@@ -61,10 +61,10 @@ public class QuestService : IQuestService
         {
             // O Log está cheio, mas atualizamos a data para não voltar a verificar hoje
             guild.LastDailyQuestGrantedAt = DateTime.UtcNow;
-            return;
+            return Task.CompletedTask;
         }
 
-        //  1 Quest por Dia (Acumula se não fizer login) 
+        // 1 Quest por Dia (Acumula se não fizer login) 
         int questsToGrant = 1;
 
         if (guild.LastDailyQuestGrantedAt.HasValue)
@@ -80,7 +80,7 @@ public class QuestService : IQuestService
         if (questsToGrant <= 0)
         {
             guild.LastDailyQuestGrantedAt = DateTime.UtcNow;
-            return;
+            return Task.CompletedTask;
         }
         // ------------------------------------------------------------------
 
@@ -110,35 +110,37 @@ public class QuestService : IQuestService
 
         guild.LastDailyQuestGrantedAt = DateTime.UtcNow;
         _logger.LogInformation("Granted {Count} daily quests to Guild {GuildId}.", granted, guild.Id);
+
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public async Task<Result> RerollQuestAsync(Guild guild, int activeQuestId)
+    public Task<Result> RerollQuestAsync(Guild guild, int activeQuestId)
     {
         var quest = guild.ActiveQuests.FirstOrDefault(q => q.Id == activeQuestId);
         if (quest == null)
         {
-            return Result.Failure(new Error(
-                "Quests.NotFound", "Quest not found.", ErrorType.NotFound));
+            return Task.FromResult<Result>(Result.Failure(new Error(
+                "Quests.NotFound", "Quest not found.", ErrorType.NotFound)));
         }
 
         if (quest.IsCompleted)
         {
-            return Result.Failure(new Error(
-                "Quests.AlreadyCompleted", "Cannot reroll a completed quest.", ErrorType.Validation));
+            return Task.FromResult<Result>(Result.Failure(new Error(
+                "Quests.AlreadyCompleted", "Cannot reroll a completed quest.", ErrorType.Validation)));
         }
 
         var today = DateTime.UtcNow.Date;
         if (guild.LastQuestRerollAt.HasValue && guild.LastQuestRerollAt.Value.Date >= today)
         {
-            return Result.Failure(new Error(
-                "Quests.RerollUsed", "You have already rerolled a quest today.", ErrorType.Conflict));
+            return Task.FromResult<Result>(Result.Failure(new Error(
+                "Quests.RerollUsed", "You have already rerolled a quest today.", ErrorType.Conflict)));
         }
 
         // 1. Obtém as quests que a guilda pode fazer
         var candidatePool = GetFilteredQuestDefinitions(guild);
 
-        // 2. Filtra para não saírem quests que o jogador já tem ativas (incluindo a que ele está a fazer Reroll)
+        // 2. Filtra para não saírem quests que o jogador já tem ativas
         var activeDefIds = guild.ActiveQuests
             .Where(q => !q.IsCompleted)
             .Select(q => q.QuestDefinitionId)
@@ -151,8 +153,8 @@ public class QuestService : IQuestService
         if (candidatePool.Count == 0)
         {
             _logger.LogWarning("No valid quests to reroll into for Guild {GuildId}.", guild.Id);
-            return Result.Failure(new Error(
-                "Quests.NoValidPool", "No available quests match your guild's current state.", ErrorType.Validation));
+            return Task.FromResult<Result>(Result.Failure(new Error(
+                "Quests.NoValidPool", "No available quests match your guild's current state.", ErrorType.Validation)));
         }
 
         // 3. Escolhe a nova quest e ATUALIZA a existente
@@ -166,14 +168,14 @@ public class QuestService : IQuestService
         _logger.LogInformation("Guild {GuildId} rerolled quest {OldId}. New: {NewId}",
             guild.Id, quest.Id, pickedDef.Id);
 
-        return Result.Success();
+        return Task.FromResult(Result.Success());
     }
 
     /// <inheritdoc />
-    public async Task ProcessMatchEndAsync(Guild guild, Match match, bool isWinner)
+    public Task ProcessMatchEndAsync(Guild guild, Match match, bool isWinner)
     {
         var activeQuests = guild.ActiveQuests.Where(q => !q.IsCompleted).ToList();
-        if (!activeQuests.Any()) return;
+        if (!activeQuests.Any()) return Task.CompletedTask;
 
         var allDefs = _questRepo.GetAllDefinitions();
 
@@ -186,7 +188,7 @@ public class QuestService : IQuestService
             _logger.LogWarning(
                 "Guild {GuildId} not found among match participants. Skipping quest progress.",
                 guild.Id);
-            return;
+            return Task.CompletedTask;
         }
 
         foreach (var quest in activeQuests)
@@ -239,6 +241,8 @@ public class QuestService : IQuestService
                 }
             }
         }
+
+        return Task.CompletedTask;
     }
 
     // ─── private helpers ────────────────────────────────────────────

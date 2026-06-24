@@ -61,7 +61,7 @@ public class JsonAbilityDefinitionRepository : IAbilityDefinitionRepository
             try
             {
                 var jsonContent = File.ReadAllText(filePath);
-                var list = JsonSerializer.Deserialize<List<AbilityDefinition>>(jsonContent, options);
+                var list = JsonSerializer.Deserialize<List<AbilityDefinition>?>(jsonContent, options);
 
                 if (list == null) continue;
 

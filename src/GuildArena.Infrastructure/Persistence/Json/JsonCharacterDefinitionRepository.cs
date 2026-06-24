@@ -53,7 +53,7 @@ public class JsonCharacterDefinitionRepository : ICharacterDefinitionRepository
             try
             {
                 var jsonContent = File.ReadAllText(filePath);
-                var list = JsonSerializer.Deserialize<List<CharacterDefinition>>(jsonContent, options);
+                var list = JsonSerializer.Deserialize<List<CharacterDefinition>?>(jsonContent, options);
 
                 if (list == null) continue;
 

@@ -43,7 +43,7 @@ public class JsonDungeonDefinitionRepository : IDungeonDefinitionRepository
         foreach (var file in files)
         {
             string content = File.ReadAllText(file);
-            var definitions = JsonSerializer.Deserialize<List<DungeonDefinition>>(content, serializerOptions);
+            var definitions = JsonSerializer.Deserialize<List<DungeonDefinition>?>(content, serializerOptions);
             if (definitions != null)
             {
                 foreach (var def in definitions)

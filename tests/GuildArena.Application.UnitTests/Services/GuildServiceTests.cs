@@ -106,10 +106,10 @@ public class GuildServiceTests
     [InlineData("  ")]
     [InlineData("AB")]
     [InlineData(null)]
-    public async Task CreateGuildAsync_WhenNameIsInvalid_ShouldReturnValidationFailure(string invalidName)
+    public async Task CreateGuildAsync_WhenNameIsInvalid_ShouldReturnValidationFailure(string? invalidName)
     {
         // ACT
-        var result = await _service.CreateGuildAsync("user-123", null, invalidName);
+        var result = await _service.CreateGuildAsync("user-123", null, invalidName!);
 
         // ASSERT
         result.IsFailure.ShouldBeTrue();

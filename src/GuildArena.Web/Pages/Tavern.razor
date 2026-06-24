@@ -353,7 +353,7 @@
             _errorMessage = null;
             _shopData = await Http.GetFromJsonAsync<TavernShopDto>("api/tavern");
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _errorMessage = "Failed to communicate with the Tavern. The barkeep might be sleeping.";
         }

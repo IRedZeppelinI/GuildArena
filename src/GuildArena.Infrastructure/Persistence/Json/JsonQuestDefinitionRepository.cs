@@ -34,7 +34,7 @@ public class JsonQuestDefinitionRepository : IQuestDefinitionRepository
 
         string json = File.ReadAllText(filePath);
         var jsonOptions = JsonOptionsFactory.Create();
-        var list = JsonSerializer.Deserialize<List<QuestDefinition>>(json, jsonOptions)
+        var list = JsonSerializer.Deserialize<List<QuestDefinition>?>(json, jsonOptions)
                    ?? new List<QuestDefinition>();
 
         // Fail Fast on duplicate IDs

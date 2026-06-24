@@ -47,7 +47,7 @@ public class JsonRaceDefinitionRepository : IRaceDefinitionRepository
         {
             var jsonContent = File.ReadAllText(filePath);
             var serializerOptions = JsonOptionsFactory.Create();
-            var list = JsonSerializer.Deserialize<List<RaceDefinition>>(jsonContent, serializerOptions);
+            var list = JsonSerializer.Deserialize<List<RaceDefinition>?>(jsonContent, serializerOptions);
 
             if (list == null) throw new Exception("JSON deserialization returned null.");
 

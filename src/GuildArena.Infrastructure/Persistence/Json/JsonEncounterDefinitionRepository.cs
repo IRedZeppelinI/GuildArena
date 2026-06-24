@@ -51,7 +51,7 @@ public class JsonEncounterDefinitionRepository : IEncounterDefinitionRepository
             try
             {
                 var jsonContent = File.ReadAllText(filePath);
-                var list = JsonSerializer.Deserialize<List<EncounterDefinition>>(jsonContent, options);
+                var list = JsonSerializer.Deserialize<List<EncounterDefinition>?>(jsonContent, options);
 
                 if (list == null) continue;
 

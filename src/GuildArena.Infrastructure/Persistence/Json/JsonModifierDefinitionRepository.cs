@@ -50,7 +50,7 @@ public class JsonModifierDefinitionRepository : IModifierDefinitionRepository
             try
             {
                 var jsonContent = File.ReadAllText(filePath);
-                var list = JsonSerializer.Deserialize<List<ModifierDefinition>>(jsonContent, options);
+                var list = JsonSerializer.Deserialize<List<ModifierDefinition>?>(jsonContent, options);
 
                 if (list == null) continue;
 
