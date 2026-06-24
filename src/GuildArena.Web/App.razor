@@ -1,21 +1,16 @@
-﻿@* <Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
- *@
-
- <CascadingAuthenticationState>
+﻿<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+
+                <Authorizing>
+                    <div class="container mt-5 text-center">
+                        <div class="spinner-border text-warning mb-3" role="status"></div>
+                        <h3 class="text-warning fw-bold" style="font-family: 'Cinzel', serif;">Waking up the server...</h3>
+                        <p class="text-light">Preparing the Arena. This might take a few seconds on the first visit.</p>
+                    </div>
+                </Authorizing>
+
                 <NotAuthorized>
                     <div class="container mt-5 text-center">
                         <h3 class="text-danger fw-bold">Access Denied</h3>

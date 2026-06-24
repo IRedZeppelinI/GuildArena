@@ -14,12 +14,12 @@
         <!-- Top Row agora usa justify-content-between para empurrar extremos -->
         <div class="top-row px-4 auth d-flex justify-content-between align-items-center">
             <AuthorizeView>
-                <Authorized>
-                    <!-- ESQUERDA: Gold -->
-                    @* <div class="gold-container d-flex align-items-center bg-dark px-3 py-1 rounded border border-warning">
-                        <span class="text-warning fw-bold me-2">500</span>
-                        <span title="Gold">🪙</span>
-                    </div> *@
+
+                <Authorizing>
+                    <div class="ms-auto text-warning small fst-italic">Connecting to server...</div>
+                </Authorizing>
+
+                <Authorized>                    
 
                     <!-- DIREITA: User e Logout -->
                     <div class="user-profile ms-auto d-flex align-items-center">
