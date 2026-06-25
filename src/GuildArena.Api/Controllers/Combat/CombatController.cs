@@ -1,13 +1,17 @@
 ﻿using GuildArena.Api.Mappers;
+using GuildArena.Application.Abstractions;
 using GuildArena.Application.Combat.EndTurn;
 using GuildArena.Application.Combat.ExchangeEssence;
 using GuildArena.Application.Combat.ExecuteAbility;
+using GuildArena.Application.Combat.Reconnection;
 using GuildArena.Application.Combat.StartCombat;
 using GuildArena.Application.Combat.Surrender;
+using GuildArena.Shared.DTOs.Combat;
 using GuildArena.Shared.Requests;
 using GuildArena.Shared.Responses;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace GuildArena.Api.Controllers;
 
@@ -154,5 +158,47 @@ public class CombatController : BaseApiController
         var result = await _mediator.Send(command);
 
         return HandleResult(result);
+    }
+
+
+    /// <summary>
+    /// Checks if the current user has an active, unfinished combat session in Redis.
+    /// </summary>
+    [HttpGet("active")]
+    [ProducesResponseType(typeof(ActiveCombatDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveCombat()
+    {
+        var query = new GetActiveCombatQuery();
+        var result = await _mediator.Send(query);
+
+        return HandleResult(result);
+    }
+
+    /// <summary>
+    /// Fetches the current state of an ongoing combat for reconnection purposes.
+    /// </summary>
+    [HttpGet("{combatId}")]
+    [ProducesResponseType(typeof(StartCombatResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCombatState(string combatId)
+    {
+        var query = new GetReconnectedCombatStateQuery { CombatId = combatId };
+
+        var result = await _mediator.Send(query);
+
+        
+        if (result.IsFailure)
+        {
+            return HandleResult(result);
+        }
+
+        var response = new StartCombatResponse
+        {
+            CombatId = result.Value.CombatId,
+            InitialLogs = result.Value.InitialLogs,
+            InitialState = _mapper.MapToDto(result.Value.InitialState)
+        };
+
+        return Ok(response);
     }
 }

@@ -174,6 +174,8 @@ public class EnterDungeonStageCommandHandler : IRequestHandler<EnterDungeonStage
             await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
         }
 
+        await _combatStateRepo.SetPlayerActiveCombatAsync(userId, combatId);
+
         return new StartCombatResult
         {
             CombatId = combatId,

@@ -270,5 +270,54 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         }
     }
 
+    public async Task<ActiveCombatDto?> CheckActiveCombatAsync()
+    {
+        try
+        {
+            var response = await _http.GetAsync("api/combat/active");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ActiveCombatDto>();
+                return result;
+            }
+        }
+        catch { /* Ignora erros de rede na reconexão silenciosa */ }
+        return null;
+    }
+
+    public async Task RejoinCombatAsync(string combatId)
+    {
+        IsConnecting = true;
+        NotifyStateChanged();
+
+        try
+        {
+            var response = await _http.GetAsync($"api/combat/{combatId}");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
+                if (result != null)
+                {
+                    CombatId = result.CombatId;
+                    _battleLogs.Clear();
+                    _battleLogs.AddRange(result.InitialLogs);
+                    GameState = result.InitialState;
+
+                    await ConnectToSignalRAsync(CombatId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rejoin combat.");
+        }
+        finally
+        {
+            IsConnecting = false;
+            NotifyStateChanged();
+        }
+    }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 }

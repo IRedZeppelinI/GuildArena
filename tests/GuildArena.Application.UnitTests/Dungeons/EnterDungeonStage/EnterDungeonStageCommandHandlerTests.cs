@@ -169,6 +169,9 @@ public class EnterDungeonStageCommandHandlerTests
         await _combatStateRepo.Received(1).SaveAsync(Arg.Any<string>(), Arg.Any<GameState>());
         // AI queue should NOT be enqueued because human goes first
         await _aiTurnQueue.DidNotReceive().EnqueueAsync(Arg.Any<AiTurnRequest>(), Arg.Any<CancellationToken>());
+
+        // Valida que o ponteiro Redis foi criado para o jogador!
+        await _combatStateRepo.Received(1).SetPlayerActiveCombatAsync("user1", result.Value.CombatId);
     }
 
     [Fact]
@@ -222,5 +225,7 @@ public class EnterDungeonStageCommandHandlerTests
         await _aiTurnQueue.Received(1).EnqueueAsync(
             Arg.Is<AiTurnRequest>(r => r.CombatId == result.Value.CombatId && r.AiPlayerId == -1),
             Arg.Any<CancellationToken>());
+
+        await _combatStateRepo.Received(1).SetPlayerActiveCombatAsync("user1", result.Value.CombatId);
     }
 }

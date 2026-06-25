@@ -1,9 +1,12 @@
 ﻿@inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using GuildArena.Web.Security
+@using GuildArena.Web.State
+@using GuildArena.Domain.Enums.Matches
 @inject AuthenticationStateProvider AuthState
 @inject HttpClient Http
 @inject NavigationManager NavManager
+@inject ICombatStateService CombatState
 
 <div class="page game-container">
     <div class="sidebar">
@@ -11,7 +14,7 @@
     </div>
 
     <main class="main-content">
-        <!-- Top Row agora usa justify-content-between para empurrar extremos -->
+        <!-- Top Row usa justify-content-between para empurrar extremos -->
         <div class="top-row px-4 auth d-flex justify-content-between align-items-center">
             <AuthorizeView>
 
@@ -41,6 +44,36 @@
 </div>
 
 @code {
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            // 1. Sempre que a SPA carrega (F5), perguntamos à API se há combate ativo.
+            // (Isto só corre 1x no carregamento da página, não corre em navegação normal de menus)
+            var activeCombat = await CombatState.CheckActiveCombatAsync();
+
+            if (activeCombat != null && activeCombat.HasActiveCombat)
+            {
+                // 2. O Blazor perdeu a memória do combate (porque fizemos F5)?
+                if (string.IsNullOrEmpty(CombatState.CombatId))
+                {
+                    // Descarrega o estado da API e liga o SignalR!
+                    await CombatState.RejoinCombatAsync(activeCombat.CombatId!);
+                }
+
+                // 3. Ele tentou ir para outra página que não a Arena?
+                if (!NavManager.Uri.Contains("/arena"))
+                {
+                    // Forçamos o regresso à arena!
+                    NavManager.NavigateTo("/arena");
+                }
+            }
+        }
+    }
+
+
     private async Task ExecuteLogout()
     {
         try

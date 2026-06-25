@@ -1,5 +1,6 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Application.Abstractions.Repositories;
+using GuildArena.Domain.Enums.Combat;
 using GuildArena.Domain.Gameplay;
 using GuildArena.Shared.DTOs.Combat;
 using Microsoft.Extensions.Logging;
@@ -35,6 +36,15 @@ public class CombatResolutionService : ICombatResolutionService
 
         // Clean up Redis combat state
         await _combatStateRepo.DeleteAsync(combatId);
+
+        var humanPlayers = state.Players.Where(p => p.Type == CombatPlayerType.Human);
+        foreach (var player in humanPlayers)
+        {
+            if (!string.IsNullOrEmpty(player.UserId))
+            {
+                await _combatStateRepo.ClearPlayerActiveCombatAsync(player.UserId);
+            }
+        }
 
         _logger.LogInformation("Combat {CombatId} resolved. Type: {MatchType}", combatId, state.MatchType);
 

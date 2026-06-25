@@ -27,4 +27,19 @@ public interface ICombatStateRepository
     /// </summary>
     /// <param name="combatId">The unique ID of the combat.</param>
     Task DeleteAsync(string combatId);
+
+    /// <summary>
+    /// Associates the user ID with an active combat.
+    /// </summary>
+    Task SetPlayerActiveCombatAsync(string userId, string combatId);
+
+    /// <summary>
+    /// Returns the combat ID the user is in, if one exists.
+    /// </summary>
+    Task<string?> GetPlayerActiveCombatAsync(string userId);
+
+    /// <summary>
+    /// Removes the association between the user and the combat (when it ends or the user quits).
+    /// </summary>
+    Task ClearPlayerActiveCombatAsync(string userId);
 }

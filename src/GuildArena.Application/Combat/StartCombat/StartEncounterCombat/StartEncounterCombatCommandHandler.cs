@@ -209,6 +209,8 @@ public class StartEncounterCombatCommandHandler : IRequestHandler<StartEncounter
             await _aiQueue.EnqueueAsync(aiRequest, cancellationToken);
         }
 
+        await _combatStateRepo.SetPlayerActiveCombatAsync(accountId, combatId);
+
         return new StartCombatResult
         {
             CombatId = combatId,

@@ -58,6 +58,29 @@ public class RedisCombatStateRepository : ICombatStateRepository
         var key = GetKey(combatId);
         await _database.KeyDeleteAsync(key);
     }
+        
+
+    public async Task SetPlayerActiveCombatAsync(string userId, string combatId)
+    {
+        var key = $"player_combat:{userId}";
+        // Guarda o ponteiro com o mesmo tempo de vida do combate
+        await _database.StringSetAsync(key, combatId, _timeToLive);
+    }
+
+    public async Task<string?> GetPlayerActiveCombatAsync(string userId)
+    {
+        var key = $"player_combat:{userId}";
+        RedisValue combatId = await _database.StringGetAsync(key);
+
+        return combatId.HasValue ? combatId.ToString() : null;
+    }
+
+    public async Task ClearPlayerActiveCombatAsync(string userId)
+    {
+        var key = $"player_combat:{userId}";
+        await _database.KeyDeleteAsync(key);
+    }
+
 
     // Método helper privado para garantir que as chaves têm um padrão
     private string GetKey(string combatId) => $"combat:{combatId}";

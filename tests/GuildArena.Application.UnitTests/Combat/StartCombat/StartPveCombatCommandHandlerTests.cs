@@ -112,6 +112,8 @@ public class StartPveCombatCommandHandlerTests
         ));
 
         await _aiQueueMock.DidNotReceiveWithAnyArgs().EnqueueAsync(default!);
+        // Valida que o ponteiro Redis foi criado para o jogador!
+        await _combatStateRepoMock.Received(1).SetPlayerActiveCombatAsync(accountId, startResult.CombatId);
     }
 
     [Fact]

@@ -55,4 +55,16 @@ public interface ICombatStateService
     Task DisconnectAsync();
 
     Task SurrenderAsync();
+
+
+    /// <summary>
+    /// Checks if the user is currently in a combat. 
+    /// Returns the ActiveCombatDto containing the CombatId and MatchType if true.
+    /// </summary>
+    Task<ActiveCombatDto?> CheckActiveCombatAsync();
+
+    /// <summary>
+    /// Re-fetches the state from the API and connects to the SignalR Hub.
+    /// </summary>
+    Task RejoinCombatAsync(string combatId);
 }
