@@ -26,4 +26,10 @@
     <ProjectReference Include="..\GuildArena.Domain\GuildArena.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Services\Email\Template\StandardTemplate.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
