@@ -8,32 +8,50 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-5">
-            <div class="card bg-dark text-light border-secondary">
+            <div class="card bg-dark text-light border-secondary shadow-lg">
                 <div class="card-header border-secondary text-center text-info">
-                    <h4>Create Account</h4>
+                    <h4 class="mb-0 py-1" style="font-family: 'Cinzel', serif;">Create Account</h4>
                 </div>
-                <div class="card-body">
-                    @if (!string.IsNullOrEmpty(_errorMessage))
+                <div class="card-body p-4">
+
+                    @if (_registrationSuccessful)
                     {
-                        <div class="alert alert-danger p-2">@_errorMessage</div>
+                        <div class="text-center py-4">
+                            <h2 class="text-success mb-3">✉️ Account Created!</h2>
+                            <p class="text-light">Your account has been forged successfully.</p>
+                            <p class="text-warning">Please check your email inbox to verify your account before logging in.</p>
+                            <a href="/login" class="btn btn-outline-info mt-4 w-100 fw-bold">Return to Login</a>
+                        </div>
                     }
+                    else
+                    {
+                        @if (!string.IsNullOrEmpty(_errorMessage))
+                        {
+                            <div class="alert alert-danger p-3 shadow-sm border-danger">
+                                <h6 class="fw-bold mb-1">Registration Failed</h6>
+                                <span class="small">@_errorMessage</span>
+                            </div>
+                        }
 
-                    <div class="mb-3">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" class="form-control bg-secondary text-light" @bind="_request.Email" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control bg-secondary text-light" @bind="_request.Password" />
-                        <small class="text-muted">Minimum 6 characters, at least 1 number.</small>
-                    </div>
-                    <button class="btn btn-info w-100 fw-bold mt-3" @onclick="ExecuteRegister" disabled="@_isLoading">
-                        @(_isLoading ? "Registering..." : "Sign Up")
-                    </button>
+                        <div class="mb-3">
+                            <label class="form-label text-info fw-bold">Email Address</label>
+                            <input type="email" class="form-control bg-secondary text-light border-dark" @bind="_request.Email" />
+                        </div>
 
-                    <div class="mt-3 text-center">
-                        <a href="/login" class="text-info text-decoration-none">Already have an account? Login here.</a>
-                    </div>
+                        <div class="mb-4">
+                            <label class="form-label text-info fw-bold">Password</label>
+                            <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_request.Password" />
+                            <small class="text-muted fst-italic mt-1 d-block">Minimum 6 characters, requires at least 1 number and 1 special character.</small>
+                        </div>
+
+                        <button class="btn btn-info w-100 fw-bold py-2 fs-5" @onclick="ExecuteRegister" disabled="@_isLoading">
+                            @(_isLoading ? "Forging Account..." : "Sign Up")
+                        </button>
+
+                        <div class="mt-4 text-center border-top border-secondary pt-3">
+                            <a href="/login" class="text-info text-decoration-none small">Already have an account? Login here.</a>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -44,31 +62,38 @@
     private LoginRequest _request = new() { Email = string.Empty, Password = string.Empty };
     private string? _errorMessage;
     private bool _isLoading;
+    private bool _registrationSuccessful;
 
     private async Task ExecuteRegister()
     {
+        if (string.IsNullOrWhiteSpace(_request.Email) || string.IsNullOrWhiteSpace(_request.Password))
+        {
+            _errorMessage = "Email and Password are required.";
+            return;
+        }
+
         _isLoading = true;
         _errorMessage = null;
 
         try
         {
-            // Endpoint padrão do Identity API
+            // O endpoint nativo do Identity para registo é "/register"
             var response = await Http.PostAsJsonAsync("register", _request);
 
             if (response.IsSuccessStatusCode)
             {
-                // Registo com sucesso, mandamos para o Login
-                NavManager.NavigateTo("/login");
+                _registrationSuccessful = true;
             }
             else
             {
+                // Tenta extrair a mensagem de erro da API (normalmente ProblemDetails)
                 var errorText = await response.Content.ReadAsStringAsync();
-                _errorMessage = "Registration failed. Check password requirements.";
+                _errorMessage = "The provided password does not meet the security requirements, or the email is already in use.";
             }
         }
-        catch
+        catch (Exception)
         {
-            _errorMessage = "Connection error.";
+            _errorMessage = "Connection error. The server might be unreachable.";
         }
         finally
         {

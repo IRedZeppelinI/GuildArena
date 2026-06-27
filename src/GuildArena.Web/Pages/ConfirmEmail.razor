@@ -1,0 +1,76 @@
+﻿@page "/confirm-email"
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<PageTitle>Verify Email</PageTitle>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+
+            @if (_isLoading)
+            {
+                <div class="spinner-border text-info mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                <h3 class="text-info fw-bold" style="font-family: 'Cinzel', serif;">Verifying Identity...</h3>
+                <p class="text-light">Communicating with the arena authorities.</p>
+            }
+            else if (_isSuccess)
+            {
+                <div class="card bg-dark border-success shadow-lg p-5">
+                    <h1 class="text-success mb-3">✅ Verified!</h1>
+                    <h4 class="text-light mb-4">Your email has been successfully confirmed.</h4>
+                    <p class="text-muted mb-4">You can now access your guild and enter the arena.</p>
+                    <a href="/login" class="btn btn-success btn-lg fw-bold">Proceed to Login</a>
+                </div>
+            }
+            else
+            {
+                <div class="card bg-dark border-danger shadow-lg p-5">
+                    <h1 class="text-danger mb-3">❌ Verification Failed</h1>
+                    <h4 class="text-light mb-4">We could not verify your email.</h4>
+                    <p class="text-muted">The link may be invalid, expired, or the account might already be verified.</p>
+                    <a href="/login" class="btn btn-outline-light mt-3">Return to Login</a>
+                </div>
+            }
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Code { get; set; }
+
+    private bool _isLoading = true;
+    private bool _isSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(UserId) || string.IsNullOrEmpty(Code))
+        {
+            _isLoading = false;
+            _isSuccess = false;
+            return;
+        }
+
+        try
+        {
+            // O Identity API espera o código via query string no GET
+            // Como o nosso HttpClient BaseAddress aponta para a raiz da API, usamos "confirmEmail" diretamente.
+            var response = await Http.GetAsync($"confirmEmail?userId={Uri.EscapeDataString(UserId)}&code={Uri.EscapeDataString(Code)}");
+
+            _isSuccess = response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            _isSuccess = false;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+}
