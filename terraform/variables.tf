@@ -60,3 +60,17 @@ variable "admin_password" {
   type        = string
   sensitive   = true
 }
+
+# Email Logic
+
+variable "frontend_url" {
+  description = "O URL base do frontend"
+  type        = string
+  default     = "https://www.guildarena.xyz/" 
+}
+
+variable "brevo_api_key" {
+  description = "API Key for Brevo email service"
+  type        = string
+  sensitive   = true
+}

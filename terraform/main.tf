@@ -113,6 +113,23 @@ resource "azurerm_container_app" "api" {
         name        = "AdminSetup__Password"
         secret_name = "admin-password"
       }
+      # Brevo Email
+      env {
+        name  = "Email__FrontendBaseUrl"
+        value = var.frontend_url
+      }
+      env {
+        name  = "Email__SenderName"
+        value = "Guild Arena"
+      }
+      env {
+        name  = "Email__SenderEmail"
+        value = "noreply@guildarena.xyz"
+      }
+      env {
+        name        = "Brevo__ApiKey"
+        secret_name = "brevo-api-key"
+      }
     }
   }
 
