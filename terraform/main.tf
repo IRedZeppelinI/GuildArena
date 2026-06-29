@@ -153,6 +153,10 @@ resource "azurerm_container_app" "api" {
     name  = "admin-password"
     value = var.admin_password
   }
+  secret {
+    name  = "brevo-api-key"
+    value = var.brevo_api_key
+  }
 
   ingress {
     allow_insecure_connections = false
