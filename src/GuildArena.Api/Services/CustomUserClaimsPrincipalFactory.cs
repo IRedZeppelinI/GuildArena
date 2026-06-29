@@ -31,12 +31,15 @@ public class CustomUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<Appli
         // 1. Let the base class add standard claims (UserId, Email, Roles)
         var identity = await base.GenerateClaimsAsync(user);
 
-        // 2. Query the database to find the user's Guild
+        // 2. Inject the Email Confirmed status into the claims
+        identity.AddClaim(new Claim("EmailConfirmed", user.EmailConfirmed.ToString()));
+
+        // 3. Query the database to find the user's Guild
         var guild = await _dbContext.Guilds
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.ApplicationUserId == user.Id);
 
-        // 3. If a Guild exists, stamp its ID securely into the cookie
+        // 4. If a Guild exists, stamp its ID securely into the cookie
         if (guild != null)
         {
             identity.AddClaim(new Claim("GuildId", guild.Id.ToString()));

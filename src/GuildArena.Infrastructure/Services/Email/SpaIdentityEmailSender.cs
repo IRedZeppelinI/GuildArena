@@ -97,14 +97,24 @@ public class SpaIdentityEmailSender : IEmailSender<ApplicationUser>
     /// <inheritdoc />
     public async Task SendPasswordResetCodeAsync(ApplicationUser user, string email, string resetCode)
     {
+        // A API nativa do .NET chama este método em vez do "LinkAsync" no fluxo de esquecimento de password.
+        // Como o token gerado é gigante criar botão de redirecionamento como submissão 
+        // do código
+
+        var encodedCode = HttpUtility.UrlEncode(resetCode);
+        var encodedEmail = HttpUtility.UrlEncode(email);
+
+        // Constrói o link para a tua página ResetPassword.razor
+        var spaLink = $"{_options.FrontendBaseUrl.TrimEnd('/')}/reset-password?email={encodedEmail}&code={encodedCode}";
+
         var html = await GenerateEmailHtmlAsync(
             title: "GuildArena",
-            header: "Password Reset Code",
-            body: $"We received a request to reset your password. Please use the following authorization code to proceed:<br><br><span style='font-size: 24px; font-weight: bold; color: #d4af37; letter-spacing: 4px;'>{resetCode}</span><br><br>If you did not request this, please safely ignore this email.",
-            buttonText: "Return to Website",
-            buttonLink: _options.FrontendBaseUrl);
+            header: "Password Reset Request",
+            body: "We received a request to reset your password. Please click the button below to forge a new one. If you did not request this, please safely ignore this email.",
+            buttonText: "Reset Password",
+            buttonLink: spaLink);
 
-        await _emailDispatcher.DispatchAsync(email, "GuildArena - Password Reset Code", html);
+        await _emailDispatcher.DispatchAsync(email, "GuildArena - Password Reset Request", html);
     }
 
     private async Task<string> GenerateEmailHtmlAsync(string title, string header, string body, string buttonText, string buttonLink)

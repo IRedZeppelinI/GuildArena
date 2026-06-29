@@ -25,10 +25,15 @@
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control bg-secondary text-light" @bind="_request.Email" />
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label mb-0">Password</label>
+                            <a href="/forgot-password" class="text-info small text-decoration-none" tabindex="-1">Forgot Password?</a>
+                        </div>
                         <input type="password" class="form-control bg-secondary text-light" @bind="_request.Password" />
                     </div>
+
                     <button class="btn btn-warning w-100 fw-bold" @onclick="ExecuteLogin" disabled="@_isLoading">
                         @(_isLoading ? "Connecting..." : "Login")
                     </button>

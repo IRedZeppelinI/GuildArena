@@ -32,20 +32,23 @@ public class AccountController : BaseApiController
     /// The Blazor WebAssembly client calls this to reconstruct its local auth state.
     /// </summary>
     [HttpGet("me")]
-    [Authorize] // Only logged-in users can hit this
+    [Authorize] 
     public ActionResult<UserInfoDto> GetCurrentUser()
     {
         var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
-
-        // NOVO: Lê as roles do Cookie no lado do servidor
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+        // Parse the custom claim
+        var emailConfirmedClaim = User.FindFirstValue("EmailConfirmed");
+        bool isEmailConfirmed = bool.TryParse(emailConfirmedClaim, out var confirmed) && confirmed;
 
         return Ok(new UserInfoDto
         {
             Id = _currentUserService.UserId!,
             Email = email,
             GuildId = _currentUserService.GuildId,
-            Roles = roles // NOVO: Envia para o cliente
+            Roles = roles,
+            IsEmailConfirmed = isEmailConfirmed 
         });
     }
 
