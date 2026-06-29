@@ -78,8 +78,10 @@ public static class DependencyInjection
             }
         });
 
-        services.AddScoped<IEmailDispatcher, BrevoEmailDispatcher>();
-        services.AddScoped<IEmailSender<ApplicationUser>, SpaIdentityEmailSender>();
+        //services.AddScoped<IEmailDispatcher, BrevoEmailDispatcher>();
+        //services.AddScoped<IEmailSender<ApplicationUser>, SpaIdentityEmailSender>();
+        services.AddTransient<IEmailDispatcher, BrevoEmailDispatcher>();
+        services.AddTransient<IEmailSender<ApplicationUser>, SpaIdentityEmailSender>();
 
 
         // Repositórios

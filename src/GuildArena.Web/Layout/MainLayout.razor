@@ -22,12 +22,16 @@
                     <div class="ms-auto text-warning small fst-italic">Connecting to server...</div>
                 </Authorizing>
 
-                <Authorized>                    
-
-                    <!-- DIREITA: User e Logout -->
-                    <div class="user-profile ms-auto d-flex align-items-center">
-                        <span class="me-3 text-light fw-bold d-none d-sm-inline">@context.User.Identity?.Name</span>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="ExecuteLogout">Logout</button>
+                <Authorized>
+                    <!-- DIREITA: User Account e Logout -->
+                    <div class="user-profile ms-auto d-flex align-items-center gap-3">
+                        <a href="/account" class="text-decoration-none d-flex align-items-center account-link" title="Manage Account">
+                            <div class="avatar-circle me-2 d-flex justify-content-center align-items-center bg-dark border border-secondary">
+                                <span class="fs-6">👤</span>
+                            </div>
+                            <span class="text-light fw-bold d-none d-sm-inline account-name">@context.User.Identity?.Name</span>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger fw-bold" @onclick="ExecuteLogout">Logout</button>
                     </div>
                 </Authorized>
                 <NotAuthorized>

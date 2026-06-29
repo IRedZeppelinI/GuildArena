@@ -1,0 +1,202 @@
+﻿@page "/account"
+@attribute [Authorize]
+@using GuildArena.Shared.Requests
+@using GuildArena.Web.Security
+@using Microsoft.AspNetCore.Components.Authorization
+@inject HttpClient Http
+@inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Account Settings</PageTitle>
+
+<div class="container mt-4 text-light pb-5">
+    <div class="page-header text-center mb-5">
+        <h2 class="cinzel-title text-warning fw-bold">⚙️ Account Settings</h2>
+        <p class="text-light">Manage your credentials or forge a new path.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+
+            <!-- SECTION 1: CHANGE PASSWORD -->
+            <div class="card bg-dark border-secondary shadow-lg mb-4">
+                <div class="card-header border-secondary">
+                    <h5 class="cinzel-title text-info mb-0">Change Password</h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (_passwordSuccess)
+                    {
+                        <div class="alert alert-success border-success p-2 small">Your password has been successfully updated.</div>
+                    }
+                    @if (!string.IsNullOrEmpty(_passwordError))
+                    {
+                        <div class="alert alert-danger border-danger p-2 small">@_passwordError</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label text-warning fw-bold small">Current Password</label>
+                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_currentPassword" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-warning fw-bold small">New Password</label>
+                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_newPassword" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-warning fw-bold small">Confirm New Password</label>
+                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_confirmNewPassword" />
+                    </div>
+
+                    <button class="btn btn-outline-info w-100 fw-bold" @onclick="ChangePasswordAsync" disabled="@_isProcessingPassword">
+                        @(_isProcessingPassword ? "Updating..." : "Update Password")
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION 2: DANGER ZONE -->
+            <div class="card bg-dark border-danger shadow-lg">
+                <div class="card-header border-danger bg-black">
+                    <h5 class="cinzel-title text-danger mb-0">Danger Zone</h5>
+                </div>
+                <div class="card-body p-4 text-center">
+                    <p class="text-muted small mb-4">
+                        Deleting your account is permanent. All your heroes, progress, and guild data will be eradicated from the realm forever.
+                    </p>
+                    <button class="btn btn-danger fw-bold px-4 py-2" @onclick="() => _showDeleteModal = true">
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- DELETE ACCOUNT CONFIRMATION MODAL -->
+@if (_showDeleteModal)
+{
+    <div class="modal-backdrop" @onclick="() => _showDeleteModal = false">
+        <div class="modal-content-custom" @onclick:stopPropagation="true">
+            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2 cinzel-title">Final Warning</h4>
+            <p class="text-light small">To confirm the deletion of your account, please enter your current password.</p>
+
+            @if (!string.IsNullOrEmpty(_deleteError))
+            {
+                <div class="alert alert-danger p-2 small border-danger text-start">@_deleteError</div>
+            }
+
+            <input type="password" class="form-control bg-secondary text-light border-dark mb-4 text-center"
+                   placeholder="Enter Password" @bind="_deleteConfirmPassword" />
+
+            <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-secondary px-4" @onclick="() => _showDeleteModal = false" disabled="@_isDeleting">Cancel</button>
+                <button class="btn btn-danger fw-bold px-4" @onclick="DeleteAccountAsync" disabled="@_isDeleting">
+                    @(_isDeleting ? "Erasing..." : "Permanently Delete")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // Change Password Fields
+    private string _currentPassword = "";
+    private string _newPassword = "";
+    private string _confirmNewPassword = "";
+    private bool _isProcessingPassword;
+    private bool _passwordSuccess;
+    private string? _passwordError;
+
+    // Delete Account Fields
+    private bool _showDeleteModal;
+    private string _deleteConfirmPassword = "";
+    private bool _isDeleting;
+    private string? _deleteError;
+
+    private async Task ChangePasswordAsync()
+    {
+        _passwordError = null;
+        _passwordSuccess = false;
+
+        if (string.IsNullOrWhiteSpace(_currentPassword) || string.IsNullOrWhiteSpace(_newPassword))
+        {
+            _passwordError = "All fields are required.";
+            return;
+        }
+
+        if (_newPassword != _confirmNewPassword)
+        {
+            _passwordError = "New passwords do not match.";
+            return;
+        }
+
+        _isProcessingPassword = true;
+
+        try
+        {
+            // O Identity API Endpoints usa /manage/info POST para atualizar password
+            var payload = new { oldPassword = _currentPassword, newPassword = _newPassword };
+            var response = await Http.PostAsJsonAsync("manage/info", payload);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _passwordSuccess = true;
+                _currentPassword = "";
+                _newPassword = "";
+                _confirmNewPassword = "";
+            }
+            else
+            {
+                _passwordError = "Failed to change password. Ensure your current password is correct and the new password meets security requirements.";
+            }
+        }
+        catch (Exception)
+        {
+            _passwordError = "A network error occurred.";
+        }
+        finally
+        {
+            _isProcessingPassword = false;
+        }
+    }
+
+    private async Task DeleteAccountAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_deleteConfirmPassword))
+        {
+            _deleteError = "Password is required to delete your account.";
+            return;
+        }
+
+        _deleteError = null;
+        _isDeleting = true;
+
+        try
+        {
+            var request = new DeleteAccountRequest { Password = _deleteConfirmPassword };
+
+            // Chama o nosso endpoint customizado CQRS
+            var response = await Http.PostAsJsonAsync("api/account/delete", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // A API já fez SignOut e apagou a conta. Forçamos atualização do AuthState local.
+                var customAuthState = (CookieAuthenticationStateProvider)AuthState;
+                customAuthState.NotifyAuthStatusChanged();
+
+                NavManager.NavigateTo("/login");
+            }
+            else
+            {
+                _deleteError = "Invalid password. Account deletion aborted.";
+            }
+        }
+        catch (Exception)
+        {
+            _deleteError = "A network error occurred.";
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+}

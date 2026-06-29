@@ -2,107 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lato:ital,wght@0,400;0,700;1,400&display=swap');
-
-        body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: 'Lato', Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background-color: #1a1a1a;
-            border: 1px solid #d4af37;
-            border-radius: 4px;
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.15);
-            overflow: hidden;
-        }
-
-        .header {
-            background-color: #050505;
-            padding: 30px;
-            text-align: center;
-            border-bottom: 2px solid #333;
-        }
-
-            .header h1 {
-                font-family: 'Cinzel', serif;
-                color: #ffd800;
-                margin: 0;
-                font-size: 28px;
-                text-transform: uppercase;
-                letter-spacing: 2px;
-            }
-
-        .content {
-            padding: 40px 30px;
-            text-align: center;
-            line-height: 1.7;
-            font-size: 16px;
-        }
-
-            .content h2 {
-                font-family: 'Cinzel', serif;
-                color: #ffffff;
-                margin-top: 0;
-                font-size: 20px;
-                margin-bottom: 20px;
-            }
-
-        .btn-container {
-            margin-top: 35px;
-            margin-bottom: 10px;
-        }
-
-        .btn {
-            display: inline-block;
-            background-color: #1a1a1a;
-            color: #ffd800;
-            text-decoration: none;
-            padding: 12px 30px;
-            font-family: 'Cinzel', serif;
-            font-weight: bold;
-            border: 2px solid #ffd800;
-            border-radius: 4px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: background-color 0.3s;
-        }
-
-            .btn:hover {
-                background-color: rgba(255, 216, 0, 0.15);
-            }
-
-        .footer {
-            background-color: #050505;
-            padding: 20px;
-            text-align: center;
-            font-size: 12px;
-            color: #777;
-            border-top: 2px solid #333;
-        }
-    </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>{{TITLE}}</h1>
-        </div>
-        <div class="content">
-            <h2>{{HEADER}}</h2>
-            <p>{{BODY}}</p>
-            <div class="btn-container">
-                <a href="{{BUTTON_LINK}}" class="btn">{{BUTTON_TEXT}}</a>
-            </div>
-        </div>
-        <div class="footer">
-            &copy; {{YEAR}} GuildArena. All rights reserved.
-        </div>
-    </div>
+<body style="background-color: #121212; color: #e0e0e0; font-family: Helvetica, Arial, sans-serif; margin: 0; padding: 0; -webkit-font-smoothing: antialiased;">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #121212; padding: 40px 0;">
+        <tr>
+            <td align="center">
+                <!-- Main Container -->
+                <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #1a1a1a; border: 1px solid #d4af37; border-radius: 4px; max-width: 600px; margin: 0 auto;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td align="center" style="background-color: #050505; padding: 30px; border-bottom: 2px solid #333;">
+                            <h1 style="color: #ffd800; margin: 0; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; font-family: Georgia, 'Times New Roman', serif;">
+                                {{TITLE}}
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td align="center" style="padding: 40px 30px; text-align: center; line-height: 1.7; font-size: 16px;">
+                            <h2 style="color: #ffffff; margin-top: 0; font-size: 20px; margin-bottom: 20px; font-family: Georgia, 'Times New Roman', serif;">
+                                {{HEADER}}
+                            </h2>
+                            <p style="color: #e0e0e0; margin-bottom: 35px;">
+                                {{BODY}}
+                            </p>
+
+                            <!-- Action Button -->
+                            <table border="0" cellspacing="0" cellpadding="0" align="center">
+                                <tr>
+                                    <td align="center" style="border-radius: 4px; background-color: #1a1a1a;">
+                                        <a href="{{BUTTON_LINK}}" target="_blank" style="display: inline-block; padding: 14px 30px; font-family: Georgia, 'Times New Roman', serif; font-weight: bold; color: #ffd800; text-decoration: none; border: 2px solid #ffd800; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px;">
+                                            {{BUTTON_TEXT}}
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="background-color: #050505; padding: 20px; font-size: 12px; color: #777777; border-top: 2px solid #333333;">
+                            &copy; {{YEAR}} GuildArena. All rights reserved.
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

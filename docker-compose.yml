@@ -1,49 +1,47 @@
 version: '3.8'
 
-networks:
-  guildarena_net:
-    driver: bridge
-
 services:
   redis:
     image: redis:alpine
+    container_name: guildarena-redis
     restart: unless-stopped
-    ports: 
+    ports:
       - "6379:6379"
-    networks: 
-      - guildarena_net
+    volumes:
+      - redis_data:/data
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: guildarena-redis-insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
 
   postgres:
     image: postgres:latest
+    container_name: guildarena-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
       POSTGRES_DB: GuildArenaDb
-    ports: 
+    ports:
       - "5432:5432"
-    networks: 
-      - guildarena_net
-
-  redis-insight:
-    image: redis/redisinsight:latest
-    ports: 
-      - "5540:5540"
-    networks: 
-      - guildarena_net
-    depends_on: 
-      - redis
+    volumes:
+      - postgres_data:/var/lib/postgresql
 
   pgadmin:
     image: dpage/pgadmin4
+    container_name: guildarena-pgadmin
+    restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@guildarena.com
       PGADMIN_DEFAULT_PASSWORD: password123
-    ports: 
+    ports:
       - "5050:80"
-    networks: 
-      - guildarena_net
-    depends_on: 
+    depends_on:
       - postgres
 
   guildarena-api:
@@ -53,8 +51,6 @@ services:
       dockerfile: src/GuildArena.Api/Dockerfile
     ports:
       - "5016:8080"
-    networks:
-      - guildarena_net
     profiles: 
       - apps
     environment:
@@ -69,5 +65,3 @@ services:
 volumes:
   redis_data:
   postgres_data:
-    external: true
-    name: guildarena_postgres_data

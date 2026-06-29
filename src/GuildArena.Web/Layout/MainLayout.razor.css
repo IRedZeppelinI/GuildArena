@@ -62,4 +62,29 @@
         top: 0;
         z-index: 1;
     }
+
+    /* --- Estilos do Top Bar Account Link --- */
+    .account-link {
+        transition: transform 0.2s ease, filter 0.2s ease;
+    }
+
+        .account-link:hover {
+            transform: translateY(-2px);
+            filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.5)); /* Brilho ciano suave */
+        }
+
+            .account-link:hover .account-name {
+                color: #00e5ff !important; /* Muda o texto para ciano no hover */
+            }
+
+    .avatar-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        transition: border-color 0.2s ease;
+    }
+
+    .account-link:hover .avatar-circle {
+        border-color: #00e5ff !important;
+    }
 }
