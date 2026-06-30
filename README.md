@@ -42,6 +42,8 @@ The solution enforces strict separation of concerns to ensure testability and ma
 * **Match & Roster History:** Relational tracking of player progression (XP, Level, Wins/Losses) and dynamic Roster management.
 * **Dynamic Unlock System:** Heroes in the Tavern are gated by a flexible evaluation engine (`IHeroUnlockEvaluator`) that checks the Guild's progression and match history (e.g., "Win 2 matches using a Kymera").
 * **Dungeon Runs:** Long-form PvE content where hero HP persists between stages. Handled via dedicated SQL entities (`ActiveDungeonRun`) that act as a checkpoint ("Camp") before generating the volatile `GameState` in Redis for the actual combat.
+* **Complete Account Lifecycle:** Comprehensive user management including email verification, secure password recovery, and self-service account deletion. Utilizes a custom CQRS command to ensure volatile state (Redis) is purged before EF Core performs cascading relational deletes.
+* **Abstracted Transactional Emails:** Provider-agnostic email dispatch system (currently integrating Brevo v3 REST API), featuring dynamic HTML templates and an interceptor that rewrites backend-generated Identity links to SPA-bound URLs.
 
 ### Frontend Architecture (BFF Pattern & Predictor)
 * **Backend-Driven UI:** The Blazor WebAssembly client acts as a "Thin Client". Complex validations (Targeting, Affordability, Taunt, Stealth) are pre-calculated by the API (`CombatStateMapper`) and sent via DTOs.
@@ -52,6 +54,7 @@ The solution enforces strict separation of concerns to ensure testability and ma
 ### Roadmap
 * [x] Core Combat Engine & Unit Tests.
 * [x] Relational Database Schema (EF Core) & Secure Identity (HTTP-Only Cookies).
+* [x] Transactional Emails & Advanced Account Management (Brevo Integration).
 * [x] SignalR Integration for Real-Time feedback.
 * [x] Blazor WebAssembly Frontend (Combat Arena UI & State Machine).
 * [x] Dynamic Meta-Game UI (Lobby, Roster, and Real-time Mathematical Tooltips).
