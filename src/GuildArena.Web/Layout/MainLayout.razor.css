@@ -87,4 +87,111 @@
     .account-link:hover .avatar-circle {
         border-color: #00e5ff !important;
     }
+
+    /* ------------------------------------------------------------------------- */
+
+    /* Sidebar usa a textura natural (apenas um pouco escurecida pelo #222) */
+    /*.sidebar {
+        background-image: url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        background-color: #222;
+        background-blend-mode: multiply;*/ /* Mistura a textura com o cinza escuro */
+    /*}*/
+
+    /* A Topbar usa a MESMA textura, mas ainda mais escura (#111) para criar contraste com a barra lateral */
+    /*.top-row {
+        background-image: url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        background-color: #111;
+        background-blend-mode: multiply;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8);*/ /* Sombra fundamental para dar profundidade! */
+    /*}
+
+
+    body, .game-container {
+        background-image: url('/images/ui/main-texture.jpg');
+        background-repeat: repeat;*/
+        /* Um cinza muito, muito escuro para empurrar o fundo para trás */
+        /*background-color: #080808;
+        background-blend-mode: overlay;
+        color: #e0e0e0;
+    }*/
+
+
+    /*----------------------------*/
+    /* 1. O Fundo da Página (Mais escuro, para os painéis saltarem à vista) */
+    /*body, .game-container {*/
+        /* Repara no 0.85 (85% opacidade). Se quiseres ver MAIS a textura, muda para 0.7 ou 0.6 */
+        /*background: linear-gradient(rgba(10, 10, 12, 0.85), rgba(10, 10, 12, 0.5)), url('/images/ui/main-texture.jpg');
+        background-repeat: repeat;
+        color: #e0e0e0;
+    }*/
+
+    /* 2. A Sidebar (Ligeiramente mais clara que o fundo) */
+    /*.sidebar {*/
+        /* Usamos 0.65 de opacidade. A textura vai notar-se muito mais aqui! */
+        /*background: linear-gradient(rgba(25, 25, 30, 0.65), rgba(25, 25, 30, 0.65)), url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        border-right: 1px solid #333;
+    }*/
+
+    /* 3. A Navbar de Topo (O elemento mais claro e saliente) */
+    /*.top-row {*/
+        /* Opacidade a 0.5 e uma cor base um nadinha mais clara */
+        /*background: linear-gradient(rgba(35, 35, 40, 0.5), rgba(35, 35, 40, 0.85)), url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        border-bottom: 2px solid #444;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }*/
+
+    /*body, .game-container {
+        background-image: url('/images/ui/main-texture.jpg');
+        background-repeat: repeat;
+        background-color: #333333;*/ /* Cinzento escuro para o chão */
+        /*background-blend-mode: multiply;
+    }
+
+    .sidebar {
+        background-image: url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        background-color: #666666;*/ /* Cinzento médio, revela bastante a textura */
+        /*background-blend-mode: multiply;
+        border-right: 1px solid #333;
+    }
+
+    .top-row {
+        background-image: url('/images/ui/dark-stone.jpg');
+        background-repeat: repeat;
+        background-color: #999999;*/ /* Cinzento claro, a Navbar fica bem iluminada */
+        /*background-blend-mode: multiply;
+        border-bottom: 2px solid #555;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }*/
+
+
+
+    body, .game-container {
+        background-image: url('/images/ui/wall.jpg');
+        background-repeat: repeat;
+        background-color: #666666; /* Cinzento claro */
+
+        background-blend-mode: multiply;
+    }
+
+    .sidebar {
+        background-image: url('/images/ui/main-texture.jpg');
+        background-repeat: repeat;
+        background-color: #666666;
+        background-blend-mode: multiply;
+        border-right: 1px solid #333;
+    }
+
+    .top-row {
+        background-image: url('/images/ui/main-texture.jpg');
+        background-repeat: repeat;
+        background-color: #333333; /* Cinzento escuro para o chão */
+        background-blend-mode: multiply;
+        border-bottom: 2px solid #555;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+    }
 }

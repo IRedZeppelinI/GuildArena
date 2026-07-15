@@ -1,10 +1,8 @@
-﻿/* O GameObject Pai (Relativo) */
-.ability-slot {
+﻿.ability-slot {
     position: relative;
     width: 36px;
     height: 36px;
     cursor: pointer;
-    /* Se a tua moldura fundida tiver cantos redondos, mantém isto. Se for quadrada com bicos, muda para 0 */
     border-radius: 4px;
     overflow: hidden;
     transition: transform 0.1s ease;
@@ -14,7 +12,6 @@
         transform: scale(1.1);
     }
 
-/* O teu Ícone Completo (Fica no fundo de tudo, z-index 1) */
 .ability-icon {
     position: absolute;
     top: 0;
@@ -28,7 +25,6 @@
 }
 
 
-/* A película de Cooldown (Absoluta, Fica por cima de tudo) */
 .cooldown-overlay {
     position: absolute;
     top: 0;
@@ -46,7 +42,6 @@
     text-shadow: 0 0 5px red;
 }
 
-/* Se estiver em cooldown, tira a mãozinha de clique */
 .on-cooldown {
     cursor: not-allowed;
 }
@@ -56,7 +51,7 @@
     position: absolute;
     bottom: -4px; /* Sai ligeiramente para fora do botão pela base */
     left: 50%;
-    transform: translateX(-50%); /* Centra o grupo de bolinhas perfeitamente */
+    transform: translateX(-50%); /* Centra o grupo */
     display: flex;
     gap: 1px;
     z-index: 4; /* Fica por cima de tudo, até do cooldown */

@@ -4,6 +4,15 @@
     border-bottom: 2px solid #555;
 }
 
+/* CLASSE NOVA: Controla os espaços laterais e atira o logo para a esquerda e o botão para a direita */
+.logo-container {
+    padding-left: 15px;
+    padding-right: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .navbar-toggler {
     background-color: rgba(255, 255, 255, 0.1);
 }
@@ -43,12 +52,40 @@
             text-shadow: 0 0 8px rgba(255, 216, 0, 0.5);
         }
 
+/* FUNDIDOS OS DOIS BLOCOS QUE TINHAS DUPLICADOS */
 .game-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Dá o espaçamento entre a imagem e o texto automaticamente */
     font-family: 'Cinzel', serif;
     font-weight: bold;
     color: #ffd800;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     letter-spacing: 2px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    text-decoration: none;
+    white-space: nowrap; /* Impede terminantemente que "Guild" e "Arena" se separem em duas linhas */
+}
+
+/* Garante que o ícone nunca é esmagado pelo texto */
+.logo-img {
+    height: 32px;
+    width: auto;
+    flex-shrink: 0;
+}
+
+/* O texto adapta-se. Se não houver mesmo espaço nenhum, ele corta e mete uns "..." */
+.logo-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Ajuste específico para telemóveis muito estreitos (como o iPhone SE) */
+@media (max-width: 380px) {
+    .game-logo {
+        font-size: 1.2rem; /* Encolhe ligeiramente o texto para caber ao lado do botão hambúrguer */
+        letter-spacing: 1px;
+    }
 }
 
 @media (min-width: 641px) {
@@ -64,4 +101,28 @@
         height: calc(100vh - 4.5rem);
         overflow-y: auto;
     }
+}
+
+
+/* =========================================================
+   NOVAS REGRAS ADICIONADAS EXCLUSIVAMENTE PARA OS ÍCONES SVG 
+   ========================================================= */
+
+/* Controla o tamanho e o espaçamento para a palavra */
+.menu-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 12px; /* Espaço entre o ícone e a palavra "Guild" */
+    flex-shrink: 0;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+/* Aumenta o SVG ligeiramente quando o rato passa pela linha do menu */
+.nav-item ::deep a:hover .menu-icon {
+    transform: scale(1.15);
+}
+
+/* Dá um brilho dourado ao SVG quando a página está selecionada (ativa) */
+.nav-item ::deep a.active .menu-icon {
+    filter: drop-shadow(0 0 6px rgba(255, 216, 0, 0.7));
 }

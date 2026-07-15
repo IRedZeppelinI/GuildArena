@@ -86,6 +86,11 @@
     font-style: italic;
 }
 
+.stat-icon-large {
+    width: 32px;
+    height: 32px;
+}
+
 
 /* ======= NOVOS ESTILOS PARA O WIDGET DA TAVERNA ======= */
 .tavern-widget {
