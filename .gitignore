@@ -73,3 +73,13 @@ $RECYCLE.BIN/
 *Notes.txt
 *GuildArena.txt
 *.env
+
+
+# Repository-local temporary artifacts
+/.tmp/
+
+
+#Agentic Files
+AGENTS.md
+PLAN.md
+/docs/

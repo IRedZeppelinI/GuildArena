@@ -1,56 +1,96 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Authorization
 @using GuildArena.Web.Security
 @using GuildArena.Web.State
-@using GuildArena.Domain.Enums.Matches
 @inject AuthenticationStateProvider AuthState
 @inject HttpClient Http
 @inject NavigationManager NavManager
 @inject ICombatStateService CombatState
 
-<div class="page game-container">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main class="main-content">
-        <!-- Top Row usa justify-content-between para empurrar extremos -->
-        <div class="top-row px-4 auth d-flex justify-content-between align-items-center">
+<div class="page game-container" @onkeydown="HandleMenuKeyDown">
+    <header class="site-header">
+        <a class="mobile-brand" href="/" aria-label="GuildArena home">
+            <img src="/images/ui/logo.png" alt="" />
+            <span>GuildArena</span>
+        </a>
+        <span class="header-location">GuildArena</span>
+        <div class="header-actions">
             <AuthorizeView>
-
                 <Authorizing>
-                    <div class="ms-auto text-warning small fst-italic">Connecting to server...</div>
+                    <span class="header-status" role="status">Connecting to server...</span>
                 </Authorizing>
-
                 <Authorized>
-                    <!-- DIREITA: User Account e Logout -->
-                    <div class="user-profile ms-auto d-flex align-items-center gap-3">
-                        <a href="/account" class="text-decoration-none d-flex align-items-center account-link" title="Manage Account">
-                            <div class="avatar-circle me-2 d-flex justify-content-center align-items-center bg-dark border border-secondary">
-                                <span class="fs-6">👤</span>
-                            </div>
-                            <span class="text-light fw-bold d-none d-sm-inline account-name">@context.User.Identity?.Name</span>
+                    <div class="user-profile">
+                        <a href="/account" class="account-link" aria-label="Manage account">
+                            <span class="avatar-circle" aria-hidden="true">@GetInitial(context.User.Identity?.Name)</span>
+                            <span class="account-name">@context.User.Identity?.Name</span>
                         </a>
-                        <button class="btn btn-sm btn-outline-danger fw-bold" @onclick="ExecuteLogout">Logout</button>
+                        <button class="logout-button" @onclick="ExecuteLogout">Logout</button>
                     </div>
                 </Authorized>
                 <NotAuthorized>
-                    <div></div> <!-- Espaçador invisível para empurrar o botão para a direita -->
-                    <a href="/login" class="btn btn-warning fw-bold">Login to Play</a>
+                    <a href="/login" class="login-button">Login to Play</a>
                 </NotAuthorized>
             </AuthorizeView>
         </div>
+        <button class="menu-toggle" type="button" @ref="_menuToggle" @onclick="ToggleMenu"
+                aria-label="Toggle navigation" aria-controls="game-navigation" aria-expanded="@(_isMenuOpen ? "true" : "false")">
+            <span aria-hidden="true">☰</span>
+        </button>
+    </header>
 
-        <article class="content px-4">
+    <aside class="sidebar @(_isMenuOpen ? "mobile-open" : "")">
+        <a class="sidebar-brand" href="/">
+            <img src="/images/ui/logo.png" alt="" />
+            <span>GuildArena</span>
+        </a>
+        <NavMenu OnNavigate="CloseMenu" />
+    </aside>
+
+    <main class="main-content">
+        <article class="content">
             @Body
         </article>
     </main>
 </div>
 
 @code {
+    private bool _isMenuOpen;
+    private ElementReference _menuToggle;
+
+    private void ToggleMenu() => _isMenuOpen = !_isMenuOpen;
+
+    private static string GetInitial(string? name) =>
+        string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+
+    private async Task CloseMenu()
+    {
+        if (_isMenuOpen)
+        {
+            _isMenuOpen = false;
+            await _menuToggle.FocusAsync(preventScroll: true);
+        }
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _isMenuOpen = false;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleMenuKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape" && _isMenuOpen)
+        {
+            await CloseMenu();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        NavManager.LocationChanged += HandleLocationChanged;
         var authState = await AuthState.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated == true)
         {
@@ -77,6 +117,7 @@
         }
     }
 
+    public void Dispose() => NavManager.LocationChanged -= HandleLocationChanged;
 
     private async Task ExecuteLogout()
     {

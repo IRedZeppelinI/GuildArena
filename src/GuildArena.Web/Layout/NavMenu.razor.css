@@ -1,128 +1,79 @@
-.top-row {
-    min-height: 4.5rem;
-    background-color: rgba(0,0,0,0.6);
-    border-bottom: 2px solid #555;
-}
-
-/* CLASSE NOVA: Controla os espaços laterais e atira o logo para a esquerda e o botão para a direita */
-.logo-container {
-    padding-left: 15px;
-    padding-right: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.navbar-toggler {
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
 .game-menu {
-    padding-top: 1rem;
+    display: grid;
+    align-content: start;
+    gap: 3px;
 }
 
-.nav-item {
-    margin-bottom: 0.5rem;
+.nav-title {
+    margin: 18px 15px 11px;
+    color: var(--ga-gold);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .17em;
+    text-transform: uppercase;
 }
 
-    .nav-item ::deep a {
-        color: #b3b3b3;
-        border-radius: 4px;
-        height: 3.5rem;
-        display: flex;
-        align-items: center;
-        line-height: 3.5rem;
-        font-size: 1.1rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        border-left: 4px solid transparent;
-        white-space: nowrap; /* Impede a quebra de linha do texto e do ícone */
-    }
-
-        .nav-item ::deep a:hover {
-            background-color: rgba(255,255,255,0.05);
-            color: #fff;
-            border-left: 4px solid #fff;
-        }
-
-        .nav-item ::deep a.active {
-            background-color: rgba(255, 216, 0, 0.15);
-            color: #ffd800;
-            border-left: 4px solid #ffd800;
-            text-shadow: 0 0 8px rgba(255, 216, 0, 0.5);
-        }
-
-/* FUNDIDOS OS DOIS BLOCOS QUE TINHAS DUPLICADOS */
-.game-logo {
+.nav-item ::deep a {
     display: flex;
     align-items: center;
-    gap: 10px; /* Dá o espaçamento entre a imagem e o texto automaticamente */
-    font-family: 'Cinzel', serif;
-    font-weight: bold;
-    color: #ffd800;
-    font-size: 1.5rem;
-    letter-spacing: 2px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    gap: 12px;
+    min-height: 48px;
+    padding: 10px 14px;
+    border-left: 2px solid transparent;
+    color: var(--ga-muted);
+    font-size: 14px;
+    font-weight: 560;
     text-decoration: none;
-    white-space: nowrap; /* Impede terminantemente que "Guild" e "Arena" se separem em duas linhas */
+    transition: color .15s ease, background-color .15s ease;
 }
 
-/* Garante que o ícone nunca é esmagado pelo texto */
-.logo-img {
-    height: 32px;
-    width: auto;
-    flex-shrink: 0;
+.nav-item ::deep a:hover {
+    color: var(--ga-text);
+    background: #233026;
 }
 
-/* O texto adapta-se. Se não houver mesmo espaço nenhum, ele corta e mete uns "..." */
-.logo-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
+.nav-item ::deep a.active {
+    color: var(--ga-text);
+    background: #263329;
+    border-color: var(--ga-gold);
 }
 
-/* Ajuste específico para telemóveis muito estreitos (como o iPhone SE) */
-@media (max-width: 380px) {
-    .game-logo {
-        font-size: 1.2rem; /* Encolhe ligeiramente o texto para caber ao lado do botão hambúrguer */
-        letter-spacing: 1px;
-    }
-}
-
-@media (min-width: 641px) {
-    .navbar-toggler {
-        display: none;
-    }
-
-    .collapse {
-        display: block;
-    }
-
-    .nav-scrollable {
-        height: calc(100vh - 4.5rem);
-        overflow-y: auto;
-    }
-}
-
-
-/* =========================================================
-   NOVAS REGRAS ADICIONADAS EXCLUSIVAMENTE PARA OS ÍCONES SVG 
-   ========================================================= */
-
-/* Controla o tamanho e o espaçamento para a palavra */
 .menu-icon {
-    width: 24px;
-    height: 24px;
-    margin-right: 12px; /* Espaço entre o ícone e a palavra "Guild" */
-    flex-shrink: 0;
-    transition: transform 0.2s ease, filter 0.2s ease;
+    width: 20px;
+    height: 20px;
+    flex: none;
 }
 
-/* Aumenta o SVG ligeiramente quando o rato passa pela linha do menu */
-.nav-item ::deep a:hover .menu-icon {
-    transform: scale(1.15);
-}
-
-/* Dá um brilho dourado ao SVG quando a página está selecionada (ativa) */
 .nav-item ::deep a.active .menu-icon {
-    filter: drop-shadow(0 0 6px rgba(255, 216, 0, 0.7));
+    color: var(--ga-gold);
+}
+
+@media (max-width: 980px) {
+    .game-menu {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .nav-title {
+        grid-column: 1 / -1;
+        margin: 4px 10px 7px;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-item ::deep a {
+        gap: 8px;
+        padding: 9px 8px;
+        font-size: 12px;
+    }
+
+    .menu-icon {
+        width: 17px;
+        height: 17px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-item ::deep a {
+        transition: none;
+    }
 }
