@@ -1,0 +1,63 @@
+.route-feedback {
+    max-width: 38rem;
+    margin: clamp(30px, 7vh, 80px) auto;
+    padding: clamp(24px, 5vw, 42px);
+    border: 1px solid var(--ga-line, #3a4a3c);
+    border-top: 2px solid var(--ga-gold, #d8b977);
+    background: var(--ga-surface, #151d19);
+    color: var(--ga-text, #f3eedf);
+}
+
+.eyebrow {
+    margin: 0 0 18px;
+    color: var(--ga-gold, #d8b977);
+    font: 700 11px/1.3 system-ui, sans-serif;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+
+h1 {
+    margin: 0 0 12px;
+    color: var(--ga-text, #f3eedf);
+    font: 700 clamp(27px, 4vw, 38px)/1.2 Georgia, serif;
+}
+
+h1:focus {
+    outline: none;
+}
+
+h1:focus-visible {
+    outline: 3px solid var(--ga-focus, #f0d297);
+    outline-offset: 4px;
+}
+
+.description {
+    margin: 0;
+    color: var(--ga-muted, #b7c4b4);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.action {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 25px;
+    padding: 10px 17px;
+    border: 1px solid var(--ga-gold, #d8b977);
+    background: var(--ga-gold, #d8b977);
+    color: #1b221b;
+    font: 700 14px/1.2 system-ui, sans-serif;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.action:hover {
+    background: #f0d297;
+    color: #1b221b;
+}
+
+.action:focus-visible {
+    outline: 3px solid var(--ga-focus, #f0d297);
+    outline-offset: 3px;
+}

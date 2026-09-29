@@ -170,6 +170,11 @@
     min-width: 0;
 }
 
+.main-content:focus-visible {
+    outline: 3px solid var(--ga-focus);
+    outline-offset: -3px;
+}
+
 .content {
     width: 100%;
     max-width: 1240px;

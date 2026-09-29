@@ -1,31 +1,51 @@
-﻿<CascadingAuthenticationState>
+﻿@using GuildArena.Web.Components
+@using GuildArena.Web.Security
+@inject AuthenticationStateProvider AuthState
+
+<CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-
                 <Authorizing>
-                    <div class="container mt-5 text-center">
-                        <div class="spinner-border text-warning mb-3" role="status"></div>
-                        <h3 class="text-warning fw-bold" style="font-family: 'Cinzel', serif;">Waking up the server...</h3>
-                        <p class="text-light">Preparing the Arena. This might take a few seconds on the first visit.</p>
-                    </div>
+                    <RouteFeedback Title="Checking your access"
+                                   Message="Connecting to the server and checking your session."
+                                   IsLoading="true" />
                 </Authorizing>
-
-                <NotAuthorized>
-                    <div class="container mt-5 text-center">
-                        <h3 class="text-danger fw-bold">Access Denied</h3>
-                        <p class="text-light">You must be logged in to view your Guild Roster.</p>
-                        <a href="/login" class="btn btn-warning mt-3 fw-bold">Go to Login Page</a>
-                    </div>
+                <NotAuthorized Context="state">
+                    @if (AuthState is CookieAuthenticationStateProvider { IsCheckUnavailable: true })
+                    {
+                        <RouteFeedback Title="Connection unavailable"
+                                       Message="We couldn't check your session. Check your connection and try again."
+                                       ActionText="Try again" OnAction="RetryAuthentication" AutoFocus="true" />
+                    }
+                    else if (state.User.Identity?.IsAuthenticated == true)
+                    {
+                        <RouteFeedback Title="Access denied"
+                                       Message="Your account doesn't have permission to open this page."
+                                       LinkHref="/" LinkText="Back to home" AutoFocus="true" />
+                    }
+                    else
+                    {
+                        <RouteFeedback Title="Sign in required"
+                                       Message="Sign in to open this page."
+                                       LinkHref="/login" LinkText="Go to login" AutoFocus="true" />
+                    }
                 </NotAuthorized>
             </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            <FocusOnNavigate RouteData="@routeData" Selector="@(routeData.PageType == typeof(GuildArena.Web.Pages.Arena.Arena) ? "h1" : "main.main-content")" />
         </Found>
         <NotFound>
-            <PageTitle>Not found</PageTitle>
             <LayoutView Layout="@typeof(MainLayout)">
-                <p role="alert">Sorry, there's nothing at this address.</p>
+                <RouteFeedback @key="NavManager.Uri" Title="Page not found"
+                               Message="There's nothing at this address. Check the link or return home."
+                               LinkHref="/" LinkText="Back to home" AutoFocus="true" />
             </LayoutView>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
+
+@code {
+    [Inject] private NavigationManager NavManager { get; set; } = default!;
+
+    private void RetryAuthentication() => ((CookieAuthenticationStateProvider)AuthState).NotifyAuthStatusChanged();
+}

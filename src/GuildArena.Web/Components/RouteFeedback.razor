@@ -1,0 +1,36 @@
+<PageTitle>@Title | GuildArena</PageTitle>
+
+<section class="route-feedback" role="@(IsLoading ? "status" : null)">
+    <p class="eyebrow">GuildArena</p>
+    <h1 @ref="_heading" tabindex="-1">@Title</h1>
+    <p class="description">@Message</p>
+    @if (!string.IsNullOrEmpty(LinkHref))
+    {
+        <a class="action" href="@LinkHref">@LinkText</a>
+    }
+    @if (OnAction.HasDelegate)
+    {
+        <button type="button" class="action" @onclick="OnAction">@ActionText</button>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+    [Parameter] public string? LinkHref { get; set; }
+    [Parameter] public string? LinkText { get; set; }
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool AutoFocus { get; set; }
+
+    private ElementReference _heading;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AutoFocus)
+        {
+            await _heading.FocusAsync(preventScroll: true);
+        }
+    }
+}

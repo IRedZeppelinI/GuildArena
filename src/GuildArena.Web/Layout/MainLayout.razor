@@ -31,7 +31,14 @@
                     </div>
                 </Authorized>
                 <NotAuthorized>
-                    <a href="/login" class="login-button">Login to Play</a>
+                    @if (AuthState is CookieAuthenticationStateProvider { IsCheckUnavailable: true })
+                    {
+                        <span class="header-status" role="status">Connection unavailable</span>
+                    }
+                    else
+                    {
+                        <a href="/login" class="login-button">Login to Play</a>
+                    }
                 </NotAuthorized>
             </AuthorizeView>
         </div>
@@ -49,7 +56,7 @@
         <NavMenu OnNavigate="CloseMenu" />
     </aside>
 
-    <main class="main-content">
+        <main class="main-content" tabindex="-1" aria-label="Main content">
         <article class="content">
             @Body
         </article>

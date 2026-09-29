@@ -1,0 +1,86 @@
+/* Only the pre-Blazor placeholder and the runtime error banner use these styles. */
+#app > .startup-screen {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: #101613;
+    color: #f3eedf;
+    text-align: center;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#app > .startup-screen .startup-name {
+    margin: 0 0 20px;
+    color: #d8b977;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+}
+
+#app > .startup-screen h1 {
+    margin: 0 0 12px;
+    color: #f3eedf;
+    font: 700 clamp(28px, 6vw, 40px)/1.2 Georgia, serif;
+}
+
+#app > .startup-screen p:not(.startup-name) {
+    margin: 0;
+    color: #b7c4b4;
+    line-height: 1.6;
+}
+
+#app > .startup-screen .startup-progress {
+    width: min(220px, 80vw);
+    height: 4px;
+    margin-top: 30px;
+    overflow: hidden;
+    background: #3a4a3c;
+}
+
+#app > .startup-screen .startup-progress span {
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: #d8b977;
+    animation: startup-slide 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes startup-slide {
+    from { transform: translateX(0); }
+    to { transform: translateX(150%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #app > .startup-screen .startup-progress span { animation: none; }
+}
+
+#blazor-error-ui {
+    color-scheme: dark;
+    background: #202b24;
+    border-top: 2px solid #d8b977;
+    box-shadow: 0 -4px 20px #0008;
+    color: #f3eedf;
+    padding: 16px 52px 16px 20px;
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#blazor-error-ui a { color: #f0d297; }
+
+#blazor-error-ui .dismiss {
+    border: 0;
+    background: transparent;
+    color: #f3eedf;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#blazor-error-ui a:focus-visible,
+#blazor-error-ui .dismiss:focus-visible {
+    outline: 3px solid #f0d297;
+    outline-offset: 3px;
+}

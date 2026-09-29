@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using System.Net;
 using System.Security.Claims;
 using GuildArena.Shared.DTOs.Identity;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -13,6 +14,8 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
     private readonly HttpClient _httpClient;
     private readonly ILogger<CookieAuthenticationStateProvider> _logger;
 
+    public bool IsCheckUnavailable { get; private set; }
+
     public CookieAuthenticationStateProvider(HttpClient httpClient, ILogger<CookieAuthenticationStateProvider> logger)
     {
         _httpClient = httpClient;
@@ -21,6 +24,7 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        IsCheckUnavailable = false;
         try
         {
             // Call our new secure endpoint
@@ -56,15 +60,23 @@ public class CookieAuthenticationStateProvider : AuthenticationStateProvider
                     var identity = new ClaimsIdentity(claims, "Cookies");
                     return new AuthenticationState(new ClaimsPrincipal(identity));
                 }
+
+                IsCheckUnavailable = true;
+                _logger.LogWarning("Authentication endpoint returned an empty response.");
+            }
+            else if (response.StatusCode != HttpStatusCode.Unauthorized && response.StatusCode != HttpStatusCode.Forbidden)
+            {
+                IsCheckUnavailable = true;
+                _logger.LogWarning("Authentication endpoint returned {StatusCode}.", response.StatusCode);
             }
         }
         catch (Exception ex)
         {
-            // Network error or server offline. Fallback to unauthenticated.
-            _logger.LogWarning(ex, "Failed to fetch user authentication state. Falling back to anonymous.");
+            IsCheckUnavailable = true;
+            _logger.LogWarning(ex, "Failed to fetch user authentication state.");
         }
 
-        // Return empty principal = not logged in
+        // Authorization still receives an anonymous principal, but can distinguish a failed check from a signed-out user.
         return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
     }
 
