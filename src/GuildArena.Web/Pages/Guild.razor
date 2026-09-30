@@ -9,101 +9,178 @@
 @inject AuthenticationStateProvider AuthState
 @inject GuildArena.Web.Services.IAssetService AssetService
 
-<PageTitle>Guild Profile</PageTitle>
+<PageTitle>@(_isCheckingState || _hasGuild ? "Guild Profile" : "Create Guild")</PageTitle>
 
-<div class="container mt-4 text-light pb-5">
+<div class="guild-page">
     @if (_isCheckingState)
     {
-        <p><em>Loading your profile...</em></p>
+        <p class="guild-feedback" role="status">Checking your guild...</p>
     }
     else if (!_hasGuild)
     {
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <div class="card bg-dark border-warning shadow-lg">
-                    <div class="card-header text-center text-warning fw-bold">Welcome to GuildArena!</div>
-                    <div class="card-body">
-                        <p class="text-center">You don't have a Guild yet. Found one to receive your starter heroes!</p>
-                        @if (!string.IsNullOrEmpty(_guildError))
-                        {
-                            <div class="alert alert-danger p-2">@_guildError</div>
-                        }
-                        <div class="mb-3">
-                            <label class="form-label">Guild Name</label>
-                            <input type="text" class="form-control bg-secondary text-light" @bind="_guildName" placeholder="e.g. Knights of Cydonia" />
-                        </div>
-                        <button class="btn btn-warning w-100 fw-bold" @onclick="CreateGuildAsync" disabled="@_isCreatingGuild">
-                            @(_isCreatingGuild ? "Forging Guild..." : "Create Guild")
-                        </button>
-                    </div>
+        <div class="guild-creation">
+            <div class="creation-intro">
+                <div class="creation-mark" aria-hidden="true">
+                    <img src="/images/ui/estandarte.svg" alt="" width="44" height="44" />
+                </div>
+                <p class="creation-eyebrow">Your first chapter</p>
+                <h1>Every roster starts with a name.</h1>
+                <p class="creation-description">Found your guild and meet your starter heroes. Your roster will be ready to explore as soon as your guild is created.</p>
+                <div class="creation-next">
+                    <span class="creation-next-number" aria-hidden="true">01 / 02</span>
+                    <span>Name your guild <span aria-hidden="true">→</span> Meet your roster</span>
                 </div>
             </div>
+
+            <section class="creation-panel" aria-labelledby="creation-title">
+                <p class="creation-eyebrow">Guild register</p>
+                <h2 id="creation-title">Found your guild</h2>
+                <p class="creation-panel-description">Choose a name to represent your heroes.</p>
+
+                <form @onsubmit="CreateGuildAsync" @onsubmit:preventDefault="true">
+                    <div class="creation-field">
+                        <label for="guild-name">Guild name</label>
+                        <input id="guild-name" name="guildName" type="text" @bind="_guildName" @bind:event="oninput" @bind:after="ClearNameError"
+                               placeholder="e.g. Knights of Cydonia" required minlength="3" aria-describedby="guild-name-help"
+                               aria-invalid="@(_isNameInvalid ? "true" : null)" disabled="@(_isCreatingGuild || _isRedirecting)" />
+                        <p id="guild-name-help">At least 3 characters.</p>
+                    </div>
+
+                    @if (_guildError is not null)
+                    {
+                        <div class="creation-error" role="alert">
+                            <strong>Guild not created</strong>
+                            <p>@_guildError</p>
+                            @if (_showReload)
+                            {
+                                <button type="button" class="creation-recovery" @onclick="ReloadGuild">Reload guild page</button>
+                            }
+                            else if (_sessionExpired)
+                            {
+                                <a href="/login" class="creation-recovery">Sign in again</a>
+                            }
+                        </div>
+                    }
+
+                    <button class="creation-submit" type="submit" disabled="@(_isCreatingGuild || _isRedirecting)">
+                        @(_isRedirecting ? "Opening your roster..." : _isCreatingGuild ? "Creating guild..." : "Create guild")
+                        <span aria-hidden="true">→</span>
+                    </button>
+                    @if (_isCreatingGuild || _isRedirecting)
+                    {
+                        <p class="creation-status" role="status">@(_isRedirecting ? "Guild created. Opening your roster." : "Creating your guild and starter roster...")</p>
+                    }
+                </form>
+            </section>
         </div>
     }
     else
     {
-        <!-- PAINEL DA GUILDA (Level, XP, W/L) -->
-        @if (_profile != null)
-        {
-            <div class="card bg-dark border-warning mb-5 shadow-lg">
-                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center">
-                    <div class="mb-3 mb-md-0 text-center text-md-start">
-                        <h2 class="text-warning fw-bold mb-0" style="font-family: 'Cinzel', serif;">@_profile.Name</h2>
-                        <p class="text-info fw-bold mb-0">Level @_profile.Level</p>
-                    </div>
-
-                    <div class="text-center text-md-end">
-                        <div class="mb-2" style="font-family: 'Cinzel', serif; font-size: 1.2rem;">
-                            <span class="text-success fw-bold">@_profile.Wins W</span>
-                            <span class="text-light mx-2">|</span>
-                            <span class="text-danger fw-bold">@_profile.Losses L</span>
+        <div class="guild-profile">
+            @if (_profile is not null)
+            {
+                <header class="guild-identity">
+                    <p class="guild-eyebrow">Guild register / Profile</p>
+                    <h1>@_profile.Name</h1>
+                    <p class="guild-level">Guild level @_profile.Level</p>
+                </header>
+                <div class="guild-overview">
+                    <section class="guild-stat" aria-labelledby="xp-title">
+                        <div class="guild-stat-heading">
+                            <h2 id="xp-title">Level progress</h2>
+                            @if (_profile.RequiredXP > 0)
+                            {
+                                <span class="guild-stat-value">@_profile.CurrentXP / @_profile.RequiredXP XP</span>
+                            }
                         </div>
-
-                        <div class="progress border border-secondary mb-1 xp-bar-container">
-                            <!-- O inline style da width é a forma padrão do Bootstrap de preencher a barra de progresso -->
-                            <div class="progress-bar bg-info" role="progressbar" style="width: @((_profile.CurrentXP * 100) / _profile.RequiredXP)%"></div>
+                        @if (_profile.RequiredXP > 0)
+                        {
+                            <progress class="guild-xp" value="@Math.Clamp(_profile.CurrentXP, 0, _profile.RequiredXP)" max="@_profile.RequiredXP" aria-label="Guild level progress: @_profile.CurrentXP of @_profile.RequiredXP XP"></progress>
+                            <p>XP toward the next guild level</p>
+                        }
+                        else
+                        {
+                            <p>XP progress is unavailable.</p>
+                        }
+                    </section>
+                    <section class="guild-stat" aria-labelledby="record-title">
+                        <h2 id="record-title">Match record</h2>
+                        <div class="guild-record">
+                            <p><strong>@_profile.Wins</strong> <span>Wins</span></p>
+                            <p><strong>@_profile.Losses</strong> <span>Losses</span></p>
                         </div>
-                        <small class="text-light">@_profile.CurrentXP / @_profile.RequiredXP XP</small>
-                    </div>
+                    </section>
                 </div>
-            </div>
-        }
+            }
+            else
+            {
+                <div class="guild-state" role="@(_profileError ? "alert" : "status")">
+                    <h1>Your guild</h1>
+                    @if (_profileError)
+                    {
+                        <p>We couldn't load your guild profile. Your roster may still be available.</p>
+                        <button type="button" @onclick="LoadProfileAsync">Retry profile</button>
+                    }
+                    else
+                    {
+                        <p>Loading guild profile...</p>
+                    }
+                </div>
+            }
 
-        <!-- A GALERIA DE HERÓIS -->
-        <div class="page-header">
-            <h3 class="title text-danger d-flex justify-content-center align-items-center gap-2">
-                <svg style="width: 32px; height: 32px;" class="text-warning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                    <path d="M0 0h512v512H0z" fill="none" fill-opacity="1"></path>
-                    <g transform="translate(0,0)">
-                        <path d="M256.3 23.4c-7.8 18.13-16.2 30.32-21.2 40.66-6.4 13.47-8.5 23.95 1.3 48.24h39.9c10.4-24.38 8.3-34.69 1.7-48.15-5.1-10.33-13.8-22.55-21.7-40.75zM208 130.2l10 18h76l10-18h-96zM68.23 147.4c-4.47 9.2-8.9 16.1-11.51 21.5-3.89 8.1-5.04 14 .31 28h22.41c5.49-14 4.34-19.8.42-28-2.64-5.4-7.11-12.3-11.63-21.5zm375.47 0c-4.4 9.1-8.9 16-11.5 21.5-3.8 8.1-5 14 .3 28H455c5.4-14 4.3-19.8.4-28-2.7-5.4-7.1-12.3-11.7-21.5zM239.6 161c6.1 157.8-26.3 305.5-32.7 333h24c.7-5.1 1.8-12 3.3-19.1 1.5-6.9 3.3-13.9 6-19.9 1.3-2.9 2.8-5.7 5.1-8.3 2.3-2.5 6.1-5.2 10.9-5.2 5.1 0 8.6 3 10.7 5.5 2.1 2.5 3.4 5.2 4.7 8.1 2.5 5.9 4.4 12.8 6 19.6 1.7 7.4 2.9 14.1 3.7 19.3h24.2c-6.4-27.5-38.7-175.2-32.6-333h-33.3zM28.02 212.2l10 18h60l9.98-18H28.02zm377.98 0 10 18h60l10-18h-80zM60.11 245.1c3.39 99-15.63 190.6-21.38 215.9h44.01c2.5-9.2 4.97-22.4 6.88-40.8C82.34 378.3 74 313.5 76.34 245.1H60.11zm375.49 0c2.3 68.3-6 133-13.2 174.9 1.7 18.5 4.1 31.7 6.4 41h44.5c-5.8-25.3-24.8-116.9-21.4-215.9h-16.3zm-215.4 24.7c-22.3 5.2-56.4 10.1-109.2 13 .1 21.7-1.6 36-4.7 45.3h109.1c1.9-18.6 3.6-38.2 4.8-58.3zm72.1 0c1.2 20.1 2.9 39.7 4.8 58.3h110.7c-3.4-9.2-5.9-23.2-6.4-45.3-52.7-2.9-86.8-7.8-109.1-13zM111 348.2c-.5 69.8-6.6 106-13.34 125.5-.83 2.4-1.68 4.6-2.54 6.5h96.48c5.4-25.6 14.6-73.2 21.5-132H111zm188.3 0c7 58.8 16.1 106.4 21.5 132h95.4c-.8-2-1.6-4.2-2.4-6.6-6.4-19.5-12.1-55.7-12.6-125.4H299.3z" fill="currentColor"></path>
-                    </g>
-                </svg>
-                Collected Heroes
-            </h3>
-            <p class="subtitle">Manage your roster and view their attributes.</p>
-        </div>
+            <section class="guild-roster" aria-labelledby="roster-title">
+                <div class="guild-roster-heading">
+                    <div>
+                        <p class="guild-eyebrow">Your collection</p>
+                        <h2 id="roster-title">Collected heroes</h2>
+                        <p>Explore your heroes and view their attributes.</p>
+                    </div>
+                    @if (_heroes is not null)
+                    {
+                        <span class="guild-roster-count">@_heroes.Count @(_heroes.Count == 1 ? "hero" : "heroes")</span>
+                    }
+                </div>
 
-        @if (_heroes == null)
-        {
-            <p class="text-center"><em>Loading roster...</em></p>
-        }
-        else
-        {
-            <div class="row mt-4">
-                @foreach (var hero in _heroes)
+                @if (_rosterError)
                 {
-                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                        <a href="/hero/@hero.DefinitionId" class="card hero-card bg-dark border-secondary h-100 shadow text-decoration-none">
-                            <div class="card-img-top hero-portrait" style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)');"></div>
-                            <div class="card-body text-center">
-                                <h5 class="card-title text-info fw-bold mb-1">@hero.Name</h5>
-                                <p class="card-text small text-muted">Level @hero.CurrentLevel</p>
-                            </div>
-                        </a>
+                    <div class="guild-state" role="alert">
+                        <h3>Roster unavailable</h3>
+                        <p>We couldn't load your heroes. Try again to see your collection.</p>
+                        <button type="button" @onclick="LoadRosterAsync">Retry roster</button>
                     </div>
                 }
-            </div>
-        }
+                else if (_heroes is null)
+                {
+                    <p class="guild-feedback" role="status">Loading your roster...</p>
+                }
+                else if (_heroes.Count == 0)
+                {
+                    <div class="guild-state">
+                        <h3>No heroes in your roster yet</h3>
+                        <p>Visit the Tavern to discover heroes to recruit.</p>
+                        <a href="/tavern">Explore the Tavern <span aria-hidden="true">→</span></a>
+                    </div>
+                }
+                else
+                {
+                    <ul class="guild-hero-list">
+                        @foreach (var hero in _heroes)
+                        {
+                            <li>
+                                <a class="guild-hero" href="/hero/@hero.DefinitionId" aria-label="View @hero.Name, level @hero.CurrentLevel">
+                                    <span class="guild-hero-portrait" style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)')" aria-hidden="true"></span>
+                                    <span class="guild-hero-info">
+                                        <strong>@hero.Name</strong>
+                                        <span>Hero · Level @hero.CurrentLevel</span>
+                                    </span>
+                                    <span class="guild-hero-action" aria-hidden="true">View hero <span>→</span></span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
     }
 </div>
 
@@ -112,10 +189,16 @@
     private bool _hasGuild = false;
     private string _guildName = string.Empty;
     private bool _isCreatingGuild;
+    private bool _isRedirecting;
+    private bool _isNameInvalid;
+    private bool _sessionExpired;
+    private bool _showReload;
     private string? _guildError;
 
     private GuildProfileDto? _profile;
     private List<HeroDto>? _heroes;
+    private bool _profileError;
+    private bool _rosterError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,40 +215,106 @@
 
     private async Task CreateGuildAsync()
     {
+        if (_isCreatingGuild || _isRedirecting)
+        {
+            return;
+        }
+
         _isCreatingGuild = true;
         _guildError = null;
+        _isNameInvalid = false;
+        _sessionExpired = false;
+        _showReload = false;
         try
         {
             var request = new CreateGuildRequest { GuildName = _guildName };
-            var response = await Http.PostAsJsonAsync("api/guild/create", request);
+            using var response = await Http.PostAsJsonAsync("api/guild/create", request);
             if (response.IsSuccessStatusCode)
             {
+                _isRedirecting = true;
                 var customAuthState = (CookieAuthenticationStateProvider)AuthState;
                 customAuthState.NotifyAuthStatusChanged();
                 NavManager.NavigateTo("/guild", forceLoad: true);
             }
             else
             {
-                _guildError = "Failed to create guild. Please try a different name.";
+                _guildError = response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.BadRequest => "Check your guild name and try again. It must be at least 3 characters long.",
+                    System.Net.HttpStatusCode.Conflict => "This account already has a guild. Reload to see your roster.",
+                    System.Net.HttpStatusCode.Unauthorized => "Your session has expired. Sign in again to continue.",
+                    _ => "We couldn't create your guild right now. Please try again."
+                };
+                _isNameInvalid = response.StatusCode == System.Net.HttpStatusCode.BadRequest;
+                _showReload = response.StatusCode == System.Net.HttpStatusCode.Conflict;
+                _sessionExpired = response.StatusCode == System.Net.HttpStatusCode.Unauthorized;
             }
         }
-        catch { _guildError = "Connection error."; }
-        finally { _isCreatingGuild = false; }
+        catch (HttpRequestException)
+        {
+            _guildError = "Unable to connect. Check your connection and try again.";
+        }
+        catch (TaskCanceledException)
+        {
+            _guildError = "The request timed out. Please try again.";
+        }
+        finally
+        {
+            _isCreatingGuild = false;
+        }
     }
+
+    private void ClearNameError()
+    {
+        if (_isNameInvalid)
+        {
+            _guildError = null;
+            _isNameInvalid = false;
+        }
+    }
+
+    private void ReloadGuild() => NavManager.NavigateTo("/guild", forceLoad: true);
 
     private async Task LoadGuildDataAsync()
     {
+        await Task.WhenAll(LoadProfileAsync(), LoadRosterAsync());
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        _profileError = false;
+        _profile = null;
         try
         {
-            // Dispara os dois pedidos ao mesmo tempo
-            var profileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
-            var rosterTask = Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
-
-            await Task.WhenAll(profileTask, rosterTask);
-
-            _profile = profileTask.Result;
-            _heroes = rosterTask.Result;
+            _profile = await Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
+            _profileError = _profile is null;
         }
-        catch { }
+        catch (Exception)
+        {
+            _profileError = true;
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task LoadRosterAsync()
+    {
+        _rosterError = false;
+        _heroes = null;
+        try
+        {
+            _heroes = await Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
+            _rosterError = _heroes is null;
+        }
+        catch (Exception)
+        {
+            _rosterError = true;
+        }
+        finally
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 }

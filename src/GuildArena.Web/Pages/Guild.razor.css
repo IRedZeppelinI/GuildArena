@@ -1,43 +1,517 @@
-﻿.page-header {
-    text-align: center;
-    margin-bottom: 3rem;
+﻿.guild-creation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(28px, 5vw, 72px);
+    align-items: center;
+    max-width: 980px;
+    margin: clamp(20px, 5vw, 70px) auto 0;
 }
 
-.title {
-    font-weight: bold;
+.creation-intro,
+.creation-panel {
+    min-width: 0;
 }
 
-.subtitle {
-    color: #e0e0e0;
+.creation-mark {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 32px;
+    border: 1px solid var(--ga-line);
+    background: var(--ga-surface);
 }
 
-.hero-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+.creation-eyebrow {
+    margin: 0 0 13px;
+    color: var(--ga-gold);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
 }
 
-    .hero-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 15px rgba(255, 216, 0, 0.2) !important;
+.guild-creation h1,
+.guild-creation h2 {
+    color: var(--ga-text);
+    font-family: Georgia, serif;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.guild-creation h1 {
+    max-width: 14ch;
+    margin: 0 0 20px;
+    font-size: clamp(2.15rem, 3.5vw, 3.35rem);
+}
+
+.creation-description {
+    max-width: 42ch;
+    margin: 0;
+    color: var(--ga-muted);
+    font-size: 1.05rem;
+    line-height: 1.65;
+}
+
+.creation-next {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 38px;
+    padding-top: 20px;
+    border-top: 1px solid var(--ga-line);
+    color: var(--ga-text);
+    font-size: .85rem;
+}
+
+.creation-next-number {
+    color: var(--ga-gold);
+    font-weight: 700;
+}
+
+.creation-panel {
+    padding: clamp(24px, 3vw, 40px);
+    border: 1px solid var(--ga-line);
+    border-top: 3px solid var(--ga-gold);
+    background: var(--ga-surface);
+}
+
+.guild-creation h2 {
+    margin: 0 0 8px;
+    font-size: clamp(1.65rem, 2.4vw, 2.1rem);
+}
+
+.creation-panel-description {
+    margin: 0 0 32px;
+    color: var(--ga-muted);
+    line-height: 1.5;
+}
+
+.creation-field label {
+    display: block;
+    margin-bottom: 9px;
+    color: var(--ga-text);
+    font-size: .9rem;
+    font-weight: 650;
+}
+
+.creation-field input {
+    display: block;
+    width: 100%;
+    min-height: 48px;
+    padding: 11px 14px;
+    border: 1px solid #82917d;
+    border-radius: 2px;
+    background: #101713;
+    color: var(--ga-text);
+    font: inherit;
+}
+
+.creation-field input::placeholder {
+    color: #a8b6a5;
+    opacity: 1;
+}
+
+.creation-field input:focus-visible,
+.creation-submit:focus-visible,
+.creation-recovery:focus-visible {
+    outline: 3px solid var(--ga-focus);
+    outline-offset: 3px;
+}
+
+.creation-field input[aria-invalid="true"] {
+    border-color: #e4a59a;
+}
+
+.creation-field input:disabled {
+    opacity: .65;
+}
+
+.creation-field p {
+    margin: 9px 0 25px;
+    color: var(--ga-muted);
+    font-size: .85rem;
+}
+
+.creation-error {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    border-left: 3px solid #e4a59a;
+    background: #312420;
+    color: #f7e3dc;
+    line-height: 1.5;
+}
+
+.creation-error p {
+    margin: 4px 0 0;
+}
+
+.creation-recovery {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ga-focus);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.creation-submit {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+    min-height: 48px;
+    padding: 11px 17px;
+    border: 1px solid var(--ga-gold);
+    border-radius: 2px;
+    background: var(--ga-gold);
+    color: #1b221b;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+}
+
+.creation-submit:hover:not(:disabled) {
+    background: var(--ga-focus);
+}
+
+.creation-submit:disabled {
+    opacity: .7;
+    cursor: wait;
+}
+
+.creation-status {
+    margin: 12px 0 0;
+    color: var(--ga-muted);
+    font-size: .9rem;
+}
+
+@media (max-width: 750px) {
+    .guild-creation {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 540px;
+        margin-top: 12px;
     }
 
-.hero-portrait {
-    height: 200px;
-    background-color: #212529; /* bg-dark */
+    .creation-mark {
+        margin-bottom: 20px;
+    }
+
+    .creation-next {
+        margin-top: 22px;
+    }
+}
+
+.guild-page {
+    min-width: 0;
+}
+
+.guild-profile {
+    max-width: 1050px;
+    margin: 0 auto;
+}
+
+.guild-eyebrow {
+    margin: 0 0 12px;
+    color: var(--ga-gold);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+}
+
+.guild-identity {
+    padding: clamp(23px, 3.5vw, 40px);
+    border: 1px solid var(--ga-line);
+    border-top: 3px solid var(--ga-gold);
+    background: var(--ga-surface);
+}
+
+.guild-identity h1 {
+    overflow-wrap: anywhere;
+    margin: 0 0 9px;
+    color: var(--ga-text);
+    font: 700 clamp(2rem, 3.5vw, 3.2rem)/1.15 Georgia, serif;
+}
+
+.guild-level {
+    margin: 0;
+    color: var(--ga-gold);
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.guild-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 1px;
+    margin-top: 1px;
+    background: var(--ga-line);
+    border: 1px solid var(--ga-line);
+}
+
+.guild-stat {
+    min-width: 0;
+    padding: 24px clamp(20px, 3vw, 32px);
+    background: var(--ga-surface);
+}
+
+.guild-stat-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 6px 18px;
+}
+
+.guild-stat h2 {
+    margin: 0 0 16px;
+    color: var(--ga-text);
+    font-size: .85rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.guild-stat-value {
+    color: var(--ga-text);
+    font-size: .95rem;
+    font-weight: 700;
+}
+
+.guild-stat p {
+    margin: 8px 0 0;
+    color: var(--ga-muted);
+    font-size: .85rem;
+}
+
+.guild-xp {
+    display: block;
+    width: 100%;
+    height: 10px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #394a3d;
+    color: var(--ga-gold);
+    accent-color: var(--ga-gold);
+}
+
+.guild-xp::-webkit-progress-bar {
+    background: #394a3d;
+}
+
+.guild-xp::-webkit-progress-value {
+    background: var(--ga-gold);
+}
+
+.guild-xp::-moz-progress-bar {
+    background: var(--ga-gold);
+}
+
+.guild-record {
+    display: flex;
+    gap: clamp(25px, 4vw, 55px);
+}
+
+.guild-record p {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+}
+
+.guild-record strong {
+    color: var(--ga-text);
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.guild-roster {
+    margin-top: clamp(40px, 5vw, 64px);
+}
+
+.guild-roster-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--ga-line);
+}
+
+.guild-roster-heading h2 {
+    margin: 0 0 6px;
+    color: var(--ga-text);
+    font: 700 clamp(1.65rem, 2.5vw, 2.15rem)/1.2 Georgia, serif;
+}
+
+.guild-roster-heading p:last-child {
+    margin: 0;
+    color: var(--ga-muted);
+}
+
+.guild-roster-count {
+    flex: none;
+    padding: 6px 11px;
+    border: 1px solid var(--ga-line);
+    color: var(--ga-text);
+    font-size: .85rem;
+}
+
+.guild-hero-list {
+    display: grid;
+    gap: 10px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.guild-hero {
+    display: flex;
+    align-items: center;
+    gap: clamp(16px, 3vw, 26px);
+    min-width: 0;
+    border: 1px solid var(--ga-line);
+    background: var(--ga-surface);
+    color: var(--ga-text);
+    text-decoration: none;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.guild-hero:hover {
+    border-color: var(--ga-gold);
+    background: var(--ga-raised);
+    color: var(--ga-text);
+}
+
+.guild-hero-portrait {
+    display: block;
+    flex: none;
+    width: 104px;
+    height: 104px;
     background-size: cover;
-    background-position: top center;
-    border-bottom: 1px solid #6c757d; /* border-secondary */
+    background-position: center 20%;
+    background-color: var(--ga-raised);
 }
 
-
-
-.xp-bar-container {
-    height: 12px;
-    width: 200px;
-    background-color: #222;
+.guild-hero-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 12px 0;
 }
 
-@media (max-width: 768px) {
-    .xp-bar-container {
-        width: 100%; /* No telemóvel a barra de XP ocupa a largura toda */
+.guild-hero-info strong {
+    overflow-wrap: anywhere;
+    color: var(--ga-text);
+    font: 700 1.2rem/1.25 Georgia, serif;
+}
+
+.guild-hero-info > span {
+    margin-top: 7px;
+    color: var(--ga-muted);
+    font-size: .85rem;
+}
+
+.guild-hero-action {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: none;
+    margin-left: auto;
+    padding: 12px clamp(18px, 3vw, 32px);
+    color: var(--ga-gold);
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.guild-hero-action span {
+    font-size: 1.3rem;
+}
+
+.guild-feedback,
+.guild-state {
+    margin: 0 0 24px;
+    padding: 24px;
+    border: 1px solid var(--ga-line);
+    background: var(--ga-surface);
+    color: var(--ga-muted);
+}
+
+.guild-state[role="alert"] {
+    border-left: 3px solid #e4a59a;
+}
+
+.guild-state h1,
+.guild-state h3 {
+    margin: 0 0 10px;
+    color: var(--ga-text);
+    font: 700 1.4rem/1.25 Georgia, serif;
+}
+
+.guild-state p {
+    margin: 0 0 14px;
+}
+
+.guild-state p:last-child {
+    margin-bottom: 0;
+}
+
+.guild-state button,
+.guild-state a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 9px 16px;
+    border: 1px solid var(--ga-gold);
+    background: var(--ga-gold);
+    color: #1b221b;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.guild-state button:hover,
+.guild-state a:hover {
+    background: var(--ga-focus);
+    color: #1b221b;
+}
+
+@media (max-width: 680px) {
+    .guild-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .guild-hero-portrait {
+        width: 80px;
+        height: 90px;
+    }
+
+    .guild-hero-action {
+        padding: 12px 16px 12px 0;
+        font-size: 0;
+    }
+
+    .guild-hero-action span {
+        font-size: 1.3rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .guild-roster-heading {
+        align-items: start;
+        flex-direction: column;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .guild-hero {
+        transition: none;
     }
 }
