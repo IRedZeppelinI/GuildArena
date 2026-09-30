@@ -167,7 +167,7 @@
                         @foreach (var hero in _heroes)
                         {
                             <li>
-                                <a class="guild-hero" href="/hero/@hero.DefinitionId" aria-label="View @hero.Name, level @hero.CurrentLevel">
+                                <a class="guild-hero" href="/hero/@hero.DefinitionId?from=guild" aria-label="View @hero.Name, level @hero.CurrentLevel">
                                     <span class="guild-hero-portrait" style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)')" aria-hidden="true"></span>
                                     <span class="guild-hero-info">
                                         <strong>@hero.Name</strong>
