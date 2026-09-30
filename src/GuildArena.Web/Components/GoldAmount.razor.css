@@ -1,0 +1,23 @@
+.gold-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: .3em;
+    white-space: nowrap;
+}
+
+.gold-amount img {
+    flex: none;
+    width: max(1em, 16px);
+    height: max(1em, 16px);
+}
+
+.gold-unit {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

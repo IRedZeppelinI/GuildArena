@@ -80,9 +80,7 @@
 .hero-portrait img {
     display: block;
     width: 100%;
-    aspect-ratio: 3 / 4;
-    object-fit: cover;
-    object-position: top center;
+    height: auto;
     border: 1px solid var(--ga-line);
 }
 
@@ -183,69 +181,15 @@
     border-left-color: #e4a59a;
 }
 
-.recruitment-requirements {
+.hero-recruitment ::deep .requirements {
     margin-bottom: 16px;
-    border: 1px solid var(--ga-line);
 }
 
-.recruitment-requirements h3 {
-    margin: 0;
-    padding: 11px 12px;
-    border-bottom: 1px solid var(--ga-line);
+.recruitment-note {
+    margin: 12px 0 0;
     color: var(--ga-muted);
-    font-size: .75rem;
-    font-weight: 700;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-}
-
-.recruitment-condition {
-    display: grid;
-    gap: 5px;
-    padding: 12px;
-    background: var(--ga-raised);
-    font-size: .85rem;
-}
-
-.recruitment-condition + .recruitment-condition {
-    border-top: 1px solid var(--ga-line);
-}
-
-.recruitment-condition p {
-    overflow-wrap: anywhere;
-    margin: 0;
-    color: var(--ga-text);
-}
-
-.recruitment-condition > span {
-    color: var(--ga-muted);
-    font-size: .78rem;
-}
-
-.recruitment-condition .requirement-met {
-    color: #b7dfbb;
-}
-
-.recruitment-condition progress {
-    width: 100%;
-    height: 7px;
-    border: 0;
-    border-radius: 0;
-    background: #394a3d;
-    color: var(--ga-gold);
-    accent-color: var(--ga-gold);
-}
-
-.recruitment-condition progress::-webkit-progress-bar {
-    background: #394a3d;
-}
-
-.recruitment-condition progress::-webkit-progress-value {
-    background: var(--ga-gold);
-}
-
-.recruitment-condition progress::-moz-progress-bar {
-    background: var(--ga-gold);
+    font-size: .8rem;
+    line-height: 1.5;
 }
 
 .hero-eyebrow {
@@ -439,11 +383,6 @@
         width: 100%;
     }
 
-    .hero-portrait img {
-        aspect-ratio: 16 / 10;
-        object-position: center 20%;
-    }
-
     .hero-details {
         grid-row: 2;
     }
@@ -587,6 +526,33 @@
     font-size: .8rem;
     overflow-wrap: anywhere;
 }
+
+.ability-effect-detail {
+    margin: 0;
+}
+
+.ability-breakdown {
+    color: var(--ga-muted);
+    font-size: .8rem;
+    line-height: 1.5;
+}
+
+.ability-breakdown summary {
+    width: fit-content;
+    min-height: 36px;
+    padding: 7px 0;
+    color: var(--ga-gold);
+    cursor: pointer;
+}
+
+.ability-breakdown summary:focus-visible {
+    outline: 3px solid var(--ga-focus);
+    outline-offset: 2px;
+}
+
+.ability-breakdown p { margin: 4px 0 0; }
+
+.ability-empty { color: var(--ga-muted); }
 
 .ability-heal {
     color: #b7dfbb;

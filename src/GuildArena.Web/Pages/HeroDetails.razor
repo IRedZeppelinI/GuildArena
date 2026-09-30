@@ -7,6 +7,7 @@
 @using GuildArena.Domain.Enums.Combat
 @using GuildArena.Domain.Enums.UnlockHero
 @using GuildArena.Web.Services
+@using GuildArena.Web.Components
 @inject HttpClient Http
 @inject IAssetService AssetService
 
@@ -23,6 +24,10 @@
             <p class="hero-eyebrow">Hero register</p>
             <h1 id="hero-state-title">@(_heroNotFound ? "Hero not found" : "Hero details unavailable")</h1>
             <p>@_errorMessage</p>
+            @if (_purchaseSuccess is not null)
+            {
+                <p>@_purchaseSuccess</p>
+            }
             @if (!_heroNotFound)
             {
                 <button type="button" @onclick="LoadHeroDataAsync">Try again</button>
@@ -66,32 +71,19 @@
                         <p class="recruitment-status">Recruitment locked</p>
                         @if (_tavernInfo.UnlockConditions.Count > 0)
                         {
-                            <div class="recruitment-requirements">
-                                <h3>Unlock requirements</h3>
-                                @foreach (var cond in _tavernInfo.UnlockConditions)
-                                {
-                                    var isMet = cond.CurrentValue >= cond.RequiredValue;
-                                    <div class="recruitment-condition">
-                                        <p>@cond.Description</p>
-                                        <span class="@(isMet ? "requirement-met" : "requirement-pending")">@(isMet ? "Met" : "Not met") · @Math.Min(cond.CurrentValue, cond.RequiredValue) / @cond.RequiredValue</span>
-                                        @if (cond.RequiredValue > 0)
-                                        {
-                                            <progress value="@Math.Clamp(cond.CurrentValue, 0, cond.RequiredValue)" max="@cond.RequiredValue" aria-label="@cond.Description: @cond.CurrentValue of @cond.RequiredValue"></progress>
-                                        }
-                                    </div>
-                                }
-                            </div>
+                            <UnlockRequirements Conditions="_tavernInfo.UnlockConditions" />
                         }
-                        <p class="recruitment-price"><span>Recruitment cost</span><strong>@_tavernInfo.GoldCost gold</strong></p>
+                        <p class="recruitment-price"><span>Recruitment cost</span><strong><GoldAmount Value="_tavernInfo.GoldCost" /></strong></p>
                         <button class="recruitment-action" type="button" disabled>Recruitment locked</button>
                     }
                     else if (_tavernInfo.Status == HeroStatus.Available)
                     {
-                        <p class="recruitment-status">Ready to recruit</p>
-                        <p class="recruitment-price"><span>Recruitment cost</span><strong>@_tavernInfo.GoldCost gold</strong></p>
+                        <p class="recruitment-status">Unlocked · recruitment available</p>
+                        <p class="recruitment-price"><span>Recruitment cost</span><strong><GoldAmount Value="_tavernInfo.GoldCost" /></strong></p>
                         <button class="recruitment-action" type="button" disabled="@_isPurchasing" @onclick="PurchaseHeroAsync">
                             @(_isPurchasing ? "Signing..." : "Recruit hero")
                         </button>
+                        <p class="recruitment-note">Your guild's gold and eligibility are confirmed when you recruit.</p>
                     }
                 </section>
             </div>
@@ -168,6 +160,10 @@
             </div>
 
             <div class="ability-list">
+                @if (_hero.Abilities.Count == 0)
+                {
+                    <p class="ability-empty">No known abilities are listed for this hero.</p>
+                }
                 @foreach (var ability in _hero.Abilities)
                 {
                     <article class="ability-card">
@@ -207,7 +203,10 @@
                                                 <div class="ability-effect-summary">
                                                     <strong class="@(isHeal ? "ability-heal" : "ability-damage")">@eff.PredictedValue @(isHeal ? "Healing" : "Damage")</strong>
                                                 </div>
-                                                <span class="ability-effect-detail">Base @eff.BaseAmount + @((int)Math.Round(eff.ScalingFactor * 100))% @eff.ScalingStat</span>
+                                                <details class="ability-breakdown">
+                                                    <summary>How this value is described</summary>
+                                                    <p>Base @eff.BaseAmount + @((int)Math.Round(eff.ScalingFactor * 100))% @eff.ScalingStat scaling. The predicted value is supplied by the server; actual combat effects may vary.</p>
+                                                </details>
                                             </div>
                                         }
                                         else if (eff.Type == EffectType.APPLY_MODIFIER && !string.IsNullOrEmpty(eff.ModifierName))
@@ -217,7 +216,10 @@
                                                     <strong>Applies @eff.ModifierName</strong>
                                                     <span>@(eff.DurationInTurns == -1 ? "Permanent" : $"{eff.DurationInTurns} Turn{(eff.DurationInTurns > 1 ? "s" : "")}")</span>
                                                 </div>
-                                                <span class="ability-effect-detail">@eff.ModifierDescription</span>
+                                                @if (!string.IsNullOrWhiteSpace(eff.ModifierDescription))
+                                                {
+                                                    <p class="ability-effect-detail">@eff.ModifierDescription</p>
+                                                }
                                             </div>
                                         }
                                     }
@@ -272,6 +274,8 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        _purchaseError = null;
+        _purchaseSuccess = null;
         await LoadHeroDataAsync();
     }
 
@@ -325,6 +329,8 @@
 
     private async Task PurchaseHeroAsync()
     {
+        if (_isPurchasing || _tavernInfo?.Status != HeroStatus.Available) return;
+
         _isPurchasing = true;
         _purchaseError = null;
         _purchaseSuccess = null;
@@ -332,25 +338,21 @@
         try
         {
             var request = new PurchaseHeroRequest { HeroId = DefinitionId };
-            var response = await Http.PostAsJsonAsync("api/tavern/purchase", request);
-
-            if (response.IsSuccessStatusCode)
+            using var response = await Http.PostAsJsonAsync("api/tavern/purchase", request);
+            var (success, message) = await RecruitmentFeedback.ReadResultAsync(response);
+            if (success)
             {
-                var result = await response.Content.ReadFromJsonAsync<PurchaseHeroResponse>();
-                if (result != null && result.Success)
-                {
-                    _purchaseSuccess = "Hero successfully recruited to your Guild!";
-                    await LoadHeroDataAsync();
-                }
+                _purchaseSuccess = "Hero recruited to your guild.";
+                await LoadHeroDataAsync();
             }
             else
             {
-                _purchaseError = "Could not complete the purchase. Check if you have enough gold.";
+                _purchaseError = message;
             }
         }
         catch
         {
-            _purchaseError = "Connection error while attempting to purchase.";
+            _purchaseError = "Connection error during recruitment. Refresh the page to confirm the hero's status before trying again.";
         }
         finally
         {

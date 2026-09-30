@@ -1,0 +1,22 @@
+@using GuildArena.Shared.DTOs.Shop
+
+<div class="requirements">
+    <h3>Unlock requirements</h3>
+    @foreach (var condition in Conditions)
+    {
+        var isMet = condition.CurrentValue >= condition.RequiredValue;
+        <div class="requirement">
+            <p>@condition.Description</p>
+            <span class="@(isMet ? "met" : "pending")">@(isMet ? "Met" : "Not met") · @condition.CurrentValue / @condition.RequiredValue</span>
+            @if (condition.RequiredValue > 0)
+            {
+                <progress value="@Math.Clamp(condition.CurrentValue, 0, condition.RequiredValue)" max="@condition.RequiredValue"
+                          aria-label="@($"{condition.Description}: {condition.CurrentValue} of {condition.RequiredValue}")"></progress>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<UnlockConditionDto> Conditions { get; set; } = Array.Empty<UnlockConditionDto>();
+}

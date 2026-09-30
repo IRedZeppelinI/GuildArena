@@ -1,209 +1,212 @@
-﻿@page "/tavern"
+@page "/tavern"
 @attribute [Authorize]
 @using GuildArena.Shared.DTOs.Shop
 @using GuildArena.Domain.Enums.UnlockHero
+@using GuildArena.Web.Components
 @using GuildArena.Web.Services
 @inject HttpClient Http
 @inject IAssetService AssetService
-@inject NavigationManager NavManager
 
 <PageTitle>Hero Tavern</PageTitle>
 
-<div class="container mt-4 text-light pb-5">
-
-    <div class="page-header d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+<div class="tavern-page">
+    <header class="tavern-header">
         <div>
-            <h2 class="title text-danger mb-0 d-flex align-items-center gap-2">
-                <svg style="width: 32px; height: 32px;" class="text-warning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                    <path d="M0 0h512v512H0z" fill="none" fill-opacity="1"></path>
-                    <g transform="translate(0,0)">
-                        <path d="M105 41v96h30V41zm272 0v98h30V41zM25 57v30h62V57zm128 0v30h206V57zm272 0v30h62V57zM69 137v99l56.8 14.2L69 265.7v126.1c14.39-3.5 29.01-1.7 42.7 3.4 17.9 6.5 34.9 18 51.6 30.1 33.4 24.3 65.9 50.3 92.7 50.3 26.8 0 59.3-26 92.7-50.3 16.7-12.1 33.7-23.6 51.6-30.1 13.7-5.1 28.3-6.9 42.7-3.4v-42.6l-15.4-10.7-28.2-19.6L443 323V220.4l-45.7-14.5 45.7-9.5V137h-18v20h-66v-20H153v18H87v-18zm184.3 30h.3c14.9.5 22.8 11.9 26.5 15.5 1.9 1.9 1.8 1.6 2.1 1.6 5.5-2.5 6.8-3.7 11.3-7.7h3.4c10 0 18.8 5.3 24.7 12.8 5.9 7.5 9.2 17.4 9.2 28.1 0 3.9-.4 7.6-1.3 11.2 4.1-1.5 8.1-2.7 12.2-2.9 1.5-.2 2.9-.1 4.3.1 5.9.6 12.7 5.2 14.6 11.7 10.3 34.2 7.7 71.4.1 100.8-2.7 10.6-10.6 17.6-18.6 20.3-4.5 1.5-8.9 2.1-13.1 2.4-.2 2 0 32.6 0 50.1H183c-.1-17.9 0-34.7 0-52 3.5-30.3 8.9-71.6 12.6-104.5-13.1-6.2-22.3-18.8-22.3-33.7 0-21.2 18.7-37.8 40.6-37.8 4.1 0 8.2.6 12 1.8 6.3-10.5 15.9-17.8 27.4-17.8zm-.1 18c-4.7.1-10.7 4.3-14.5 14.4l-3.6 9.7-9.1-5c-3.6-2-7.9-3.1-12.1-3.1-13.1 0-22.6 9.2-22.6 19.8 0 10.6 9.5 19.8 22.6 19.8 5.4 0 10.6-1.7 14.5-4.6l7.9-5.9 5.2 8.4c3.8 6.3 8.1 8.5 11.8 8.5 4.7 0 10.8-4.3 14.7-14.6l6.9-18.5 9.4 17.3c3.5 6.3 8.1 9 12.6 9 3.7 0 7.3-1.9 10.5-5.9 3.1-4 5.4-10.1 5.4-17s-2.3-13-5.4-17c-2.4-3-5-4.8-7.8-5.6-5.6 4.4-10.8 7.1-16.5 7.4-6.7.3-12.2-3.5-15.5-6.6-6.4-6.2-8.1-10.2-14.4-10.5zm90.4 58.6c-9.9 1.2-19.7 7.5-26.9 13.2l9.6 86.1c3.9-.2 7.5-.6 10-1.5 3.9-1.3 5.6-2.3 7-7.6 6.8-26.5 8.9-60.6.3-90.2zm-65.6 7.6c-6.2 8.3-14.7 13.8-24.7 13.8-8.4 0-16-3.9-21.9-10.2-5.5 2.5-11.5 3.8-17.5 3.8h-.6L202.1 359h107.8l-11.2-100.9c-.6.1-1.2.1-1.8.1-7 0-13.5-2.6-18.9-7zM201 377v16h110v-16z" fill="currentColor"></path>
-                    </g>
-                </svg>
-                The Tavern
-            </h2>
-            <p class="subtitle mb-0">Spend your hard-earned gold to recruit new heroes.</p>
+            <p class="tavern-eyebrow">Guild collection / Recruitment</p>
+            <h1>The Tavern</h1>
+            <p>Discover new heroes, review their abilities, and recruit them for your guild.</p>
         </div>
-
-        @if (_shopData != null)
+        @if (_shopData is not null && !_isLoading)
         {
-            <div class="gold-display bg-dark border border-warning rounded p-2 px-4 shadow-sm text-center">
-                <span class="text-muted small d-block">Guild Funds</span>
-                <span class="fs-4 fw-bold text-warning">@_shopData.GuildGold 🪙</span>
+            <div class="tavern-funds">
+                <span>Guild funds</span><strong><GoldAmount Value="_shopData.GuildGold" /></strong>
             </div>
         }
-    </div>
+    </header>
 
-    @if (_errorMessage != null)
+    @if (_purchaseSuccess is not null && _shopData is not { Heroes.Count: > 0 })
     {
-        <div class="alert alert-danger shadow-sm border-danger">
-            <h5 class="text-danger fw-bold">Notice</h5><p class="mb-0">@_errorMessage</p>
-        </div>
+        <p class="tavern-feedback tavern-success" role="status">@_purchaseSuccess</p>
+    }
+    @if (_purchaseError is not null && _shopData is not { Heroes.Count: > 0 })
+    {
+        <p class="tavern-feedback tavern-error" role="alert">@_purchaseError</p>
     }
 
-    @if (_shopData == null)
+    @if (_isLoading)
     {
-        <div class="text-center mt-5"><p><em>The barkeep is fetching the roster...</em></p></div>
+        <div class="tavern-state" role="status">Loading Tavern heroes...</div>
     }
-    else
+    else if (_loadError is not null)
     {
-        <div class="row">
-            @foreach (var hero in _shopData.Heroes)
-            {
-                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
-                    <div class="card tavern-card bg-dark border-secondary h-100 shadow d-flex flex-column @(hero.Status == HeroStatus.Locked ? "hero-locked" : "")">
-
-                        <!-- Imagem do Herói (COM LUPA E CLIQUE) -->
-                        <div class="card-img-top hero-portrait position-relative"
-                             style="background-image: url('@AssetService.GetPortraitUrl(hero.DefinitionId)'); cursor: pointer;"
-                             @onclick="() => GoToHeroDetails(hero.DefinitionId)">
-
-                            <div class="inspect-overlay d-flex justify-content-center align-items-center">
-                                <span class="fs-1" style="text-shadow: 0 0 15px black;">🔍</span>
-                            </div>
-
-                            @if (hero.Status == HeroStatus.Owned)
-                            {
-                                <div class="owned-overlay d-flex justify-content-center align-items-center">
-                                    <span class="badge bg-success fs-6 px-3 py-2 border border-light shadow">Recruited</span>
-                                </div>
-                            }
-                        </div>
-
-                        <!-- Informação Principal -->
-                        <div class="card-body text-center p-3 d-flex flex-column flex-grow-1">
-                            <h5 class="card-title text-info fw-bold mb-0">@hero.Name</h5>
-                            <p class="card-text small text-muted mb-3">@hero.RaceName</p>
-
-                            <!-- Secção Dinâmica (Condições vs Preço) -->
-                            <div class="mt-auto">
-                                @if (hero.Status == HeroStatus.Locked)
-                                {
-                                    <div class="conditions-box text-start bg-black p-2 rounded border border-secondary mb-3">
-                                        <p class="text-danger small fw-bold mb-1 border-bottom border-dark pb-1">Requirements:</p>
-                                        @foreach (var cond in hero.UnlockConditions)
-                                        {
-                                            var isMet = cond.CurrentValue >= cond.RequiredValue;
-                                            <div class="mb-2">
-                                                <div class="d-flex justify-content-between small">
-                                                    <span class="@(isMet ? "text-success" : "text-light")" style="font-size: 0.7rem;">@cond.Description</span>
-                                                    <span class="@(isMet ? "text-success" : "text-warning") fw-bold" style="font-size: 0.7rem;">
-                                                        @(Math.Min(cond.CurrentValue, cond.RequiredValue)) / @cond.RequiredValue
-                                                    </span>
-                                                </div>
-                                                <div class="progress" style="height: 4px; background-color: #333;">
-                                                    <div class="progress-bar @(isMet ? "bg-success" : "bg-warning")"
-                                                         role="progressbar"
-                                                         style="width: @((Math.Min(cond.CurrentValue, cond.RequiredValue) * 100) / cond.RequiredValue)%">
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                    <button class="btn btn-secondary w-100 fw-bold" disabled>
-                                        <span class="fs-6">🔒 @hero.GoldCost 🪙</span>
-                                    </button>
-                                }
-                                else if (hero.Status == HeroStatus.Owned)
-                                {
-                                    <button class="btn btn-success w-100 fw-bold border border-light" @onclick="() => GoToHeroDetails(hero.DefinitionId)">
-                                        View in Roster
-                                    </button>
-                                }
-                                else if (hero.Status == HeroStatus.Available)
-                                {
-                                    var canAfford = _shopData.GuildGold >= hero.GoldCost;
-                                    var btnClass = canAfford ? "btn-warning" : "btn-outline-danger";
-                                    var isPurchasing = _purchasingHeroId == hero.DefinitionId;
-
-                                    <button class="btn @btnClass w-100 fw-bold d-flex justify-content-between align-items-center px-3"
-                                            disabled="@(!canAfford || _isProcessingPurchase)"
-                                            @onclick="() => PurchaseHeroAsync(hero.DefinitionId)">
-                                        @if (isPurchasing)
-                                        {
-                                            <span>Signing Contract...</span>
-                                        }
-                                        else
-                                        {
-                                            <span>Recruit</span>
-                                            <span>@hero.GoldCost 🪙</span>
-                                        }
-                                    </button>
-                                    @if (!canAfford)
-                                    {
-                                        <div class="text-danger small mt-1 fw-bold">Not enough gold</div>
-                                    }
-                                }
-                            </div>
-                        </div>
+        <section class="tavern-state tavern-state-error" role="alert">
+            <h2>Tavern unavailable</h2>
+            <p>@_loadError</p>
+            <button type="button" @onclick="LoadShopDataAsync">Try again</button>
+        </section>
+    }
+    else if (_shopData is { Heroes.Count: 0 })
+    {
+        <div class="tavern-state">No heroes are listed at the Tavern right now.</div>
+    }
+    else if (_shopData is not null)
+    {
+        var groups = new[]
+        {
+            (Id: "recruited", Title: "Recruited heroes", Description: "Heroes already in your guild's roster.",
+                Heroes: _shopData.Heroes.Where(hero => hero.Status == HeroStatus.Owned).ToList()),
+            (Id: "prospects", Title: "Heroes to recruit", Description: "Review costs and unlock requirements before recruiting.",
+                Heroes: _shopData.Heroes.Where(hero => hero.Status != HeroStatus.Owned).ToList())
+        };
+        @foreach (var group in groups)
+        {
+            <section class="tavern-section" aria-labelledby="@($"tavern-{group.Id}-title")">
+                <header class="tavern-section-heading">
+                    <div>
+                        <p class="tavern-eyebrow">Guild collection</p>
+                        <h2 id="@($"tavern-{group.Id}-title")">@group.Title</h2>
+                        <p>@group.Description</p>
                     </div>
-                </div>
-            }
-        </div>
+                    <span class="tavern-count">@group.Heroes.Count @(group.Heroes.Count == 1 ? "hero" : "heroes")</span>
+                </header>
+                @if (group.Heroes.Count == 0)
+                {
+                    <p class="tavern-group-empty">@(group.Id == "recruited" ? "No heroes recruited yet." : "All Tavern heroes are in your roster.")</p>
+                }
+                else
+                {
+                    <div class="tavern-list">
+                    @foreach (var hero in group.Heroes)
+                    {
+                        var canAfford = _shopData.GuildGold >= hero.GoldCost;
+                        var isPurchasing = _purchasingHeroId == hero.DefinitionId;
+                        <article class="tavern-hero" @key="hero.DefinitionId">
+                            <a class="tavern-portrait" href="@HeroUrl(hero.DefinitionId)" aria-label="Inspect @hero.Name">
+                                <img src="@AssetService.GetPortraitUrl(hero.DefinitionId)" alt="" loading="lazy" />
+                            </a>
+                            <div class="tavern-hero-body">
+                                @if (_feedbackHeroId == hero.DefinitionId && _purchaseSuccess is not null)
+                                {
+                                    <p class="tavern-feedback tavern-success" role="status">@_purchaseSuccess</p>
+                                }
+                                @if (_feedbackHeroId == hero.DefinitionId && _purchaseError is not null)
+                                {
+                                    <p class="tavern-feedback tavern-error" role="alert">@_purchaseError</p>
+                                }
+                                <div class="tavern-hero-heading">
+                                    <div>
+                                        <p class="tavern-eyebrow">@hero.RaceName</p>
+                                        <h3>@hero.Name</h3>
+                                    </div>
+                                    <span class="tavern-status">@(hero.Status switch { HeroStatus.Owned => "In roster", HeroStatus.Locked => "Locked", _ => "Available" })</span>
+                                </div>
+
+                                @if (hero.Status == HeroStatus.Locked && hero.UnlockConditions.Count > 0)
+                                {
+                                    <UnlockRequirements Conditions="hero.UnlockConditions" />
+                                }
+
+                                @if (hero.Status != HeroStatus.Owned)
+                                {
+                                    <p class="tavern-price"><span>Recruitment cost</span><strong><GoldAmount Value="hero.GoldCost" /></strong></p>
+                                }
+
+                                @if (hero.Status == HeroStatus.Available && !canAfford)
+                                {
+                                    <p class="tavern-shortfall">Not enough gold · need <GoldAmount Value="@(hero.GoldCost - _shopData.GuildGold)" /> more</p>
+                                }
+
+                                <div class="tavern-actions">
+                                    <a href="@HeroUrl(hero.DefinitionId)">Inspect hero <span aria-hidden="true">→</span></a>
+                                    @if (hero.Status == HeroStatus.Available)
+                                    {
+                                        <button type="button" disabled="@(!canAfford || _isProcessingPurchase)"
+                                                @onclick="() => PurchaseHeroAsync(hero.DefinitionId)">
+                                            @(isPurchasing ? "Signing..." : canAfford ? "Recruit hero" : "Insufficient gold")
+                                        </button>
+                                    }
+                                    else if (hero.Status == HeroStatus.Locked)
+                                    {
+                                        <span class="tavern-unavailable">Complete the requirements to recruit</span>
+                                    }
+                                </div>
+                            </div>
+                        </article>
+                    }
+                    </div>
+                }
+            </section>
+        }
     }
 </div>
 
 @code {
     private TavernShopDto? _shopData;
-    private string? _errorMessage;
-    private bool _isProcessingPurchase = false;
+    private string? _loadError;
+    private string? _purchaseError;
+    private string? _purchaseSuccess;
+    private string? _feedbackHeroId;
+    private bool _isLoading = true;
+    private bool _isProcessingPurchase;
     private string? _purchasingHeroId;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadShopDataAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadShopDataAsync();
+
+    private static string HeroUrl(string definitionId) => $"/hero/{Uri.EscapeDataString(definitionId)}?from=tavern";
 
     private async Task LoadShopDataAsync()
     {
+        _isLoading = true;
+        _loadError = null;
         try
         {
-            _errorMessage = null;
             _shopData = await Http.GetFromJsonAsync<TavernShopDto>("api/tavern");
+            if (_shopData is null) throw new InvalidOperationException("Empty Tavern response");
         }
         catch (Exception)
         {
-            _errorMessage = "Failed to communicate with the Tavern. The barkeep might be sleeping.";
+            _shopData = null;
+            _loadError = "We couldn't load current heroes and guild funds. Check your connection and try again.";
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
     private async Task PurchaseHeroAsync(string definitionId)
     {
+        if (_isProcessingPurchase || _shopData?.Heroes.FirstOrDefault(h => h.DefinitionId == definitionId) is not { Status: HeroStatus.Available } hero ||
+            _shopData.GuildGold < hero.GoldCost) return;
+
         _isProcessingPurchase = true;
         _purchasingHeroId = definitionId;
-        _errorMessage = null;
+        _feedbackHeroId = definitionId;
+        _purchaseError = null;
+        _purchaseSuccess = null;
 
         try
         {
-            var request = new PurchaseHeroRequest { HeroId = definitionId };
-            var response = await Http.PostAsJsonAsync("api/tavern/purchase", request);
-
-            if (response.IsSuccessStatusCode)
+            using var response = await Http.PostAsJsonAsync("api/tavern/purchase", new PurchaseHeroRequest { HeroId = definitionId });
+            var (success, message) = await RecruitmentFeedback.ReadResultAsync(response);
+            if (success)
             {
-                var result = await response.Content.ReadFromJsonAsync<PurchaseHeroResponse>();
-                if (result != null && result.Success)
-                {
-                    await LoadShopDataAsync();
-                }
+                _purchaseSuccess = $"{hero.Name} was recruited to your guild.";
+                await LoadShopDataAsync();
             }
             else
             {
-                _errorMessage = "Could not complete the purchase. Make sure you meet all requirements.";
+                _purchaseError = message;
             }
         }
-        catch
+        catch (Exception)
         {
-            _errorMessage = "Connection error while attempting to purchase.";
+            _purchaseError = "Connection error during recruitment. Refresh the Tavern to confirm ownership before trying again.";
         }
         finally
         {
             _isProcessingPurchase = false;
             _purchasingHeroId = null;
         }
-    }
-
-    private void GoToHeroDetails(string definitionId)
-    {
-        NavManager.NavigateTo($"/hero/{definitionId}?from=tavern");
     }
 }
