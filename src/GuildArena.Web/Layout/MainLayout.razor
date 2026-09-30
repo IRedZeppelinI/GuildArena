@@ -12,7 +12,7 @@
 <div class="page game-container" @onkeydown="HandleMenuKeyDown">
     <header class="site-header">
         <a class="mobile-brand" href="/" aria-label="GuildArena home">
-            <img src="/images/ui/logo.png" alt="" />
+            <img src="/images/ui/estandarte.svg" alt="" width="28" height="28" />
             <span>GuildArena</span>
         </a>
         <span class="header-location">GuildArena</span>
@@ -49,8 +49,8 @@
     </header>
 
     <aside class="sidebar @(_isMenuOpen ? "mobile-open" : "")">
-        <a class="sidebar-brand" href="/">
-            <img src="/images/ui/logo.png" alt="" />
+        <a class="sidebar-brand" href="/" aria-label="GuildArena home">
+            <img src="/images/ui/estandarte.svg" alt="" width="31" height="31" />
             <span>GuildArena</span>
         </a>
         <NavMenu OnNavigate="CloseMenu" />

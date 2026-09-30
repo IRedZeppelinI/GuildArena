@@ -36,8 +36,8 @@
     align-items: center;
     gap: 9px;
     color: var(--ga-text);
-    font: 700 18px/1 Cinzel, Georgia, serif;
-    letter-spacing: .035em;
+    font: 700 18px/1 Georgia, serif;
+    letter-spacing: .01em;
     text-decoration: none;
     white-space: nowrap;
 }
