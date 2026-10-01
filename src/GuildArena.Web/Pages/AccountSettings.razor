@@ -1,179 +1,194 @@
-﻿@page "/account"
+@page "/account"
 @attribute [Authorize]
 @using GuildArena.Shared.Requests
 @using GuildArena.Shared.DTOs.Identity
 @using GuildArena.Web.Security
-@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject NavigationManager NavManager
 @inject AuthenticationStateProvider AuthState
 
-<PageTitle>Account Settings</PageTitle>
+<PageTitle>Account settings | GuildArena</PageTitle>
 
-<div class="container mt-4 text-light pb-5">
-    <div class="page-header text-center mb-5">
-        <h2 class="cinzel-title text-warning fw-bold">⚙️ Account Settings</h2>
-        <p class="text-light">Manage your credentials or forge a new path.</p>
-    </div>
+<div class="auth-page account-page">
+    <header class="auth-intro">
+        <p class="auth-eyebrow">Your account</p>
+        <h1>Account settings</h1>
+        <p>Manage your email verification and password.</p>
+    </header>
 
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-6">
-
-            <!-- SECTION 0: EMAIL VERIFICATION BANNER -->
-            @if (_userInfo != null && !_userInfo.IsEmailConfirmed)
+    <section class="auth-card account-section" aria-labelledby="email-title">
+        <h2 id="email-title">Email & verification</h2>
+        @if (_isLoadingInfo)
+        {
+            <p role="status">Loading your account details...</p>
+        }
+        else if (_infoError)
+        {
+            <div class="auth-feedback error" role="alert">We couldn't load your account details.</div>
+            <button type="button" class="auth-secondary" @onclick="LoadUserInfoAsync">Retry</button>
+        }
+        else if (_userInfo is not null)
+        {
+            <p class="account-email">@_userInfo.Email</p>
+            @if (_userInfo.IsEmailConfirmed)
             {
-                <div class="card bg-dark border-warning shadow-lg mb-4 email-verification-card">
-                    <div class="card-body p-3 d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3">
-                        <div>
-                            <h6 class="text-warning fw-bold mb-1">Email Not Verified</h6>
-                            <p class="small text-muted mb-0">Account recovery is disabled. Verify your email to secure your guild.</p>
-                        </div>
-                        <button class="btn btn-sm btn-outline-warning text-nowrap fw-bold"
-                                @onclick="ResendVerificationEmailAsync" disabled="@_isResendingEmail">
-                            @(_isResendingEmail ? "Dispatching..." : "Resend Email")
-                        </button>
-                    </div>
-                    @if (!string.IsNullOrEmpty(_resendMessage))
-                    {
-                        <div class="card-footer bg-black border-warning py-2 px-3 small text-info text-center">
-                            @_resendMessage
-                        </div>
-                    }
-                </div>
+                <p class="account-verified">Email confirmed</p>
             }
+            else
+            {
+                <p class="account-unverified">Email not confirmed</p>
+                <p>Confirm your email to enable password recovery. Check your inbox or request another link.</p>
+                <button type="button" class="auth-secondary" @onclick="ResendVerificationEmailAsync" disabled="@_isResendingEmail">@(_isResendingEmail ? "Requesting link..." : "Resend confirmation link")</button>
+                @if (_isResendingEmail)
+                {
+                    <p class="auth-hint" role="status">Requesting a confirmation link...</p>
+                }
+                @if (_resendMessage is not null)
+                {
+                    <div class="auth-feedback @(_resendError ? "error" : "success") account-message" role="@(_resendError ? "alert" : "status")">@_resendMessage</div>
+                }
+            }
+        }
+    </section>
 
-            <!-- SECTION 1: CHANGE PASSWORD -->
-            <div class="card bg-dark border-secondary shadow-lg mb-4">
-                <div class="card-header border-secondary">
-                    <h5 class="cinzel-title text-info mb-0">Change Password</h5>
-                </div>
-                <div class="card-body p-4">
-                    @if (_passwordSuccess)
-                    {
-                        <div class="alert alert-success border-success p-2 small">Your password has been successfully updated.</div>
-                    }
-                    @if (!string.IsNullOrEmpty(_passwordError))
-                    {
-                        <div class="alert alert-danger border-danger p-2 small">@_passwordError</div>
-                    }
-
-                    <div class="mb-3">
-                        <label class="form-label text-warning fw-bold small">Current Password</label>
-                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_currentPassword" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label text-warning fw-bold small">New Password</label>
-                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_newPassword" />
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label text-warning fw-bold small">Confirm New Password</label>
-                        <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_confirmNewPassword" />
-                    </div>
-
-                    <button class="btn btn-outline-info w-100 fw-bold" @onclick="ChangePasswordAsync" disabled="@_isProcessingPassword">
-                        @(_isProcessingPassword ? "Updating..." : "Update Password")
-                    </button>
-                </div>
+    <section class="auth-card account-section" aria-labelledby="password-title">
+        <h2 id="password-title">Change password</h2>
+        <p>Use your current password to set a new one.</p>
+        <form @onsubmit="ChangePasswordAsync" @onsubmit:preventDefault="true">
+            @if (_passwordSuccess)
+            {
+                <div class="auth-feedback success" role="status">Your password was updated.</div>
+            }
+            @if (_passwordError is not null)
+            {
+                <div class="auth-feedback error" role="alert">@_passwordError</div>
+            }
+            <div class="auth-field">
+                <label for="current-password">Current password</label>
+                <input id="current-password" name="currentPassword" type="password" autocomplete="current-password" @bind="_currentPassword" required disabled="@_isProcessingPassword" />
             </div>
-
-            <!-- SECTION 2: DANGER ZONE -->
-            <div class="card bg-dark border-danger shadow-lg">
-                <div class="card-header border-danger bg-black">
-                    <h5 class="cinzel-title text-danger mb-0">Danger Zone</h5>
-                </div>
-                <div class="card-body p-4 text-center">
-                    <p class="text-muted small mb-4">
-                        Deleting your account is permanent. All your heroes, progress, and guild data will be eradicated from the realm forever.
-                    </p>
-                    <button class="btn btn-danger fw-bold px-4 py-2" @onclick="() => _showDeleteModal = true">
-                        Delete Account
-                    </button>
-                </div>
+            <div class="auth-field">
+                <label for="new-account-password">New password</label>
+                <input id="new-account-password" name="newPassword" type="password" autocomplete="new-password" @bind="_newPassword" required aria-describedby="account-password-help" disabled="@_isProcessingPassword" />
+                <p id="account-password-help" class="auth-hint">Choose a strong, unique password. Password requirements are checked when you submit.</p>
             </div>
+            <div class="auth-field">
+                <label for="confirm-account-password">Confirm new password</label>
+                <input id="confirm-account-password" name="confirmPassword" type="password" autocomplete="new-password" @bind="_confirmNewPassword" required disabled="@_isProcessingPassword" />
+            </div>
+            <button type="submit" class="auth-action" disabled="@_isProcessingPassword">@(_isProcessingPassword ? "Updating..." : "Update password")</button>
+            @if (_isProcessingPassword)
+            {
+                <p class="auth-hint" role="status">Updating your password...</p>
+            }
+        </form>
+    </section>
 
-        </div>
-    </div>
+    <section class="auth-card account-section account-danger" aria-labelledby="delete-title">
+        <h2 id="delete-title">Delete account</h2>
+        <p>Deletion is permanent. Your guild, heroes, and progress will be removed.</p>
+        <button type="button" class="account-delete" @ref="_openDeleteButton" @onclick="OpenDeleteDialog">Delete account...</button>
+    </section>
 </div>
 
-<!-- DELETE ACCOUNT CONFIRMATION MODAL -->
 @if (_showDeleteModal)
 {
-    <div class="modal-backdrop" @onclick="() => _showDeleteModal = false">
-        <div class="modal-content-custom" @onclick:stopPropagation="true">
-            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2 cinzel-title">Final Warning</h4>
-            <p class="text-light small">To confirm the deletion of your account, please enter your current password.</p>
-
-            @if (!string.IsNullOrEmpty(_deleteError))
-            {
-                <div class="alert alert-danger p-2 small border-danger text-start">@_deleteError</div>
-            }
-
-            <input type="password" class="form-control bg-secondary text-light border-dark mb-4 text-center"
-                   placeholder="Enter Password" @bind="_deleteConfirmPassword" />
-
-            <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-secondary px-4" @onclick="() => _showDeleteModal = false" disabled="@_isDeleting">Cancel</button>
-                <button class="btn btn-danger fw-bold px-4" @onclick="DeleteAccountAsync" disabled="@_isDeleting">
-                    @(_isDeleting ? "Erasing..." : "Permanently Delete")
-                </button>
-            </div>
+    <div class="account-backdrop" @onclick="CloseDeleteDialog">
+        <div class="account-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-description" @onclick:stopPropagation="true" @onkeydown="HandleDialogKeyDown">
+            <span class="dialog-focus-guard" tabindex="0" @onfocus="FocusLastDialogControlAsync"></span>
+            <h2 id="delete-dialog-title">Permanently delete account?</h2>
+            <p id="delete-dialog-description">Your guild, heroes, and progress cannot be restored. Enter your current password to confirm.</p>
+            <form @onsubmit="DeleteAccountAsync" @onsubmit:preventDefault="true">
+                @if (_deleteError is not null)
+                {
+                    <div class="auth-feedback error" role="alert">@_deleteError</div>
+                }
+                <div class="auth-field">
+                    <label for="delete-password">Current password</label>
+                    <input id="delete-password" name="deletePassword" type="password" autocomplete="current-password" @bind="_deleteConfirmPassword" required disabled="@_isDeleting" />
+                </div>
+                <div class="account-dialog-actions">
+                    <button type="button" class="auth-secondary" @ref="_cancelDeleteButton" @onclick="CloseDeleteDialog" disabled="@_isDeleting">Cancel</button>
+                    <button type="submit" class="account-delete" @ref="_confirmDeleteButton" disabled="@_isDeleting">@(_isDeleting ? "Deleting..." : "Permanently delete")</button>
+                </div>
+                @if (_isDeleting)
+                {
+                    <p class="auth-hint" role="status">Deleting your account...</p>
+                }
+            </form>
+            <span class="dialog-focus-guard" tabindex="0" @onfocus="FocusFirstDialogControlAsync"></span>
         </div>
     </div>
 }
 
 @code {
     private UserInfoDto? _userInfo;
-
-    // Email Resend Fields
+    private bool _isLoadingInfo = true;
+    private bool _infoError;
     private bool _isResendingEmail;
+    private bool _resendError;
     private string? _resendMessage;
-
-    // Change Password Fields
     private string _currentPassword = "";
     private string _newPassword = "";
     private string _confirmNewPassword = "";
     private bool _isProcessingPassword;
     private bool _passwordSuccess;
     private string? _passwordError;
-
-    // Delete Account Fields
     private bool _showDeleteModal;
+    private bool _focusDeleteDialog;
+    private ElementReference _cancelDeleteButton;
+    private ElementReference _confirmDeleteButton;
+    private ElementReference _openDeleteButton;
     private string _deleteConfirmPassword = "";
     private bool _isDeleting;
     private string? _deleteError;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadUserInfoAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusDeleteDialog)
+        {
+            _focusDeleteDialog = false;
+            await _cancelDeleteButton.FocusAsync();
+        }
+    }
+
+    private async Task LoadUserInfoAsync()
+    {
+        _isLoadingInfo = true;
+        _infoError = false;
+        _userInfo = null;
         try
         {
-            // Busca a informação do utilizador (incluindo IsEmailConfirmed) ao nosso endpoint
             _userInfo = await Http.GetFromJsonAsync<UserInfoDto>("api/account/me");
+            _infoError = _userInfo is null;
         }
         catch
         {
-            // Silently ignore if offline
+            _infoError = true;
+        }
+        finally
+        {
+            _isLoadingInfo = false;
         }
     }
 
     private async Task ResendVerificationEmailAsync()
     {
-        if (_userInfo == null) return;
-
+        if (_userInfo is null) return;
         _isResendingEmail = true;
         _resendMessage = null;
-
         try
         {
-            var request = new ResendConfirmationEmailRequest { Email = _userInfo.Email };
-            // Endpoint nativo do Identity Framework para reenviar o token
-            var response = await Http.PostAsJsonAsync("resendConfirmationEmail", request);
-
-            // Quer resulte quer falhe (ex: já verificado), reportamos sucesso para não expor a API a enumeration
-            _resendMessage = "A new verification link has been dispatched by our ravens. Check your inbox.";
+            var response = await Http.PostAsJsonAsync("resendConfirmationEmail", new ResendConfirmationEmailRequest { Email = _userInfo.Email });
+            _resendError = !response.IsSuccessStatusCode;
+            _resendMessage = _resendError ? "We couldn't request a link right now. Try again later." : "If your email still needs confirmation, a new link will be sent. Check your inbox.";
         }
-        catch (Exception)
+        catch
         {
-            _resendMessage = "Communication failed. The ravens could not take flight.";
+            _resendError = true;
+            _resendMessage = "Connection unavailable. Please try again.";
         }
         finally
         {
@@ -185,41 +200,29 @@
     {
         _passwordError = null;
         _passwordSuccess = false;
-
-        if (string.IsNullOrWhiteSpace(_currentPassword) || string.IsNullOrWhiteSpace(_newPassword))
-        {
-            _passwordError = "All fields are required.";
-            return;
-        }
-
         if (_newPassword != _confirmNewPassword)
         {
-            _passwordError = "New passwords do not match.";
+            _passwordError = "The new passwords do not match.";
             return;
         }
 
         _isProcessingPassword = true;
-
         try
         {
-            var payload = new { oldPassword = _currentPassword, newPassword = _newPassword };
-            var response = await Http.PostAsJsonAsync("manage/info", payload);
-
+            var response = await Http.PostAsJsonAsync("manage/info", new { oldPassword = _currentPassword, newPassword = _newPassword });
             if (response.IsSuccessStatusCode)
             {
                 _passwordSuccess = true;
-                _currentPassword = "";
-                _newPassword = "";
-                _confirmNewPassword = "";
+                _currentPassword = _newPassword = _confirmNewPassword = "";
             }
             else
             {
-                _passwordError = "Failed to change password. Ensure your current password is correct and the new password meets security requirements.";
+                _passwordError = "We couldn't update your password. Check your current password and the new password requirements.";
             }
         }
-        catch (Exception)
+        catch
         {
-            _passwordError = "A network error occurred.";
+            _passwordError = "Connection unavailable. Please try again.";
         }
         finally
         {
@@ -227,36 +230,51 @@
         }
     }
 
+    private void OpenDeleteDialog()
+    {
+        _deleteError = null;
+        _deleteConfirmPassword = "";
+        _showDeleteModal = true;
+        _focusDeleteDialog = true;
+    }
+
+    private async Task CloseDeleteDialog()
+    {
+        if (_isDeleting) return;
+        _showDeleteModal = false;
+        _deleteConfirmPassword = "";
+        _deleteError = null;
+        await _openDeleteButton.FocusAsync(preventScroll: true);
+    }
+
+    private Task FocusFirstDialogControlAsync() => _cancelDeleteButton.FocusAsync().AsTask();
+    private Task FocusLastDialogControlAsync() => _confirmDeleteButton.FocusAsync().AsTask();
+
+    private async Task HandleDialogKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") await CloseDeleteDialog();
+    }
+
     private async Task DeleteAccountAsync()
     {
-        if (string.IsNullOrWhiteSpace(_deleteConfirmPassword))
-        {
-            _deleteError = "Password is required to delete your account.";
-            return;
-        }
-
         _deleteError = null;
         _isDeleting = true;
-
         try
         {
-            var request = new DeleteAccountRequest { Password = _deleteConfirmPassword };
-            var response = await Http.PostAsJsonAsync("api/account/delete", request);
-
+            var response = await Http.PostAsJsonAsync("api/account/delete", new DeleteAccountRequest { Password = _deleteConfirmPassword });
             if (response.IsSuccessStatusCode)
             {
-                var customAuthState = (CookieAuthenticationStateProvider)AuthState;
-                customAuthState.NotifyAuthStatusChanged();
+                ((CookieAuthenticationStateProvider)AuthState).NotifyAuthStatusChanged();
                 NavManager.NavigateTo("/login");
             }
             else
             {
-                _deleteError = "Invalid password. Account deletion aborted.";
+                _deleteError = "We couldn't delete your account. Check your password and try again.";
             }
         }
-        catch (Exception)
+        catch
         {
-            _deleteError = "A network error occurred.";
+            _deleteError = "Connection unavailable. Please try again.";
         }
         finally
         {

@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using GuildArena.Web.Security
 @using GuildArena.Web.State
+@using GuildArena.Web.Components
 @inject AuthenticationStateProvider AuthState
 @inject HttpClient Http
 @inject NavigationManager NavManager
@@ -23,10 +24,10 @@
                 </Authorizing>
                 <Authorized>
                     <div class="user-profile">
-                        <a href="/account" class="account-link" aria-label="Manage account">
-                            <span class="avatar-circle" aria-hidden="true">@GetInitial(context.User.Identity?.Name)</span>
-                            <span class="account-name">@context.User.Identity?.Name</span>
-                        </a>
+                        <NavLink href="account" Match="NavLinkMatch.All" class="account-link" aria-label="Account settings">
+                            <SettingsIcon />
+                            <span class="account-name">Account settings</span>
+                        </NavLink>
                         <button class="logout-button" @onclick="ExecuteLogout">Logout</button>
                     </div>
                 </Authorized>
@@ -76,9 +77,6 @@
     private ElementReference _menuToggle;
 
     private void ToggleMenu() => _isMenuOpen = !_isMenuOpen;
-
-    private static string GetInitial(string? name) =>
-        string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
 
     private async Task CloseMenu()
     {

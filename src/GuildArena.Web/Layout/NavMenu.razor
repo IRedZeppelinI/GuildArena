@@ -1,6 +1,7 @@
 ﻿@implements IDisposable
 @using Microsoft.AspNetCore.Components.Routing
 @inject NavigationManager Navigation
+@using GuildArena.Web.Components
 
 <nav class="game-menu" id="game-navigation" aria-label="Game sections">
     <div class="nav-title">Your stronghold</div>
@@ -58,7 +59,18 @@
                 </svg>
                 Quests
             </NavLink>
-        </div>        
+        </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-title account-nav-title">Your account</div>
+                <div class="nav-item">
+                    <NavLink class="nav-link" href="account" Match="NavLinkMatch.All" aria-current="@CurrentPage("account")" @onclick="OnNavigate">
+                        <SettingsIcon />
+                        Account settings
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
 </nav>
 
 @code {

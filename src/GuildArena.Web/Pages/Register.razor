@@ -1,61 +1,49 @@
-﻿@page "/register"
+@page "/register"
 @using GuildArena.Shared.Requests
 @inject HttpClient Http
-@inject NavigationManager NavManager
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Create account | GuildArena</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-5">
-            <div class="card bg-dark text-light border-secondary shadow-lg">
-                <div class="card-header border-secondary text-center text-info">
-                    <h4 class="mb-0 py-1" style="font-family: 'Cinzel', serif;">Create Account</h4>
-                </div>
-                <div class="card-body p-4">
-
-                    @if (_registrationSuccessful)
-                    {
-                        <div class="text-center py-4">
-                            <h2 class="text-success mb-3">✉️ Account Created!</h2>
-                            <p class="text-light">Your account has been forged successfully.</p>
-                            <p class="text-warning">Please check your email inbox to verify your account before logging in.</p>
-                            <a href="/login" class="btn btn-outline-info mt-4 w-100 fw-bold">Return to Login</a>
-                        </div>
-                    }
-                    else
-                    {
-                        @if (!string.IsNullOrEmpty(_errorMessage))
-                        {
-                            <div class="alert alert-danger p-3 shadow-sm border-danger">
-                                <h6 class="fw-bold mb-1">Registration Failed</h6>
-                                <span class="small">@_errorMessage</span>
-                            </div>
-                        }
-
-                        <div class="mb-3">
-                            <label class="form-label text-info fw-bold">Email Address</label>
-                            <input type="email" class="form-control bg-secondary text-light border-dark" @bind="_request.Email" />
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label text-info fw-bold">Password</label>
-                            <input type="password" class="form-control bg-secondary text-light border-dark" @bind="_request.Password" />
-                            <small class="text-muted fst-italic mt-1 d-block">Minimum 6 characters, requires at least 1 number and 1 special character.</small>
-                        </div>
-
-                        <button class="btn btn-info w-100 fw-bold py-2 fs-5" @onclick="ExecuteRegister" disabled="@_isLoading">
-                            @(_isLoading ? "Forging Account..." : "Sign Up")
-                        </button>
-
-                        <div class="mt-4 text-center border-top border-secondary pt-3">
-                            <a href="/login" class="text-info text-decoration-none small">Already have an account? Login here.</a>
-                        </div>
-                    }
-                </div>
+<div class="auth-page">
+    <header class="auth-intro">
+        <p class="auth-eyebrow">Begin your journey</p>
+        <h1>Create an account</h1>
+        <p>Register with your email address, then confirm it to access your guild.</p>
+    </header>
+    <section class="auth-card" aria-label="Registration">
+        @if (_registrationSuccessful)
+        {
+            <div class="auth-feedback success" role="status">
+                <h2>Check your inbox</h2>
+                <p>Your account was created. Follow the confirmation link sent to your email before signing in.</p>
             </div>
-        </div>
-    </div>
+            <a href="/login" class="auth-action auth-wide">Go to sign in</a>
+        }
+        else
+        {
+            <form @onsubmit="ExecuteRegister" @onsubmit:preventDefault="true">
+                @if (_errorMessage is not null)
+                {
+                    <div class="auth-feedback error" role="alert">@_errorMessage</div>
+                }
+                <div class="auth-field">
+                    <label for="register-email">Email address</label>
+                    <input id="register-email" name="email" type="email" autocomplete="email" @bind="_request.Email" required disabled="@_isLoading" />
+                </div>
+                <div class="auth-field">
+                    <label for="register-password">Password</label>
+                    <input id="register-password" name="password" type="password" autocomplete="new-password" @bind="_request.Password" required aria-describedby="register-password-help" disabled="@_isLoading" />
+                    <p id="register-password-help" class="auth-hint">Choose a strong, unique password. Password requirements are checked when you submit.</p>
+                </div>
+                <button type="submit" class="auth-action auth-wide" disabled="@_isLoading">@(_isLoading ? "Creating account..." : "Create account")</button>
+                @if (_isLoading)
+                {
+                    <p class="auth-hint" role="status">Submitting your registration...</p>
+                }
+            </form>
+            <div class="auth-footer">Already registered? <a href="/login">Sign in</a></div>
+        }
+    </section>
 </div>
 
 @code {
@@ -66,34 +54,23 @@
 
     private async Task ExecuteRegister()
     {
-        if (string.IsNullOrWhiteSpace(_request.Email) || string.IsNullOrWhiteSpace(_request.Password))
-        {
-            _errorMessage = "Email and Password are required.";
-            return;
-        }
-
         _isLoading = true;
         _errorMessage = null;
-
         try
         {
-            // O endpoint nativo do Identity para registo é "/register"
             var response = await Http.PostAsJsonAsync("register", _request);
-
             if (response.IsSuccessStatusCode)
             {
                 _registrationSuccessful = true;
             }
             else
             {
-                // Tenta extrair a mensagem de erro da API (normalmente ProblemDetails)
-                var errorText = await response.Content.ReadAsStringAsync();
-                _errorMessage = "The provided password does not meet the security requirements, or the email is already in use.";
+                _errorMessage = "Registration could not be completed. Check the password requirements or try signing in if you already have an account. If you received a confirmation email, follow its link.";
             }
         }
-        catch (Exception)
+        catch
         {
-            _errorMessage = "Connection error. The server might be unreachable.";
+            _errorMessage = "Connection unavailable. Your request may have been received; check your inbox before trying again.";
         }
         finally
         {

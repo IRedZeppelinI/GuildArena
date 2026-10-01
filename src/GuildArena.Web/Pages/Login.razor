@@ -1,52 +1,41 @@
-﻿@page "/login"
+@page "/login"
 @using GuildArena.Shared.Requests
 @using GuildArena.Web.Security
-@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager NavManager
 
-<PageTitle>Login</PageTitle>
+<PageTitle>Sign in | GuildArena</PageTitle>
 
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card bg-dark text-light border-secondary">
-                <div class="card-header border-secondary text-center text-warning">
-                    <h4>GuildArena Login</h4>
-                </div>
-                <div class="card-body">
-                    @if (!string.IsNullOrEmpty(_errorMessage))
-                    {
-                        <div class="alert alert-danger p-2">@_errorMessage</div>
-                    }
-
-                    <div class="mb-3">
-                        <label class="form-label">Email</label>
-                        <input type="email" class="form-control bg-secondary text-light" @bind="_request.Email" />
-                    </div>
-
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label mb-0">Password</label>
-                            <a href="/forgot-password" class="text-info small text-decoration-none" tabindex="-1">Forgot Password?</a>
-                        </div>
-                        <input type="password" class="form-control bg-secondary text-light" @bind="_request.Password" />
-                    </div>
-
-                    <button class="btn btn-warning w-100 fw-bold" @onclick="ExecuteLogin" disabled="@_isLoading">
-                        @(_isLoading ? "Connecting..." : "Login")
-                    </button>
-
-                    <div class="mt-4 text-center border-top border-secondary pt-3">
-                        <p class="mb-1 text-muted">Don't have a Guild yet?</p>
-                        <a href="/register" class="btn btn-outline-info w-100">Create Account</a>
-                    </div>
-
-                </div>
+<div class="auth-page">
+    <header class="auth-intro">
+        <p class="auth-eyebrow">Your guild awaits</p>
+        <h1>Sign in</h1>
+        <p>Return to your roster and continue your journey.</p>
+    </header>
+    <section class="auth-card" aria-label="Sign in to your account">
+        <form @onsubmit="ExecuteLogin" @onsubmit:preventDefault="true">
+            @if (_errorMessage is not null)
+            {
+                <div class="auth-feedback error" role="alert">@_errorMessage</div>
+            }
+            <div class="auth-field">
+                <label for="login-email">Email address</label>
+                <input id="login-email" name="email" type="email" autocomplete="username" @bind="_request.Email" required disabled="@_isLoading" />
             </div>
-        </div>
-    </div>
+            <div class="auth-field">
+                <label for="login-password">Password</label>
+                <input id="login-password" name="password" type="password" autocomplete="current-password" @bind="_request.Password" required disabled="@_isLoading" />
+                <p class="auth-hint"><a href="/forgot-password">Forgot your password?</a></p>
+            </div>
+            <button type="submit" class="auth-action auth-wide" disabled="@_isLoading">@(_isLoading ? "Signing in..." : "Sign in")</button>
+            @if (_isLoading)
+            {
+                <p class="auth-hint" role="status">Checking your credentials...</p>
+            }
+        </form>
+        <div class="auth-footer">New to GuildArena? <a href="/register">Create an account</a></div>
+    </section>
 </div>
 
 @code {
@@ -54,35 +43,26 @@
     private string? _errorMessage;
     private bool _isLoading;
 
-    protected override void OnInitialized()
-    {
-        // Preenche com os dados do seeder para facilitar testes durante o desenvolvimento        
-    }
-
     private async Task ExecuteLogin()
     {
         _isLoading = true;
         _errorMessage = null;
-
         try
         {
             var response = await Http.PostAsJsonAsync("login?useCookies=true", _request);
-
             if (response.IsSuccessStatusCode)
             {
-                var customAuthState = (CookieAuthenticationStateProvider)AuthState;
-                customAuthState.NotifyAuthStatusChanged();
-
+                ((CookieAuthenticationStateProvider)AuthState).NotifyAuthStatusChanged();
                 NavManager.NavigateTo("/guild");
             }
             else
             {
-                _errorMessage = "Invalid login attempt.";
+                _errorMessage = "We couldn't sign you in. Check your email and password, then try again.";
             }
         }
         catch
         {
-            _errorMessage = "Connection error.";
+            _errorMessage = "Connection unavailable. Please try again.";
         }
         finally
         {
