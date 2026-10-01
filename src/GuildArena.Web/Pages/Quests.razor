@@ -1,181 +1,225 @@
-﻿@page "/quests"
+@page "/quests"
 @attribute [Authorize]
 @using GuildArena.Shared.DTOs.Quests
+@using GuildArena.Web.Components
+@using System.Text.Json
 @inject HttpClient Http
 
 <PageTitle>Daily Bounties</PageTitle>
 
-<div class="container mt-4 text-light pb-5">0
+<div class="quests-page">
+    <header class="quests-header">
+        <p class="quests-eyebrow">Guild register / Daily objectives</p>
+        <h1>Daily Bounties</h1>
+        <p>Follow your objectives and earn gold and guild XP when you complete them. Rewards are granted automatically.</p>
+    </header>
 
-    <div class="page-header text-center mb-5">
-        <h2 class="title text-danger fw-bold d-flex justify-content-center align-items-center gap-2" style="font-family: 'Cinzel', serif;">
-            <svg style="width: 32px; height: 32px;" class="text-warning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                <path d="M0 0h512v512H0z" fill="none" fill-opacity="1"></path>
-                <g transform="translate(0,0)">
-                    <path d="M54.125 102.188c-15.624 74.885 20.42 123.6 64.125 150.562-33.063-7.81-65.052-19.482-98.25-36.844 25.5 77.488 81.164 95.816 129.906 90.75-26.933 14.252-55.392 25.3-83.937 32.78 70.04 43.512 120.987 16.005 149-22.28-30.186-17.833-52.692-53.794-63.032-98.344-38-34.814-71.414-75.012-97.813-116.625zm402.938 0c-26.397 41.608-59.816 81.786-97.813 116.593-10.338 44.564-32.84 80.54-63.03 98.376 28.01 38.285 78.957 65.792 149 22.28-28.542-7.48-56.978-18.53-83.908-32.78 48.736 5.055 104.38-13.28 129.875-90.75-33.197 17.362-65.187 29.035-98.25 36.844 43.705-26.963 79.75-75.677 64.125-150.563zm-201.47 26.187c-23.56 0-44.93 3.576-61.218 9.844-8.145 3.133-15.045 6.906-20.438 11.81-5.392 4.907-9.5 11.53-9.5 19.157 0 .89.05 1.765.157 2.625 2.62 64.952 32.08 117.553 67.28 133.188l6.94 3.094-1.595 7.406c-8.645 40.282-20.575 63.61-40.94 77.03-11.193 7.378-14.184 13.215-14.374 15.126-.19 1.91.765 4.2 6.844 7.906 12.158 7.41 39.925 13.157 66.844 13.157 26.872 0 53.258-5.944 64.687-13.408 5.716-3.73 6.812-6.22 6.626-8.53-.186-2.312-2.937-7.934-13.094-15.22-19.326-13.862-31.327-36.107-39.843-76.062l-1.595-7.406 6.938-3.094c35.2-15.635 64.662-68.236 67.28-133.188h-.03c.106-.86.156-1.735.156-2.625 0-7.626-4.077-14.25-9.47-19.156-5.393-4.905-12.324-8.677-20.47-11.81-16.288-6.27-37.627-9.845-61.186-9.845zm0 18.688c21.617 0 41.154 3.47 54.47 8.593 6.657 2.562 11.708 5.563 14.593 8.188 2.886 2.625 3.375 4.28 3.375 5.344 0 1.063-.488 2.718-3.374 5.343-2.885 2.626-7.936 5.627-14.594 8.19-13.315 5.122-32.852 8.593-54.468 8.593-21.616 0-41.184-3.47-54.5-8.594-6.658-2.563-11.708-5.564-14.594-8.19-2.886-2.624-3.375-4.28-3.375-5.343 0-1.063.49-2.718 3.375-5.343 2.886-2.625 7.936-5.626 14.594-8.188 13.316-5.123 32.884-8.594 54.5-8.594z" fill="currentColor"></path>
-                </g>
-            </svg>
-            Daily Bounties
-        </h2>
-        <p class="subtitle text-light">Complete these tasks to earn gold and guild experience.</p>
-    </div>
-
-    @if (!string.IsNullOrEmpty(_errorMessage))
+    @if (_isRerolling)
     {
-        <div class="alert alert-danger shadow-sm border-danger text-center">
-            <h5 class="text-danger fw-bold mb-1">Notice</h5>
-            <p class="mb-0">@_errorMessage</p>
-        </div>
+        <p class="quests-feedback" role="status">Rerolling your bounty and updating the board...</p>
+    }
+    @if (_rerollMessage is not null)
+    {
+        <p class="quests-feedback" role="status">@_rerollMessage</p>
     }
 
     @if (_isLoading)
     {
-        <p class="text-center mt-5"><em>Consulting the bounty board...</em></p>
+        <p class="quests-state" role="status">Consulting the bounty board...</p>
     }
-    else if (_quests == null || !_quests.Any())
+    else if (_loadError)
     {
-        <div class="text-center mt-5">
-            <h4 class="text-muted">No bounties available.</h4>
-            <p class="text-muted">Come back tomorrow for new tasks.</p>
-        </div>
+        <section class="quests-state quests-state-error" role="alert">
+            <h2>Bounties unavailable</h2>
+            <p>We couldn't load your bounties. Try again to see your current objectives.</p>
+            <button type="button" @onclick="LoadQuestsAsync">Try again</button>
+        </section>
     }
-    else
+    else if (_quests is { Count: 0 })
     {
-        <div class="row">
-            @foreach (var quest in _quests)
+        <section class="quests-state">
+            <h2>No bounties right now</h2>
+            <p>There are no objectives on the board yet. Check again later.</p>
+            <button type="button" @onclick="LoadQuestsAsync">Check again</button>
+        </section>
+    }
+    else if (_quests is not null)
+    {
+        <section class="quests-board" aria-labelledby="quests-board-title">
+            <div class="quests-board-heading">
+                <div>
+                    <p class="quests-eyebrow">Today's board</p>
+                    <h2 id="quests-board-title">Your objectives</h2>
+                    <p>Complete bounties through your guild's activities. You can reroll one unfinished bounty per day. If you've already used it, you'll be told here.</p>
+                </div>
+                <span class="quests-count">@_quests.Count(q => q.IsCompleted) / @_quests.Count completed</span>
+            </div>
+
+            @if (_rerollNeedsRefresh)
             {
-                // Proteção contra divisão por zero
-                int target = quest.TargetValue > 0 ? quest.TargetValue : 1;
-                // Impede que a barra passe dos 100% visualmente
-                int progressPercent = (int)Math.Min(((double)quest.CurrentProgress / target) * 100, 100);
-
-                <div class="col-md-6 col-lg-4 mb-4">
-                    <div class="card bg-dark border-secondary h-100 shadow quest-card @(quest.IsCompleted ? "quest-completed" : "")">
-                        <div class="card-body d-flex flex-column">
-
-                            <!-- Header da Carta: Título e Botão de Reroll -->
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="card-title text-info fw-bold mb-0" style="font-family: 'Cinzel', serif;">@quest.Name</h5>
-                                @if (quest.IsCompleted)
-                                {
-                                    <span class="badge bg-success border border-light shadow-sm">Completed</span>
-                                }
-                                else
-                                {
-                                    <button class="btn btn-sm btn-outline-warning reroll-btn"
-                                            title="Reroll Quest (Once per day)"
-                                            disabled="@_isRerolling"
-                                            @onclick="() => RerollQuestAsync(quest.Id)">
-                                        🎲
-                                    </button>
-                                }
-                            </div>
-
-                            <!-- Descrição -->
-                            <p class="card-text small text-light mb-3 flex-grow-1">@quest.Description</p>
-                            <!-- Recompensas -->
-                            <div class="rewards-box bg-black p-2 rounded border border-dark mb-3 d-flex justify-content-around">
-                                <div class="text-center" title="Gold Reward">
-                                    <span class="fs-5 d-block">🪙</span>
-                                    <span class="text-warning fw-bold small">@quest.RewardGold</span>
-                                </div>
-                                <div class="text-center border-start border-secondary ps-3" title="XP Reward">
-                                    <span class="fs-5 d-block">⭐</span>
-                                    <span class="text-info fw-bold small">@quest.RewardXP</span>
-                                </div>
-                            </div>
-
-                            <!-- Barra de Progresso -->
-                            <div class="progress-section mt-auto">
-                                <div class="d-flex justify-content-between align-items-end mb-1">
-                                    <span class="small text-light fw-bold">Progress</span>
-                                    <span class="small @(quest.IsCompleted ? "text-success" : "text-warning") fw-bold">
-                                        @(Math.Min(quest.CurrentProgress, target)) / @target
-                                    </span>
-                                </div>
-                                <div class="progress border border-dark" style="height: 10px; background-color: #222;">
-                                    <div class="progress-bar @(quest.IsCompleted ? "bg-success" : "bg-warning")"
-                                         role="progressbar"
-                                         style="width: @(progressPercent)%; transition: width 0.5s ease;">
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                <div class="quests-feedback quests-feedback-warning" role="alert">
+                    <p>We couldn't confirm whether the reroll went through. Refresh the board before trying again.</p>
+                    <button type="button" @onclick="LoadQuestsAsync">Refresh board</button>
                 </div>
             }
-        </div>
+            else if (_rerollUsedToday)
+            {
+                <p class="quests-feedback" role="status">Your daily reroll has been used. New bounties can still be completed.</p>
+            }
+
+            <div class="quests-list">
+                @foreach (var quest in _quests)
+                {
+                    var target = Math.Max(quest.TargetValue, 1);
+                    <article class="quest-card @(quest.IsCompleted ? "quest-completed" : "")" @key="quest.Id">
+                        <div class="quest-main">
+                            <div class="quest-heading">
+                                <div>
+                                    <p class="quests-eyebrow">@(quest.IsCompleted ? "Bounty fulfilled" : "Active bounty")</p>
+                                    <h3>@quest.Name</h3>
+                                </div>
+                                <span class="quest-status">@(quest.IsCompleted ? "Completed" : "In progress")</span>
+                            </div>
+                            <p class="quest-description">@quest.Description</p>
+                            <div class="quest-progress">
+                                <div class="quest-progress-label">
+                                    <strong>Objective progress</strong>
+                                    <span>@quest.CurrentProgress / @quest.TargetValue</span>
+                                </div>
+                                <progress value="@Math.Clamp(quest.CurrentProgress, 0, target)" max="@target" aria-label="@quest.Name progress: @quest.CurrentProgress of @quest.TargetValue"></progress>
+                            </div>
+                        </div>
+
+                        <div class="quest-aside">
+                            <div class="quest-rewards">
+                                <h4>Rewards</h4>
+                                <p><span>Gold</span><strong><GoldAmount Value="quest.RewardGold" /></strong></p>
+                                <p><span>Guild XP</span><strong>@quest.RewardXP XP</strong></p>
+                            </div>
+                            @if (_feedbackQuestId == quest.Id && _rerollError is not null)
+                            {
+                                <p class="quest-error" role="alert">@_rerollError</p>
+                            }
+                            @if (quest.IsCompleted)
+                            {
+                                <p class="quest-completion">Completed · rewards granted automatically</p>
+                            }
+                            else
+                            {
+                                <button type="button" class="quest-reroll" disabled="@(_isRerolling || _rerollUsedToday || _rerollNeedsRefresh)"
+                                        @onclick="() => RerollQuestAsync(quest.Id)">
+                                    @(_rerollingQuestId == quest.Id ? "Rerolling..." : _rerollUsedToday ? "Reroll used today" : "Reroll bounty")
+                                </button>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
     }
 </div>
 
 @code {
     private List<QuestDto>? _quests;
     private bool _isLoading = true;
-    private bool _isRerolling = false;
-    private string? _errorMessage;
+    private bool _loadError;
+    private bool _isRerolling;
+    private bool _rerollUsedToday;
+    private bool _rerollNeedsRefresh;
+    private int? _rerollingQuestId;
+    private int? _feedbackQuestId;
+    private string? _rerollError;
+    private string? _rerollMessage;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadQuestsAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadQuestsAsync();
 
     private async Task LoadQuestsAsync()
     {
         _isLoading = true;
-        _errorMessage = null;
+        _loadError = false;
+        _quests = null;
 
         try
         {
-            // Nota: Baseado no Controller gerado pelo DeepSeek com [Route("api/[controller]")]
-            // Se o controller se chama QuestController, a rota será /api/quest
-            _quests = await Http.GetFromJsonAsync<List<QuestDto>>("api/quest");
-
-            // Ordenar para mostrar as incompletas primeiro
-            if (_quests != null)
+            var quests = await Http.GetFromJsonAsync<List<QuestDto>>("api/quest");
+            _quests = quests?.OrderBy(q => q.IsCompleted).ThenBy(q => q.Id).ToList();
+            _loadError = _quests is null;
+            if (!_loadError)
             {
-                _quests = _quests.OrderBy(q => q.IsCompleted).ThenBy(q => q.Id).ToList();
+                _rerollNeedsRefresh = false;
+                _feedbackQuestId = null;
+                _rerollError = null;
             }
         }
         catch (Exception)
         {
-            _errorMessage = "Failed to fetch quests from the server. Please try again later.";
+            _loadError = true;
         }
         finally
         {
             _isLoading = false;
-            StateHasChanged();
         }
     }
 
     private async Task RerollQuestAsync(int questId)
     {
-        if (_isRerolling) return;
+        if (_isRerolling || _rerollUsedToday || _rerollNeedsRefresh ||
+            _quests?.Any(q => q.Id == questId && !q.IsCompleted) != true) return;
 
         _isRerolling = true;
-        _errorMessage = null;
-
+        _rerollingQuestId = questId;
+        _feedbackQuestId = null;
+        _rerollError = null;
+        _rerollMessage = null;
         try
         {
-            var response = await Http.PostAsync($"api/quest/{questId}/reroll", null);
-
+            using var response = await Http.PostAsync($"api/quest/{questId}/reroll", null);
             if (response.IsSuccessStatusCode)
             {
-                // Se re-rollou com sucesso, recarregamos a nova lista de quests
+                _rerollUsedToday = true;
+                _rerollMessage = "Bounty rerolled. Your new objective is on the board.";
                 await LoadQuestsAsync();
+                if (_loadError)
+                {
+                    _rerollMessage = "Bounty rerolled, but the board couldn't refresh. Try loading it again.";
+                }
             }
             else
-            {                
-                _errorMessage = "Could not reroll the quest. You may have already used your daily reroll.";
+            {
+                _feedbackQuestId = questId;
+                var code = await ReadErrorCodeAsync(response);
+                _rerollError = code switch
+                {
+                    "Quests.RerollUsed" => "Your daily reroll has already been used. Come back tomorrow for another.",
+                    "Quests.NoValidPool" => "There are no other bounties available for your guild right now.",
+                    "Quests.AlreadyCompleted" => "This bounty has already been completed. Refresh the board to see your latest progress.",
+                    "Quests.NotFound" => "This bounty is no longer on the board. Refresh to see your current objectives.",
+                    _ => "The server couldn't reroll this bounty. Please try again or refresh the board."
+                };
+                if (code == "Quests.RerollUsed") _rerollUsedToday = true;
             }
         }
         catch (Exception)
         {
-            _errorMessage = "Connection error while trying to reroll.";
+            _rerollNeedsRefresh = true;
         }
         finally
         {
             _isRerolling = false;
+            _rerollingQuestId = null;
+        }
+    }
+
+    private static async Task<string?> ReadErrorCodeAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+            return problem.TryGetProperty("code", out var code) ? code.GetString() : null;
+        }
+        catch (Exception)
+        {
+            return null;
         }
     }
 }

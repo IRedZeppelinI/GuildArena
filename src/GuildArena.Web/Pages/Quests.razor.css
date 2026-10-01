@@ -1,45 +1,54 @@
-﻿.quest-card {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+.quests-page { max-width: 1050px; min-width: 0; margin: 0 auto; padding-bottom: 40px; }
 
-    .quest-card:hover:not(.quest-completed) {
-        transform: translateY(-4px);
-        box-shadow: 0 6px 15px rgba(255, 216, 0, 0.15) !important;
-    }
+.quests-header { padding: clamp(24px, 3vw, 40px); border: 1px solid var(--ga-line); border-top: 3px solid var(--ga-gold); background: var(--ga-surface); }
+.quests-eyebrow { margin: 0 0 8px; color: var(--ga-gold); font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.quests-header h1 { margin: 0 0 8px; color: var(--ga-text); font: 700 clamp(2rem, 3.5vw, 3.2rem)/1.15 Georgia, serif; }
+.quests-header p:last-child { max-width: 65ch; margin: 0; color: var(--ga-muted); line-height: 1.5; }
 
-.quest-completed {
-    /* Diminui a cor e a opacidade da quest, e dá um leve tom esverdeado à borda */
-    filter: grayscale(40%) opacity(0.8);
-    border-color: #198754 !important; /* bs-success */
-}
+.quests-state { margin: 20px 0 0; padding: 20px; border: 1px solid var(--ga-line); background: var(--ga-surface); color: var(--ga-text); }
+.quests-state-error { border-left: 3px solid #e4a59a; }
+.quests-state h2 { margin: 0 0 10px; font: 700 1.5rem/1.2 Georgia, serif; }
+.quests-state p { color: var(--ga-muted); }
+.quests-state button, .quest-reroll { min-height: 44px; padding: 9px 16px; border: 1px solid var(--ga-gold); background: var(--ga-gold); color: #1b221b; font-weight: 700; cursor: pointer; }
+.quests-state button:hover, .quest-reroll:hover:not(:disabled), .quests-feedback button:hover { background: var(--ga-focus); }
+.quest-reroll:disabled { border-color: var(--ga-line); background: var(--ga-raised); color: var(--ga-muted); cursor: not-allowed; }
+.quests-feedback { margin: 18px 0 0; padding: 14px 18px; border: 1px solid var(--ga-line); border-left: 3px solid #a6d2ac; background: var(--ga-surface); color: var(--ga-text); }
+.quests-feedback-warning { border-left-color: #e4a59a; }
+.quests-feedback p { margin: 0 0 10px; }
+.quests-feedback button { min-height: 44px; padding: 9px 16px; border: 1px solid var(--ga-gold); background: var(--ga-gold); color: #1b221b; font-weight: 700; cursor: pointer; }
 
-    .quest-completed:hover {
-        transform: none;
-    }
+.quests-board { margin-top: clamp(34px, 5vw, 56px); }
+.quests-board-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 20px; padding-bottom: 18px; border-bottom: 1px solid var(--ga-line); }
+.quests-board-heading h2 { margin: 0 0 5px; color: var(--ga-text); font: 700 clamp(1.5rem, 2.5vw, 2rem)/1.2 Georgia, serif; }
+.quests-board-heading p:last-child { margin: 0; color: var(--ga-muted); font-size: .9rem; }
+.quests-count { padding: 6px 11px; border: 1px solid var(--ga-line); color: var(--ga-text); font-size: .85rem; }
+.quests-list { display: grid; gap: 16px; margin-top: 20px; }
+.quest-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 250px); min-width: 0; border: 1px solid var(--ga-line); background: var(--ga-surface); }
+.quest-completed { border-left: 3px solid #a6d2ac; }
+.quest-main, .quest-aside { min-width: 0; padding: clamp(18px, 2.5vw, 26px); }
+.quest-heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 8px 16px; }
+.quest-heading h3 { margin: 0; overflow-wrap: anywhere; color: var(--ga-text); font: 700 1.45rem/1.2 Georgia, serif; }
+.quest-status { padding: 4px 8px; border: 1px solid var(--ga-line); color: var(--ga-text); font-size: .75rem; font-weight: 700; }
+.quest-completed .quest-status { border-color: #729678; color: #c3dfc5; }
+.quest-description { margin: 15px 0 22px; color: var(--ga-muted); line-height: 1.55; overflow-wrap: anywhere; }
+.quest-progress { max-width: 520px; }
+.quest-progress-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; margin-bottom: 8px; color: var(--ga-text); font-size: .85rem; }
+.quest-progress progress { display: block; width: 100%; height: 10px; border: 0; background: var(--ga-raised); accent-color: var(--ga-gold); }
+.quest-progress progress::-webkit-progress-bar { background: var(--ga-raised); }
+.quest-progress progress::-webkit-progress-value { background: var(--ga-gold); }
+.quest-progress progress::-moz-progress-bar { background: var(--ga-gold); }
+.quest-completed .quest-progress progress { accent-color: #a6d2ac; }
+.quest-completed .quest-progress progress::-webkit-progress-value { background: #a6d2ac; }
+.quest-completed .quest-progress progress::-moz-progress-bar { background: #a6d2ac; }
+.quest-aside { display: flex; flex-direction: column; gap: 16px; border-left: 1px solid var(--ga-line); background: var(--ga-raised); }
+.quest-rewards h4 { margin: 0 0 14px; color: var(--ga-gold); font-size: .75rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.quest-rewards p { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin: 0 0 10px; color: var(--ga-muted); font-size: .9rem; }
+.quest-rewards strong { color: var(--ga-text); font-weight: 700; }
+.quest-reroll, .quest-completion { margin-top: auto; }
+.quest-completion { margin-bottom: 0; color: #c3dfc5; font-size: .85rem; line-height: 1.4; }
+.quest-error { margin: 0; color: #f0b2a6; font-size: .85rem; line-height: 1.4; }
 
-.reroll-btn {
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 0;
-    font-size: 1rem;
-    box-shadow: 0 0 5px rgba(255, 216, 0, 0.3);
-    transition: transform 0.1s ease;
-}
-
-    .reroll-btn:hover:not(:disabled) {
-        transform: scale(1.1) rotate(15deg);
-    }
-
-    .reroll-btn:disabled {
-        filter: grayscale(100%);
-        cursor: not-allowed;
-        opacity: 0.5;
-    }
-
-.rewards-box {
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+@media (max-width: 720px) {
+    .quest-card { grid-template-columns: minmax(0, 1fr); }
+    .quest-aside { border-left: 0; border-top: 1px solid var(--ga-line); }
 }
