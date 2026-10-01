@@ -79,7 +79,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         }
     }
 
-    public async Task EnterDungeonCombatAsync()
+    public async Task<EncounterStartResult> EnterDungeonCombatAsync()
     {
         IsConnecting = true;
         NotifyStateChanged();
@@ -87,30 +87,35 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         try
         {
             // Chama o endpoint que inicializa a partida e o estado no Redis
-            var response = await _http.PostAsync("api/dungeon/enter-stage", null);
+            using var response = await _http.PostAsync("api/dungeon/enter-stage", null);
 
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
-                if (result != null)
+                if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
+                    _battleLogs.Clear();
                     _battleLogs.AddRange(result.InitialLogs);
                     GameState = result.InitialState;
 
                     // Conecta ao WebSockets do combate
                     await ConnectToSignalRAsync(CombatId);
+                    return EncounterStartResult.Ready;
                 }
+                return EncounterStartResult.Unconfirmed;
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
                 _logger.LogWarning("Failed to enter dungeon stage. API returned {StatusCode}: {Error}", response.StatusCode, error);
+                return EncounterStartResult.Rejected;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected error occurred while entering dungeon stage.");
+            return EncounterStartResult.Unconfirmed;
         }
         finally
         {

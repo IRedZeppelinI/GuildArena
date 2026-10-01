@@ -1,305 +1,539 @@
-﻿@page "/dungeons"
+@page "/dungeons"
 @attribute [Authorize]
+@using System.Net
+@using System.Text.Json
 @using GuildArena.Shared.DTOs.GuildAndHeroes
 @using GuildArena.Shared.DTOs.Dungeons
+@using GuildArena.Shared.Requests
+@using GuildArena.Web.Services
 @using GuildArena.Web.State
-@using System.Net
 @inject HttpClient Http
+@inject IAssetService AssetService
 @inject ICombatStateService CombatService
 @inject NavigationManager NavManager
 
-<PageTitle>Dungeons & Camp</PageTitle>
+<PageTitle>Dungeons &amp; Camp</PageTitle>
 
-<div class="container mt-4 text-light pb-5">
+<div class="dungeons-page">
+    <header class="page-intro">
+        <p class="eyebrow">Guild register / Expeditions</p>
+        <h1>Dungeons &amp; Camp</h1>
+        <p>Prepare three heroes for a dungeon run, or continue your active expedition from camp.</p>
+    </header>
 
-    @if (_isLoading)
+    @if (_campLoading)
     {
-        <p class="text-center mt-5"><em>Scouting the depths...</em></p>
+        <p class="state-panel" role="status">Checking for an active expedition...</p>
     }
-    else if (_activeCamp != null)
+    else if (_campError)
     {
-        <!-- ============================================== -->
-        <!-- MODO ACAMPAMENTO (RUN ATIVA)                   -->
-        <!-- ============================================== -->
-        <div class="camp-header text-center mb-5">
-            <h2 class="text-warning fw-bold" style="font-family: 'Cinzel', serif;">🏕️ Camp: @_activeCamp.DungeonName</h2>
-            <p class="text-light">
-                Stage <span class="text-info fw-bold">@(_activeCamp.CurrentStageIndex + 1)</span>
-                @if (_activeCamp.IsBossNode)
-                {
-                    <span class="badge bg-danger ms-2 shadow">BOSS NODE</span>
-                }
-            </p>
+        <div class="state-panel state-error" role="alert">
+            <h2>Expedition status unavailable</h2>
+            <p>We couldn't check whether you have an active run. Check again before starting another expedition.</p>
+            <button type="button" disabled="@_isProcessing" @onclick="LoadStateAsync">Check expedition status</button>
         </div>
-
-        <div class="row justify-content-center mb-5">
-            @foreach (var hero in _activeCamp.Heroes)
-            {
-                var hpPercentage = hero.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)hero.CurrentHP / hero.MaxHP) * 100, 0, 100);
-                var isDead = hero.CurrentHP <= 0;
-
-                <div class="col-md-3 col-sm-4 mb-3">
-                    <div class="card camp-hero-card bg-dark border-secondary h-100 text-center @(isDead ? "hero-dead" : "")">
-                        <div class="card-body p-3">
-                            <h5 class="text-info fw-bold mb-2">@hero.Name</h5>
-
-                            @if (isDead)
-                            {
-                                <span class="badge bg-danger mb-2">Fallen</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success mb-2">Ready</span>
-                            }
-
-                            <div class="progress border border-dark mt-auto" style="height: 15px;">
-                                <div class="progress-bar @(isDead ? "bg-secondary" : (hpPercentage < 30 ? "bg-danger" : "bg-success"))"
-                                     style="width: @(hpPercentage)%">
-                                </div>
-                            </div>
-                            <small class="text-light fw-bold">@hero.CurrentHP / @hero.MaxHP HP</small>
-                        </div>
-                    </div>
+    }
+    else if (_activeCamp is { } camp)
+    {
+        <section class="camp-section" aria-labelledby="camp-title">
+            <div class="camp-heading">
+                <div>
+                    <p class="eyebrow">Active expedition / Camp</p>
+                    <h2 id="camp-title">@camp.DungeonName</h2>
+                    <p>Your heroes keep their current HP between stages.</p>
                 </div>
-            }
-        </div>
+                <div class="stage-marker">
+                    <span>Next stage</span>
+                    <strong>Stage @(camp.CurrentStageIndex + 1)</strong>
+                    @if (camp.IsBossNode)
+                    {
+                        <span class="boss-marker">Boss stage</span>
+                    }
+                </div>
+            </div>
 
-        <div class="d-flex justify-content-center gap-4 mt-5 pt-4 border-top border-secondary">
-            <button class="btn btn-outline-danger btn-lg px-4" @onclick="PromptForfeit" disabled="@_isProcessing">
-                Abandon Run
-            </button>
-            <button class="btn btn-warning btn-lg fw-bold px-5" @onclick="EnterStageAsync" disabled="@_isProcessing">
-                @(_isProcessing ? "Entering..." : "Enter Next Stage")
-            </button>
-        </div>
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Expedition party</p>
+                    <h3>Heroes at camp</h3>
+                </div>
+                <span class="section-count">@camp.Heroes.Count @((camp.Heroes.Count == 1) ? "hero" : "heroes")</span>
+            </div>
+            @if (camp.Heroes.Count == 0)
+            {
+                <div class="state-panel"><p>No hero information is available for this run. Check the camp again before continuing.</p><button type="button" @onclick="LoadStateAsync">Check camp</button></div>
+            }
+            else
+            {
+                <ul class="camp-heroes">
+                    @foreach (var hero in camp.Heroes)
+                    {
+                        var fallen = hero.CurrentHP <= 0;
+                        var hpPercent = hero.MaxHP <= 0 ? 0 : (int)Math.Clamp((double)hero.CurrentHP / hero.MaxHP * 100, 0, 100);
+                        <li class="camp-hero @(fallen ? "is-fallen" : "")" @key="hero.HeroId">
+                            <div class="camp-hero-heading">
+                                <strong>@hero.Name</strong>
+                                <span class="hero-status">@(fallen ? "Fallen" : "Standing")</span>
+                            </div>
+                            <div class="hp-heading"><span>Health</span><strong>@hero.CurrentHP / @hero.MaxHP HP</strong></div>
+                            <progress value="@hpPercent" max="100" aria-label="@hero.Name health: @hero.CurrentHP of @hero.MaxHP HP"></progress>
+                        </li>
+                    }
+                </ul>
+            }
+
+            <div class="camp-actions">
+                <div>
+                    <h3>Continue the expedition</h3>
+                    <p>Enter stage @(camp.CurrentStageIndex + 1) in the Arena@(camp.IsBossNode ? " · Boss stage" : "").</p>
+                </div>
+                @if (_isProcessing)
+                {
+                    <p class="action-feedback" role="status">@(_stageRecoveryRequired ? "Checking active combat..." : "Processing expedition...")</p>
+                }
+                else if (_campMessage is not null)
+                {
+                    <div class="action-feedback state-error" role="alert">
+                        <p>@_campMessage</p>
+                        @if (_stageRecoveryRequired)
+                        {
+                            <button type="button" @onclick="RecoverStageAsync">Check active combat</button>
+                        }
+                        else if (_forfeitRecoveryRequired)
+                        {
+                            <button type="button" @onclick="LoadStateAsync">Check camp status</button>
+                        }
+                    </div>
+                }
+                <button class="primary-action" type="button" disabled="@(_isProcessing || _stageRecoveryRequired || camp.Heroes.Count == 0 || CombatService.IsConnecting)" @onclick="EnterStageAsync">Enter stage</button>
+            </div>
+
+            <div class="abandon-section">
+                <div>
+                    <h3>Leave this run</h3>
+                    <p>Abandoning ends this expedition and loses its progress.</p>
+                </div>
+                <button class="danger-action" type="button" @ref="_abandonButton" disabled="@(_isProcessing || _forfeitRecoveryRequired)" @onclick="PromptForfeit">Abandon expedition</button>
+            </div>
+        </section>
     }
     else
     {
-        <!-- ============================================== -->
-        <!-- MODO LOBBY (SELECÇÃO DE DUNGEON E EQUIPA)      -->
-        <!-- ============================================== -->
-        <div class="page-header text-center mb-5">
-            <h2 class="title text-danger d-flex justify-content-center align-items-center gap-2">
-                <svg style="width: 32px; height: 32px;" class="text-warning" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                    <path d="M0 0h512v512H0z" fill="none" fill-opacity="1"></path>
-                    <g transform="translate(0,0)">
-                        <path d="m193.571 26.027 35.192 83.99c14.877 7.658 33.121 6.696 47.488-1.279l40.283-85.976c-45.582-7.268-84.512-4.945-122.963 3.265zm137.3 7.606-32.038 71.38c12.536 12.349 37.237 18.872 47.033 15.448l31.172-64.691c-12.422-8.392-27.428-15.886-46.168-22.137zm-154.86-1.97c-21.814 6.55-40.982 16.35-56.099 28.591 14.941 15.844 28.861 34.184 38.194 52.832 24.477 6.133 35.479-6.849 47.475-18.55zm-74.245 34.831c-36.541 32.91-66.523 76.42-78.068 125.215l65.957 3.353c12.006-30.53 24.552-56.284 54.231-72.755-9.883-20.24-23.626-39.403-42.12-55.813zm292.503-.29-31.852 61.044c32.54 21.007 43.572 41.348 52.597 69l72.464-8.43c-9.612-55.894-42.206-107.047-93.209-121.614zm-52.233 137.2c4.757 12.937-15.842 29.7-9.07 39.428-4.011.85-8.874 1.642-14.385-8.957-1.126 12.49 2.172 19.603 12.168 29.209-2.682.783-8.045 2.75-12.08.566-1.24 7.386 10.867 13.863 20.725 14.832l8.392-2.175c-6.09-1.106-7.881-3.315-10.627-6.13 2.97-1.32 12.554-7.117 2.149-14.751 12.634-2.752 6.035-14.89 4.14-21.862 7.525 7.798 15.243 22.54 21.862 7.084 4.176 12.604 6.561 12.12 13.614 9.107 1.054 9.196-2.957 14.791-8.792 22.518l12.494-4.992c6.018-5.026 20.16-25.502 6.428-35.5 2.603 12.443-5.563 14.388-18.672-10.937-4.377 30.773-12.236-7.49-28.346-17.44zm-321.668 2.108v66.242l72.842-11.858 1.592-49.873zm143.486.363c3.732 8.72-14.487 45.226-18.865 14.453-13.109 25.325-23.908 24.26-21.304 11.817-13.732 9.998-1.347 33.458 4.671 38.484l11.229 3.001c-5.835-7.727-11.565-13.614-10.512-22.81 7.053 3.013 10.492 5.604 14.668-7 6.618 15.456 17.32-4.378 24.846-12.175-1.554 11.494-6.282 22.427 7.303 25.197-9.13 10.082 1.899 19.99-12.694 22.812l8.393 2.176c9.857-.97 20.385-10.606 19.144-17.992-4.035 2.183-7.818 3.376-10.5 2.594 9.996-9.607 10.662-21.46 9.536-33.95-5.511 10.6-7.917 11.738-11.752 13.698 6.77-9.728-5.927-32.285-14.163-40.305zm327.512 1.172-77.57 5.687 1.156 79.192 75.524 2.842zM98.313 279.81l-79.955 9.779 1.202 99.754 83.54 1.152zm280.659 7.347-28.332 7.031 21.455 68.315 16.125-5.043zm-246.961 3.348-9.248 70.303 16.125 5.043 21.455-68.315zM412.269 310.3v83.58l79.166-8.031 2.289-75.55zm84.605 91.656-88.934 9.947-1.16 80.727 90.674.586zm-395.822 2.002-81.848 2.322-4.658 86.184h90z" fill="currentColor"></path>
-                    </g>
-                </svg>
-                Dungeons
-            </h2>
-            <p class="subtitle">Assemble a team of 3 heroes to endure the gauntlet.</p>
-        </div>
-
-        <div class="row mb-5">
-            @if (_availableDungeons != null)
-            {
-                foreach (var dungeon in _availableDungeons)
+        <section class="dungeons-section" aria-labelledby="dungeons-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">01 / Choose your route</p>
+                    <h2 id="dungeons-title">Dungeon board</h2>
+                    <p>Check the guild level needed and your previous completions.</p>
+                </div>
+                @if (_availableDungeons is not null)
                 {
-                    var isSelected = _selectedDungeonId == dungeon.Id;
-                    var isLocked = _guildProfile?.Level < dungeon.RequiredGuildLevel;
-                    var clearCount = _guildProfile?.DungeonCompletions.GetValueOrDefault(dungeon.Id, 0) ?? 0;
-
-                    <div class="col-md-6 mb-4">
-                        <div class="card dungeon-card @(isLocked ? "locked" : (isSelected ? "border-warning shadow-lg" : "border-secondary")) bg-dark"
-                             @onclick="() => { if (!isLocked) _selectedDungeonId = dungeon.Id; }">
-                            <div class="card-body d-flex flex-column">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <h4 class="text-warning mb-1" style="font-family: 'Cinzel', serif;">@dungeon.Name</h4>
-                                    @if (isLocked)
-                                    {
-                                        <span class="badge bg-secondary border border-light">🔒 Requires Lv @dungeon.RequiredGuildLevel</span>
-                                    }
-                                    else if (isSelected)
-                                    {
-                                        <span class="badge bg-warning text-dark">Selected</span>
-                                    }
-                                </div>
-                                <p class="text-light small mb-3">@dungeon.Description</p>
-
-                                <div class="d-flex justify-content-between border-top border-secondary pt-2 mt-auto">
-                                    <small class="text-info fw-bold">Completions: @clearCount</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="section-count">@_availableDungeons.Count @(_availableDungeons.Count == 1 ? "dungeon" : "dungeons")</span>
                 }
-            }
-        </div>
-
-        <div class="page-header text-center mb-4 border-top border-secondary pt-4">
-            <h4 class="text-info">Draft Your Expedition</h4>
-            <p class="text-muted">Select exactly 3 heroes.</p>
-        </div>
-
-        <div class="row justify-content-center">
-            @if (_heroes != null)
+            </div>
+            @if (_dungeonsLoading)
             {
-                foreach (var hero in _heroes)
-                {
-                    var isSelected = _selectedHeroIds.Contains(hero.Id);
-                    <div class="col-md-2 col-sm-4 col-6 mb-3">
-                        <div class="card hero-select-card @(isSelected ? "border-warning shadow" : "border-secondary") bg-dark text-center h-100"
-                             @onclick="() => ToggleHeroSelection(hero.Id)">
-                            <div class="card-body p-2 d-flex flex-column justify-content-between">
-                                <h6 class="text-info mb-1" style="font-size: 0.9rem;">@hero.Name</h6>
-                                <p class="small text-muted mb-0">Lv @hero.CurrentLevel</p>
-                                @if (isSelected)
+                <p class="state-panel" role="status">Loading dungeons and guild level...</p>
+            }
+            else if (_dungeonsError)
+            {
+                <div class="state-panel state-error" role="alert">
+                    <h3>Dungeons unavailable</h3>
+                    <p>We couldn't load the dungeon board or your guild level.</p>
+                    <button type="button" @onclick="LoadDungeonsAsync">Retry dungeons</button>
+                </div>
+            }
+            else if (_availableDungeons is { Count: 0 })
+            {
+                <div class="state-panel">
+                    <h3>No dungeons right now</h3>
+                    <p>There are no expeditions on the board yet. Check again later.</p>
+                    <button type="button" @onclick="LoadDungeonsAsync">Check again</button>
+                </div>
+            }
+            else if (_availableDungeons is not null && _guildProfile is not null)
+            {
+                <fieldset class="dungeon-choices" aria-labelledby="dungeons-title">
+                    <legend class="visually-hidden">Choose one dungeon</legend>
+                    @foreach (var dungeon in _availableDungeons)
+                    {
+                        var locked = _guildProfile.Level < dungeon.RequiredGuildLevel;
+                        var selected = _selectedDungeonId == dungeon.Id;
+                        var completions = _guildProfile.DungeonCompletions.GetValueOrDefault(dungeon.Id);
+                        <label class="dungeon-choice @(selected ? "is-selected" : "") @(locked ? "is-locked" : "")" @key="dungeon.Id">
+                            <input type="radio" name="dungeon" value="@dungeon.Id" checked="@selected" disabled="@(locked || _isProcessing || _startRecoveryRequired)" @onchange="() => SelectDungeon(dungeon.Id)" />
+                            <span class="choice-content">
+                                <span class="choice-heading"><strong>@dungeon.Name</strong><span class="choice-status">@(locked ? "Locked" : selected ? "Selected" : "Available")</span></span>
+                                @if (!string.IsNullOrWhiteSpace(dungeon.Description))
                                 {
-                                    <span class="badge bg-warning text-dark mt-1">Ready</span>
+                                    <span class="choice-description">@dungeon.Description</span>
                                 }
-                            </div>
-                        </div>
+                                <span class="choice-meta">
+                                    <span>Guild level @dungeon.RequiredGuildLevel required@(locked ? $" · Your level: {_guildProfile.Level}" : "")</span>
+                                    <span>@completions @((completions == 1) ? "completion" : "completions")</span>
+                                </span>
+                            </span>
+                        </label>
+                    }
+                </fieldset>
+            }
+        </section>
+
+        <section class="dungeons-section" aria-labelledby="team-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">02 / Prepare your expedition</p>
+                    <h2 id="team-title">Draft your team</h2>
+                    <p>Select exactly three heroes. Select one again to remove them.</p>
+                </div>
+                <span class="section-count" aria-live="polite">@_selectedHeroIds.Count / 3 selected</span>
+            </div>
+            @if (_rosterLoading)
+            {
+                <p class="state-panel" role="status">Loading your roster...</p>
+            }
+            else if (_rosterError)
+            {
+                <div class="state-panel state-error" role="alert">
+                    <h3>Roster unavailable</h3>
+                    <p>We couldn't load your heroes.</p>
+                    <button type="button" @onclick="LoadRosterAsync">Retry roster</button>
+                </div>
+            }
+            else if (_heroes is { Count: 0 })
+            {
+                <div class="state-panel">
+                    <h3>No heroes in your roster</h3>
+                    <p>You need three heroes to start an expedition.</p>
+                    <a href="/tavern">Explore the Tavern <span aria-hidden="true">→</span></a>
+                </div>
+            }
+            else if (_heroes is not null)
+            {
+                <fieldset class="hero-choices" aria-labelledby="team-title">
+                    <legend class="visually-hidden">Choose three heroes</legend>
+                    @foreach (var hero in _heroes)
+                    {
+                        var selected = _selectedHeroIds.Contains(hero.Id);
+                        <label class="hero-choice @(selected ? "is-selected" : "")" @key="hero.Id">
+                            <input type="checkbox" checked="@selected" disabled="@(_isProcessing || _startRecoveryRequired || (!selected && _selectedHeroIds.Count == 3))" @onchange="() => ToggleHeroSelection(hero.Id)" />
+                            <img src="@AssetService.GetPortraitUrl(hero.DefinitionId)" alt="" loading="lazy" />
+                            <span class="hero-details"><strong>@hero.Name</strong><span>Level @hero.CurrentLevel</span><span class="hero-status">@(selected ? "On team" : _selectedHeroIds.Count == 3 ? "Team full" : "Select hero")</span></span>
+                        </label>
+                    }
+                </fieldset>
+            }
+
+            <div class="team-summary">
+                <h3>Team slots</h3>
+                <ol class="team-slots">
+                    @for (var slot = 0; slot < 3; slot++)
+                    {
+                        var hero = slot < _selectedHeroIds.Count ? _heroes?.FirstOrDefault(h => h.Id == _selectedHeroIds[slot]) : null;
+                        <li class="team-slot @(hero is null ? "slot-empty" : "")">
+                            <span class="slot-number">@(slot + 1)</span>
+                            @if (hero is null)
+                            {
+                                <span>Open slot</span>
+                            }
+                            else
+                            {
+                                <span class="slot-hero"><strong>@hero.Name</strong><small>Level @hero.CurrentLevel</small></span>
+                                <button type="button" disabled="@(_isProcessing || _startRecoveryRequired)" aria-label="Remove @hero.Name from team" @onclick="() => ToggleHeroSelection(hero.Id)">Remove</button>
+                            }
+                        </li>
+                    }
+                </ol>
+            </div>
+
+            <div class="launch-action">
+                <div>
+                    <h3>Begin expedition</h3>
+                    <p>@(SelectedDungeon is null ? "Choose an available dungeon." : $"Dungeon: {SelectedDungeon.Name}.") @_selectedHeroIds.Count / 3 heroes selected.</p>
+                </div>
+                @if (_isProcessing)
+                {
+                    <p class="action-feedback" role="status">@(_startRecoveryRequired ? "Checking expedition status..." : "Starting expedition...")</p>
+                }
+                else if (_startMessage is not null)
+                {
+                    <div class="action-feedback state-error" role="alert">
+                        <p>@_startMessage</p>
+                        @if (_startRecoveryRequired)
+                        {
+                            <button type="button" @onclick="LoadStateAsync">Check expedition status</button>
+                        }
                     </div>
                 }
-            }
-        </div>
-
-        <div class="text-center mt-4">
-            <h5 class="text-light mb-3">Expedition Size: <span class="@(_selectedHeroIds.Count == 3 ? "text-success" : "text-warning")">@_selectedHeroIds.Count</span> / 3</h5>
-            <button class="btn btn-danger btn-lg fw-bold px-5"
-                    disabled="@(!CanStartDungeon)"
-                    @onclick="StartDungeonAsync">
-                @(_isProcessing ? "Preparing..." : "Embark")
-            </button>
-        </div>
+                <button class="primary-action" type="button" disabled="@(!CanStartDungeon)" @onclick="StartDungeonAsync">Embark</button>
+            </div>
+        </section>
     }
 </div>
 
-<!-- Modal de Abandono de Run -->
 @if (_showForfeitModal)
 {
-    <div class="modal-backdrop" @onclick="() => _showForfeitModal = false">
-        <div class="modal-content-custom" @onclick:stopPropagation="true">
-            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Abandon Expedition?</h4>
-            <p class="text-light">Are you sure you want to forfeit this run?</p>
-            <p class="text-muted small">You will lose all progress and only receive minor consolation rewards.</p>
-            <div class="d-flex justify-content-center mt-4 gap-3">
-                <button class="btn btn-secondary px-4" @onclick="() => _showForfeitModal = false">Cancel</button>
-                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmForfeit">Yes, Forfeit</button>
+    <div class="modal-backdrop">
+        <div class="forfeit-dialog" role="dialog" aria-modal="true" aria-labelledby="forfeit-title" aria-describedby="forfeit-description" @onkeydown="HandleDialogKeyDown">
+            <h2 id="forfeit-title">Abandon expedition?</h2>
+            <p id="forfeit-description">This ends your run in @_activeCamp?.DungeonName and loses its progress.</p>
+            <div class="dialog-actions">
+                <button type="button" @ref="_cancelButton" @onclick="CloseForfeitAsync">Keep expedition</button>
+                <button class="danger-action" type="button" @onclick="ConfirmForfeitAsync">Yes, abandon</button>
             </div>
         </div>
     </div>
 }
 
 @code {
-    private bool _isLoading = true;
-    private bool _isProcessing = false;
-    private bool _showForfeitModal = false;
-
+    private bool _campLoading = true, _campError, _dungeonsLoading, _dungeonsError, _rosterLoading, _rosterError;
+    private bool _isProcessing, _showForfeitModal, _startRecoveryRequired, _stageRecoveryRequired, _forfeitRecoveryRequired, _focusDialog;
+    private string? _startMessage, _campMessage, _selectedDungeonId;
     private List<DungeonSummaryDto>? _availableDungeons;
     private ActiveDungeonCampDto? _activeCamp;
     private List<HeroDto>? _heroes;
     private GuildProfileDto? _guildProfile;
+    private readonly List<int> _selectedHeroIds = new();
+    private ElementReference _cancelButton, _abandonButton;
+    private DungeonSummaryDto? SelectedDungeon => _availableDungeons?.FirstOrDefault(d => d.Id == _selectedDungeonId);
+    private bool CanStartDungeon => SelectedDungeon is { } dungeon && _guildProfile is not null
+        && _guildProfile.Level >= dungeon.RequiredGuildLevel && _heroes is not null
+        && _selectedHeroIds.Count == 3 && !_isProcessing && !_startRecoveryRequired;
 
-    private string? _selectedDungeonId;
-    private List<int> _selectedHeroIds = new();
+    protected override async Task OnInitializedAsync() => await LoadStateAsync();
 
-    private bool CanStartDungeon => !string.IsNullOrEmpty(_selectedDungeonId)
-                                 && _selectedHeroIds.Count == 3
-                                 && !_isProcessing;
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await LoadStateAsync();
+        if (_focusDialog && _showForfeitModal)
+        {
+            _focusDialog = false;
+            await _cancelButton.FocusAsync();
+        }
     }
 
     private async Task LoadStateAsync()
     {
-        _isLoading = true;
+        _campLoading = true;
+        _campError = false;
+        _activeCamp = null;
         try
         {
-            // Verificamos primeiro se há um acampamento ativo
-            try
+            using var response = await Http.GetAsync("api/dungeon/camp");
+            if (response.IsSuccessStatusCode)
             {
-                _activeCamp = await Http.GetFromJsonAsync<ActiveDungeonCampDto>("api/dungeon/camp");
+                _activeCamp = await response.Content.ReadFromJsonAsync<ActiveDungeonCampDto>()
+                    ?? throw new JsonException("Empty camp response");
+                _startRecoveryRequired = false;
+                _startMessage = null;
+                _forfeitRecoveryRequired = false;
             }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            else if (response.StatusCode != HttpStatusCode.NotFound || await GetErrorCodeAsync(response) != "Dungeon.NoActiveRun")
             {
-                // Normal: Retorna NotFound se o jogador não tiver uma run ativa
-                _activeCamp = null;
+                _campError = true;
             }
-
-            // Apenas carregamos o lobby se NÃO estiver num acampamento
-            if (_activeCamp == null)
+            else
             {
-                var fetchDungeonsTask = Http.GetFromJsonAsync<List<DungeonSummaryDto>>("api/dungeon");
-                var fetchHeroesTask = Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
-                var fetchProfileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
-
-                await Task.WhenAll(fetchDungeonsTask, fetchHeroesTask, fetchProfileTask);
-
-                _availableDungeons = fetchDungeonsTask.Result;
-                _heroes = fetchHeroesTask.Result;
-                _guildProfile = fetchProfileTask.Result;
+                _startRecoveryRequired = false;
+                _startMessage = null;
+                _forfeitRecoveryRequired = false;
             }
         }
-        catch { }
+        catch (Exception)
+        {
+            _campError = true;
+        }
         finally
         {
-            _isLoading = false;
-            StateHasChanged();
+            _campLoading = false;
         }
+
+        if (!_campError && _activeCamp is null)
+            await Task.WhenAll(LoadDungeonsAsync(), LoadRosterAsync());
+        else if (!_campError)
+            _campMessage = null;
     }
+
+    private async Task LoadDungeonsAsync()
+    {
+        _dungeonsLoading = true;
+        _dungeonsError = false;
+        _availableDungeons = null;
+        _guildProfile = null;
+        _selectedDungeonId = null;
+        try
+        {
+            var dungeonsTask = Http.GetFromJsonAsync<List<DungeonSummaryDto>>("api/dungeon");
+            var profileTask = Http.GetFromJsonAsync<GuildProfileDto>("api/guild/profile");
+            await Task.WhenAll(dungeonsTask, profileTask);
+            _availableDungeons = await dungeonsTask;
+            _guildProfile = await profileTask;
+            _dungeonsError = _availableDungeons is null || _guildProfile is null;
+        }
+        catch (Exception) { _dungeonsError = true; }
+        finally { _dungeonsLoading = false; await InvokeAsync(StateHasChanged); }
+    }
+
+    private async Task LoadRosterAsync()
+    {
+        _rosterLoading = true;
+        _rosterError = false;
+        _heroes = null;
+        _selectedHeroIds.Clear();
+        try
+        {
+            _heroes = await Http.GetFromJsonAsync<List<HeroDto>>("api/guild/my-roster");
+            _rosterError = _heroes is null;
+        }
+        catch (Exception) { _rosterError = true; }
+        finally { _rosterLoading = false; await InvokeAsync(StateHasChanged); }
+    }
+
+    private void SelectDungeon(string dungeonId) => _selectedDungeonId = dungeonId;
 
     private void ToggleHeroSelection(int heroId)
     {
-        if (_selectedHeroIds.Contains(heroId))
-            _selectedHeroIds.Remove(heroId);
-        else if (_selectedHeroIds.Count < 3)
-            _selectedHeroIds.Add(heroId);
+        if (_selectedHeroIds.Contains(heroId)) _selectedHeroIds.Remove(heroId);
+        else if (_heroes?.Any(h => h.Id == heroId) == true && _selectedHeroIds.Count < 3) _selectedHeroIds.Add(heroId);
     }
 
     private async Task StartDungeonAsync()
     {
         if (!CanStartDungeon) return;
         _isProcessing = true;
-
+        _startMessage = null;
+        _startRecoveryRequired = true;
         try
         {
-            var req = new GuildArena.Shared.Requests.StartDungeonRequest
+            using var response = await Http.PostAsJsonAsync("api/dungeon/start", new StartDungeonRequest
             {
-                DungeonId = _selectedDungeonId!,
-                HeroInstanceIds = _selectedHeroIds
-            };
-            var res = await Http.PostAsJsonAsync("api/dungeon/start", req);
-
-            if (res.IsSuccessStatusCode)
+                DungeonId = _selectedDungeonId!, HeroInstanceIds = new List<int>(_selectedHeroIds)
+            });
+            var failure = response.IsSuccessStatusCode ? null : await GetErrorDetailAsync(response);
+            await LoadStateAsync();
+            if (!_campError && _activeCamp is null)
             {
-                // Iniciou! Recarregamos o ecrã para ver a UI do Camp.
-                await LoadStateAsync();
-                _selectedHeroIds.Clear();
-                _selectedDungeonId = null;
+                _startRecoveryRequired = response.IsSuccessStatusCode;
+                _startMessage = response.IsSuccessStatusCode
+                    ? "The start request succeeded, but camp could not be confirmed. Check expedition status before trying again."
+                    : $"{failure ?? "The server did not start this expedition."} Review your team and try again.";
+            }
+        }
+        catch (Exception)
+        {
+            await LoadStateAsync();
+            if (_activeCamp is null)
+            {
+                _startRecoveryRequired = _campError;
+                _startMessage = _campError
+                    ? "We couldn't confirm whether the expedition started. Check expedition status before trying again."
+                    : "No active expedition was found. Review your team and try again.";
             }
         }
         finally { _isProcessing = false; }
     }
 
-    private void PromptForfeit() => _showForfeitModal = true;
-
-    private async Task ConfirmForfeit()
+    private void PromptForfeit() { _showForfeitModal = true; _focusDialog = true; }
+    private async Task CloseForfeitAsync()
     {
-        _isProcessing = true;
         _showForfeitModal = false;
+        await _abandonButton.FocusAsync();
+    }
+    private async Task HandleDialogKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CloseForfeitAsync();
+    }
+
+    private async Task ConfirmForfeitAsync()
+    {
+        if (_isProcessing) return;
+        _showForfeitModal = false;
+        _isProcessing = true;
+        _campMessage = null;
+        _forfeitRecoveryRequired = true;
         try
         {
-            await Http.PostAsync("api/dungeon/forfeit", null);
-            await LoadStateAsync(); // Abandona e volta ao Lobby
+            using var response = await Http.PostAsync("api/dungeon/forfeit", null);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadStateAsync();
+                if (_activeCamp is not null) _campMessage = "The run still appears active. Check camp status before trying again.";
+            }
+            else
+            {
+                _forfeitRecoveryRequired = false;
+                _campMessage = await GetErrorDetailAsync(response) ?? "We couldn't abandon the expedition. Your run is still at camp; try again.";
+            }
+        }
+        catch (Exception)
+        {
+            _campMessage = "We couldn't confirm whether the run was abandoned. Check camp status before trying again.";
         }
         finally { _isProcessing = false; }
     }
 
     private async Task EnterStageAsync()
     {
+        if (_isProcessing || _stageRecoveryRequired || _activeCamp is null) return;
+        _isProcessing = true;
+        _campMessage = null;
+        try
+        {
+            var result = await CombatService.EnterDungeonCombatAsync();
+            if (result == EncounterStartResult.Ready)
+            {
+                NavManager.NavigateTo("/arena");
+                return;
+            }
+            _stageRecoveryRequired = true;
+            _campMessage = "We couldn't confirm combat entry. Checking for an active combat before trying again.";
+            await RecoverStageAsync();
+        }
+        finally { _isProcessing = false; }
+    }
+
+    private async Task RecoverStageAsync()
+    {
         _isProcessing = true;
         try
         {
-            // Usamos o serviço para orquestrar a ligação ao Hub
-            await CombatService.EnterDungeonCombatAsync();
-
-            // Depois de ter a ligação feita e o GameState recebido, saltamos para a Arena
-            NavManager.NavigateTo("/arena");
+            var active = await CombatService.CheckActiveCombatAsync();
+            if (active is null)
+                _campMessage = "We couldn't check for active combat. Check your connection and try again before entering the stage.";
+            else if (active.HasActiveCombat)
+            {
+                if (await CombatService.RejoinCombatAsync(active.CombatId!))
+                {
+                    NavManager.NavigateTo("/arena");
+                    return;
+                }
+                _campMessage = "Combat is active, but we couldn't connect to the Arena. Check your connection and try again.";
+            }
+            else
+            {
+                _stageRecoveryRequired = false;
+                _campMessage = "No active combat was found. You can try entering the stage again.";
+            }
         }
         finally { _isProcessing = false; }
+    }
+
+    private static async Task<string?> GetErrorCodeAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            return json.RootElement.TryGetProperty("code", out var code) ? code.GetString() : null;
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static async Task<string?> GetErrorDetailAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+            return json.RootElement.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String ? detail.GetString() : null;
+        }
+        catch (JsonException) { return null; }
     }
 }

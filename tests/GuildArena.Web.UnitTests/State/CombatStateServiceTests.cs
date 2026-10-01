@@ -122,6 +122,48 @@ public class CombatStateServiceTests
         _service.IsConnecting.ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task EnterDungeonCombatAsync_OnRejectedRequest_ShouldNotReportReady()
+    {
+        _mockHttpHandler.SetResponse(HttpStatusCode.Conflict, "Active combat exists");
+
+        var result = await _service.EnterDungeonCombatAsync();
+
+        result.ShouldBe(EncounterStartResult.Rejected);
+        _service.CombatId.ShouldBeNull();
+        _service.GameState.ShouldBeNull();
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task EnterDungeonCombatAsync_WhenResponseIsLost_ShouldRequireRecovery()
+    {
+        _mockHttpHandler.FailRequest();
+
+        var result = await _service.EnterDungeonCombatAsync();
+
+        result.ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.CombatId.ShouldBeNull();
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task EnterDungeonCombatAsync_WhenHubUnavailable_ShouldRequireRecovery()
+    {
+        var response = new StartCombatResponse
+        {
+            CombatId = "C1",
+            InitialLogs = new List<string> { "Stage entered" },
+            InitialState = new GameStateDto()
+        };
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+
+        var result = await _service.EnterDungeonCombatAsync();
+
+        result.ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
     // ==========================================================
     // HELPER CLASS: Um Fake HttpMessageHandler para testes de UI
     // ==========================================================
