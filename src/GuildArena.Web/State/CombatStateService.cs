@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
+using MatchType = GuildArena.Domain.Enums.Matches.MatchType;
 
 namespace GuildArena.Web.State;
 
@@ -19,6 +20,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
     public event Action? OnChange;
 
     public string? CombatId { get; private set; }
+    public MatchType? MatchType { get; private set; }
     public GameStateDto? GameState { get; private set; }
     public IReadOnlyList<string> BattleLogs => _battleLogs.AsReadOnly();
     public bool IsConnecting { get; private set; }
@@ -51,6 +53,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
+                    MatchType = GuildArena.Domain.Enums.Matches.MatchType.Encounter;
                     _battleLogs.Clear();
                     _battleLogs.AddRange(result.InitialLogs);
                     GameState = result.InitialState;
@@ -95,6 +98,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
+                    MatchType = GuildArena.Domain.Enums.Matches.MatchType.Dungeon;
                     _battleLogs.Clear();
                     _battleLogs.AddRange(result.InitialLogs);
                     GameState = result.InitialState;
@@ -218,6 +222,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
 
         CombatResult = null;
         CombatId = null;
+        MatchType = null;
         GameState = null;
         _battleLogs.Clear();
         IsConnecting = false;
@@ -311,7 +316,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         return null;
     }
 
-    public async Task<bool> RejoinCombatAsync(string combatId)
+    public async Task<bool> RejoinCombatAsync(string combatId, MatchType? matchType)
     {
         IsConnecting = true;
         NotifyStateChanged();
@@ -325,6 +330,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
+                    MatchType = matchType;
                     _battleLogs.Clear();
                     _battleLogs.AddRange(result.InitialLogs);
                     GameState = result.InitialState;
@@ -344,6 +350,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
             NotifyStateChanged();
         }
         CombatId = null;
+        MatchType = null;
         GameState = null;
         _battleLogs.Clear();
         NotifyStateChanged();

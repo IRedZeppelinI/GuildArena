@@ -6,6 +6,7 @@ using NSubstitute;
 using Shouldly;
 using System.Net;
 using System.Text.Json;
+using MatchType = GuildArena.Domain.Enums.Matches.MatchType;
 using Xunit;
 
 namespace GuildArena.Web.UnitTests.State;
@@ -60,6 +61,7 @@ public class CombatStateServiceTests
         // No final, o estado deve estar atualizado
         _service.IsConnecting.ShouldBeFalse();
         _service.CombatId.ShouldBe("C1");
+        _service.MatchType.ShouldBe(MatchType.Encounter);
         _service.BattleLogs.ShouldContain("Combat Started");
         _service.GameState.ShouldNotBeNull();
         result.ShouldBe(EncounterStartResult.Unconfirmed);
@@ -113,10 +115,11 @@ public class CombatStateServiceTests
         };
         _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(fakeResponse));
 
-        var rejoined = await _service.RejoinCombatAsync("C1");
+        var rejoined = await _service.RejoinCombatAsync("C1", MatchType.Dungeon);
 
         rejoined.ShouldBeFalse();
         _service.CombatId.ShouldBeNull();
+        _service.MatchType.ShouldBeNull();
         _service.GameState.ShouldBeNull();
         _service.BattleLogs.ShouldBeEmpty();
         _service.IsConnecting.ShouldBeFalse();
@@ -161,7 +164,27 @@ public class CombatStateServiceTests
         var result = await _service.EnterDungeonCombatAsync();
 
         result.ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.MatchType.ShouldBe(MatchType.Dungeon);
         _service.IsConnecting.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DisconnectAsync_ClearsMatchTypeBeforeAnotherCombat()
+    {
+        var response = new StartCombatResponse
+        {
+            CombatId = "C1",
+            InitialLogs = new List<string>(),
+            InitialState = new GameStateDto()
+        };
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(response));
+        await _service.EnterDungeonCombatAsync();
+        _service.MatchType.ShouldBe(MatchType.Dungeon);
+
+        await _service.DisconnectAsync();
+
+        _service.MatchType.ShouldBeNull();
+        _service.CombatId.ShouldBeNull();
     }
 
     // ==========================================================

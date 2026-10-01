@@ -308,7 +308,7 @@
             }
             else if (active.HasActiveCombat)
             {
-                if (await CombatService.RejoinCombatAsync(active.CombatId!))
+                if (await CombatService.RejoinCombatAsync(active.CombatId!, active.MatchType))
                 {
                     NavManager.NavigateTo("/arena");
                     return;

@@ -1,5 +1,6 @@
 ﻿using GuildArena.Domain.Enums.Resources;
 using GuildArena.Shared.DTOs.Combat;
+using MatchType = GuildArena.Domain.Enums.Matches.MatchType;
 
 namespace GuildArena.Web.State;
 
@@ -16,6 +17,7 @@ public interface ICombatStateService
     event Action? OnChange;
 
     string? CombatId { get; }
+    MatchType? MatchType { get; }
     GameStateDto? GameState { get; }
     IReadOnlyList<string> BattleLogs { get; }
     bool IsConnecting { get; }
@@ -66,5 +68,5 @@ public interface ICombatStateService
     /// <summary>
     /// Re-fetches the state from the API and connects to the SignalR Hub.
     /// </summary>
-    Task<bool> RejoinCombatAsync(string combatId);
+    Task<bool> RejoinCombatAsync(string combatId, MatchType? matchType);
 }

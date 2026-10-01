@@ -6,6 +6,7 @@
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Web.Pages.Arena.State
 @using GuildArena.Web.State
+@using MatchType = GuildArena.Domain.Enums.Matches.MatchType
 @inject ICombatStateService CombatState
 @inject NavigationManager NavManager
 @implements IDisposable
@@ -14,7 +15,7 @@
 
 @if (CombatState.CombatResult != null)
 {
-    <CombatResultModal Result="CombatState.CombatResult" OnReturnClicked="LeaveArena" />
+    <CombatResultModal Result="CombatState.CombatResult" ReturnToDungeon="@(CombatState.MatchType == MatchType.Dungeon)" OnReturnClicked="LeaveArena" />
 }
 
 
@@ -124,7 +125,7 @@ else
             var active = await CombatState.CheckActiveCombatAsync();
             if (active is null)
                 _resumeError = true;
-            else if (active.HasActiveCombat && !await CombatState.RejoinCombatAsync(active.CombatId!))
+            else if (active.HasActiveCombat && !await CombatState.RejoinCombatAsync(active.CombatId!, active.MatchType))
                 _resumeError = true;
         }
         finally
@@ -280,7 +281,8 @@ else
 
     private async Task LeaveArena()
     {
+        var destination = CombatState.MatchType == MatchType.Dungeon ? "/dungeons" : "/encounters";
         await CombatState.DisconnectAsync();
-        NavManager.NavigateTo("/guild");
+        NavManager.NavigateTo(destination);
     }
 }

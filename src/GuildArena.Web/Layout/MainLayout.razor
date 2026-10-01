@@ -119,7 +119,7 @@
                 if (string.IsNullOrEmpty(CombatState.CombatId))
                 {
                     // Descarrega o estado da API e liga o SignalR!
-                    if (!await CombatState.RejoinCombatAsync(activeCombat.CombatId!))
+                    if (!await CombatState.RejoinCombatAsync(activeCombat.CombatId!, activeCombat.MatchType))
                     {
                         _combatRecoveryFailed = true;
                         return;
@@ -147,7 +147,7 @@
             return;
         }
 
-        if (await CombatState.RejoinCombatAsync(active.CombatId!))
+        if (await CombatState.RejoinCombatAsync(active.CombatId!, active.MatchType))
         {
             _combatRecoveryFailed = false;
             NavManager.NavigateTo("/arena");
