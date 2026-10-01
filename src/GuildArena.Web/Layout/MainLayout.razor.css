@@ -183,6 +183,17 @@
     padding: clamp(31px, 4vw, 55px) clamp(25px, 4vw, 58px) 76px;
 }
 
+.combat-recovery {
+    margin-bottom: 24px;
+    padding: 18px;
+    border: 1px solid var(--ga-line);
+    border-left: 3px solid #e4a59a;
+    background: var(--ga-surface);
+}
+
+.combat-recovery p { margin: 0 0 12px; }
+.combat-recovery button { min-height: 44px; padding: 9px 16px; border: 1px solid var(--ga-gold); background: var(--ga-gold); color: #1b221b; font-weight: 700; }
+
 .mobile-brand,
 .menu-toggle {
     display: none;

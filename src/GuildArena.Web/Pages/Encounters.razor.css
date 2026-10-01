@@ -57,6 +57,11 @@
 .encounters-action { position: sticky; bottom: 12px; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding: 20px; border: 1px solid var(--ga-line); border-left: 3px solid var(--ga-gold); background: var(--ga-surface); box-shadow: 0 12px 30px #0008; }
 .encounters-action strong { color: var(--ga-text); font: 700 1.3rem/1.2 Georgia, serif; }
 .encounters-action p { margin: 6px 0 0; color: var(--ga-muted); font-size: .9rem; line-height: 1.5; }
+.encounters-action .launch-feedback { flex-basis: 100%; order: 2; margin: 0; color: var(--ga-text); font-size: .85rem; }
+.launch-error { padding: 10px 12px; border-left: 3px solid #e4a59a; background: var(--ga-raised); }
+.encounters-action .launch-error p { margin: 0 0 8px; color: var(--ga-text); }
+.encounters-action .launch-error button { min-height: 44px; border: 1px solid var(--ga-gold); background: transparent; color: var(--ga-gold); font-weight: 700; cursor: pointer; }
+.encounters-action .launch-error button:hover { color: var(--ga-focus); }
 
 @media (max-width: 850px) {
     .encounter-choices, .hero-choices { grid-template-columns: minmax(0, 1fr); }

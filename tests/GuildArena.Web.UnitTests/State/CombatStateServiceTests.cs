@@ -33,7 +33,7 @@ public class CombatStateServiceTests
     }
 
     [Fact]
-    public async Task StartPveCombatAsync_ShouldSetConnectingState_AndInvokeOnChange()
+    public async Task StartPveCombatAsync_WhenHubUnavailable_ShouldRequireRecovery()
     {
         // ARRANGE
         // Preparamos a resposta falsa da API (200 OK com o nosso JSON)
@@ -51,7 +51,7 @@ public class CombatStateServiceTests
         _service.OnChange += () => eventFiredCount++;
 
         // ACT
-        await _service.StartEncounterCombatAsync("ENC_1", new List<int> { 1 });
+        var result = await _service.StartEncounterCombatAsync("ENC_1", new List<int> { 1 });
 
         // ASSERT
         // O evento deve ser disparado 2 vezes (1 quando começa a ligar, 1 quando termina)
@@ -62,6 +62,7 @@ public class CombatStateServiceTests
         _service.CombatId.ShouldBe("C1");
         _service.BattleLogs.ShouldContain("Combat Started");
         _service.GameState.ShouldNotBeNull();
+        result.ShouldBe(EncounterStartResult.Unconfirmed);
     }
 
     [Fact]
@@ -72,12 +73,13 @@ public class CombatStateServiceTests
         _mockHttpHandler.SetResponse(HttpStatusCode.BadRequest, "Invalid encounter");
 
         // ACT
-        await _service.StartEncounterCombatAsync("ENC_FAIL", new List<int> { 1 });
+        var result = await _service.StartEncounterCombatAsync("ENC_FAIL", new List<int> { 1 });
 
         // ASSERT
         _service.CombatId.ShouldBeNull();
         _service.GameState.ShouldBeNull();
         _service.IsConnecting.ShouldBeFalse();
+        result.ShouldBe(EncounterStartResult.Rejected);
 
         // Verifica se fez log do erro
         _loggerMock.Received().Log(
@@ -88,6 +90,38 @@ public class CombatStateServiceTests
             Arg.Any<Func<object, Exception?, string>>());
     }
 
+    [Fact]
+    public async Task StartPveCombatAsync_WhenResponseIsLost_ShouldNotReportRejection()
+    {
+        _mockHttpHandler.FailRequest();
+
+        var result = await _service.StartEncounterCombatAsync("ENC_1", new List<int> { 1, 2, 3 });
+
+        result.ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.CombatId.ShouldBeNull();
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RejoinCombatAsync_WhenHubUnavailable_ShouldNotRetainIncompleteCombat()
+    {
+        var fakeResponse = new StartCombatResponse
+        {
+            CombatId = "C1",
+            InitialLogs = new List<string> { "Combat Started" },
+            InitialState = new GameStateDto()
+        };
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(fakeResponse));
+
+        var rejoined = await _service.RejoinCombatAsync("C1");
+
+        rejoined.ShouldBeFalse();
+        _service.CombatId.ShouldBeNull();
+        _service.GameState.ShouldBeNull();
+        _service.BattleLogs.ShouldBeEmpty();
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
     // ==========================================================
     // HELPER CLASS: Um Fake HttpMessageHandler para testes de UI
     // ==========================================================
@@ -95,6 +129,9 @@ public class CombatStateServiceTests
     {
         private HttpStatusCode _statusCode;
         private string _content = string.Empty;
+        private bool _failRequest;
+
+        public void FailRequest() => _failRequest = true;
 
         public void SetResponse(HttpStatusCode statusCode, string content)
         {
@@ -104,6 +141,7 @@ public class CombatStateServiceTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (_failRequest) throw new HttpRequestException("Connection lost");
             var response = new HttpResponseMessage
             {
                 StatusCode = _statusCode,

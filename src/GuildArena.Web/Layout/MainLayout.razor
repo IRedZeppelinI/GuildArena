@@ -58,6 +58,13 @@
 
         <main class="main-content" tabindex="-1" aria-label="Main content">
         <article class="content">
+            @if (_combatRecoveryFailed)
+            {
+                <div class="combat-recovery" role="alert">
+                    <p>An active combat was found, but we couldn't reconnect. Check your connection and try again.</p>
+                    <button type="button" @onclick="RetryCombatRecoveryAsync">Reconnect to combat</button>
+                </div>
+            }
             @Body
         </article>
     </main>
@@ -65,6 +72,7 @@
 
 @code {
     private bool _isMenuOpen;
+    private bool _combatRecoveryFailed;
     private ElementReference _menuToggle;
 
     private void ToggleMenu() => _isMenuOpen = !_isMenuOpen;
@@ -111,7 +119,11 @@
                 if (string.IsNullOrEmpty(CombatState.CombatId))
                 {
                     // Descarrega o estado da API e liga o SignalR!
-                    await CombatState.RejoinCombatAsync(activeCombat.CombatId!);
+                    if (!await CombatState.RejoinCombatAsync(activeCombat.CombatId!))
+                    {
+                        _combatRecoveryFailed = true;
+                        return;
+                    }
                 }
 
                 // 3. Ele tentou ir para outra página que não a Arena?
@@ -121,6 +133,24 @@
                     NavManager.NavigateTo("/arena");
                 }
             }
+        }
+    }
+
+    private async Task RetryCombatRecoveryAsync()
+    {
+        var active = await CombatState.CheckActiveCombatAsync();
+        if (active is null) return;
+
+        if (!active.HasActiveCombat)
+        {
+            _combatRecoveryFailed = false;
+            return;
+        }
+
+        if (await CombatState.RejoinCombatAsync(active.CombatId!))
+        {
+            _combatRecoveryFailed = false;
+            NavManager.NavigateTo("/arena");
         }
     }
 

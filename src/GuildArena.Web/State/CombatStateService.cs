@@ -30,7 +30,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         _logger = logger;
     }
 
-    public async Task StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds)
+    public async Task<EncounterStartResult> StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds)
     {
         IsConnecting = true;
         NotifyStateChanged();
@@ -43,29 +43,34 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 HeroInstanceIds = heroInstanceIds
             };
 
-            var response = await _http.PostAsJsonAsync("api/combat/start-encounter", request);
+            using var response = await _http.PostAsJsonAsync("api/combat/start-encounter", request);
 
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
-                if (result != null)
+                if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
+                    _battleLogs.Clear();
                     _battleLogs.AddRange(result.InitialLogs);
                     GameState = result.InitialState;
 
                     await ConnectToSignalRAsync(CombatId);
+                    return EncounterStartResult.Ready;
                 }
+                return EncounterStartResult.Unconfirmed;
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
                 _logger.LogWarning("Failed to start combat. API returned {StatusCode}: {Error}", response.StatusCode, error);
+                return EncounterStartResult.Rejected;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected error occurred while starting the combat session.");
+            return EncounterStartResult.Unconfirmed;
         }
         finally
         {
@@ -223,32 +228,47 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
     {
         var apiBaseUrl = _http.BaseAddress?.ToString() ?? "";
 
-        _hubConnection = new HubConnectionBuilder()
+        if (_hubConnection is not null)
+        {
+            await _hubConnection.DisposeAsync();
+            _hubConnection = null;
+        }
+
+        var connection = new HubConnectionBuilder()
             .WithUrl(apiBaseUrl + "hubs/combat")
             .WithAutomaticReconnect()
             .Build();
 
-        _hubConnection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
+        connection.On<GameStateDto>("ReceiveGameStateUpdate", (state) =>
         {
             GameState = state;
             NotifyStateChanged();
         });
 
-        _hubConnection.On<List<string>>("ReceiveBattleLogs", (logs) =>
+        connection.On<List<string>>("ReceiveBattleLogs", (logs) =>
         {
             _battleLogs.AddRange(logs);
             NotifyStateChanged();
         });
 
-        _hubConnection.On<CombatResultDto>("ReceiveCombatEnded", (result) =>
+        connection.On<CombatResultDto>("ReceiveCombatEnded", (result) =>
         {
             CombatResult = result;
             NotifyStateChanged();
         });
 
 
-        await _hubConnection.StartAsync();
-        await _hubConnection.InvokeAsync("JoinCombat", combatId);
+        try
+        {
+            await connection.StartAsync();
+            await connection.InvokeAsync("JoinCombat", combatId);
+            _hubConnection = connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
     }
 
     public async Task SurrenderAsync()
@@ -286,18 +306,18 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
         return null;
     }
 
-    public async Task RejoinCombatAsync(string combatId)
+    public async Task<bool> RejoinCombatAsync(string combatId)
     {
         IsConnecting = true;
         NotifyStateChanged();
 
         try
         {
-            var response = await _http.GetAsync($"api/combat/{combatId}");
+            using var response = await _http.GetAsync($"api/combat/{combatId}");
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<StartCombatResponse>();
-                if (result != null)
+                if (result is { InitialState: not null } && !string.IsNullOrWhiteSpace(result.CombatId))
                 {
                     CombatId = result.CombatId;
                     _battleLogs.Clear();
@@ -305,6 +325,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                     GameState = result.InitialState;
 
                     await ConnectToSignalRAsync(CombatId);
+                    return true;
                 }
             }
         }
@@ -317,6 +338,11 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
             IsConnecting = false;
             NotifyStateChanged();
         }
+        CombatId = null;
+        GameState = null;
+        _battleLogs.Clear();
+        NotifyStateChanged();
+        return false;
     }
 
     private void NotifyStateChanged() => OnChange?.Invoke();

@@ -24,7 +24,7 @@ public interface ICombatStateService
     /// <summary>
     /// Initializes a PvE combat session by calling the API and establishing a SignalR connection.
     /// </summary>
-    Task StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds);
+    Task<EncounterStartResult> StartEncounterCombatAsync(string encounterId, List<int> heroInstanceIds);
 
     Task EnterDungeonCombatAsync();
 
@@ -66,5 +66,5 @@ public interface ICombatStateService
     /// <summary>
     /// Re-fetches the state from the API and connects to the SignalR Hub.
     /// </summary>
-    Task RejoinCombatAsync(string combatId);
+    Task<bool> RejoinCombatAsync(string combatId);
 }

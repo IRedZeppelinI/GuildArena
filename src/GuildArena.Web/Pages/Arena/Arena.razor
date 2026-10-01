@@ -18,7 +18,23 @@
 }
 
 
-@if (string.IsNullOrEmpty(CombatState.CombatId))
+@if (_checkingCombat)
+{
+    <div class="startup-screen">
+        <div class="startup-box" role="status">Checking for an active combat...</div>
+    </div>
+}
+else if (_resumeError)
+{
+    <div class="startup-screen">
+        <div class="startup-box" role="alert">
+            <h3 class="text-warning">Unable to reconnect</h3>
+            <p class="text-light">We couldn't restore your combat. Check your connection and try again.</p>
+            <button class="btn btn-outline-info mt-3" @onclick="ResumeCombatAsync">Try reconnecting</button>
+        </div>
+    </div>
+}
+else if (string.IsNullOrEmpty(CombatState.CombatId))
 {
     <div class="startup-screen">
         <div class="startup-box">
@@ -67,6 +83,8 @@ else
     private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
     private bool _showPaymentModal = false;
+    private bool _checkingCombat = true;
+    private bool _resumeError;
 
     private int _neutralCostPending = 0;
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
@@ -87,6 +105,32 @@ else
     protected override void OnInitialized()
     {
         CombatState.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(CombatState.CombatId))
+            await ResumeCombatAsync();
+        else
+            _checkingCombat = false;
+    }
+
+    private async Task ResumeCombatAsync()
+    {
+        _checkingCombat = true;
+        _resumeError = false;
+        try
+        {
+            var active = await CombatState.CheckActiveCombatAsync();
+            if (active is null)
+                _resumeError = true;
+            else if (active.HasActiveCombat && !await CombatState.RejoinCombatAsync(active.CombatId!))
+                _resumeError = true;
+        }
+        finally
+        {
+            _checkingCombat = false;
+        }
     }
 
     public void Dispose()

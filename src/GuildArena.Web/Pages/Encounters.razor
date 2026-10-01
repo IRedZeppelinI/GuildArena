@@ -61,7 +61,7 @@
                     var isSelected = _selectedEncounterId == encounter.Id;
                     <label class="encounter-choice @(isSelected ? "is-selected" : "") @(isLocked ? "is-locked" : "")" @key="encounter.Id">
                         <input type="radio" name="encounter" value="@encounter.Id" checked="@isSelected"
-                               disabled="@(isLocked || CombatService.IsConnecting)" @onchange="() => SelectEncounter(encounter.Id)" />
+                               disabled="@(isLocked || _isLaunching || _recoveryRequired)" @onchange="() => SelectEncounter(encounter.Id)" />
                         <span class="encounter-details">
                             <span class="encounter-topline">
                                 <strong>@encounter.Name</strong>
@@ -120,7 +120,7 @@
                 {
                     var isSelected = _selectedHeroIds.Contains(hero.Id);
                     <label class="hero-choice @(isSelected ? "is-selected" : "")" @key="hero.Id">
-                        <input type="checkbox" checked="@isSelected" disabled="@(CombatService.IsConnecting || (!isSelected && _selectedHeroIds.Count == 3))"
+                        <input type="checkbox" checked="@isSelected" disabled="@(_isLaunching || _recoveryRequired || (!isSelected && _selectedHeroIds.Count == 3))"
                                @onchange="() => ToggleHeroSelection(hero.Id)" />
                         <img src="@AssetService.GetPortraitUrl(hero.DefinitionId)" alt="" loading="lazy" />
                         <span class="hero-details">
@@ -151,7 +151,7 @@
                         else
                         {
                             <span class="slot-hero"><strong>@hero.Name</strong><small>Level @hero.CurrentLevel</small></span>
-                            <button type="button" disabled="@CombatService.IsConnecting" aria-label="Remove @hero.Name from team" @onclick="() => ToggleHeroSelection(hero.Id)">Remove</button>
+                            <button type="button" disabled="@(_isLaunching || _recoveryRequired)" aria-label="Remove @hero.Name from team" @onclick="() => ToggleHeroSelection(hero.Id)">Remove</button>
                         }
                     </li>
                 }
@@ -164,8 +164,22 @@
                 <p>@(SelectedEncounter is null ? "Choose an available encounter." : $"Encounter: {SelectedEncounter.Name}.")
                     @_selectedHeroIds.Count / 3 heroes selected.</p>
             </div>
+            @if (_isLaunching)
+            {
+                <p class="launch-feedback" role="status">@(_recoveryRequired ? "Checking for an active combat..." : "Starting combat and connecting to the Arena...")</p>
+            }
+            else if (_launchMessage is not null)
+            {
+                <div class="launch-feedback launch-error" role="alert">
+                    <p>@_launchMessage</p>
+                    @if (_recoveryRequired)
+                    {
+                        <button type="button" @onclick="RecoverLaunchAsync">Check active combat</button>
+                    }
+                </div>
+            }
             <button type="button" disabled="@(!CanStartMatch)" @onclick="StartMatchAsync">
-                @(CombatService.IsConnecting ? "Entering Arena..." : "Fight")
+                @(_isLaunching ? "Entering Arena..." : "Fight")
             </button>
         </div>
     </section>
@@ -179,6 +193,9 @@
     private bool _encountersError;
     private bool _rosterLoading = true;
     private bool _rosterError;
+    private bool _isLaunching;
+    private bool _recoveryRequired;
+    private string? _launchMessage;
 
     private string? _selectedEncounterId;
     private readonly List<int> _selectedHeroIds = new();
@@ -187,7 +204,7 @@
     private bool CanStartMatch => SelectedEncounter is { } encounter
                                && _guildProfile is not null && _guildProfile.Level >= encounter.RequiredGuildLevel
                                && _heroes is not null && _selectedHeroIds.Count == 3
-                               && !CombatService.IsConnecting;
+                               && !_isLaunching && !_recoveryRequired && !CombatService.IsConnecting;
 
     protected override async Task OnInitializedAsync() => await Task.WhenAll(LoadEncountersAsync(), LoadRosterAsync());
 
@@ -252,10 +269,61 @@
 
     private async Task StartMatchAsync()
     {
-        if (CanStartMatch)
+        if (!CanStartMatch) return;
+
+        _isLaunching = true;
+        _launchMessage = null;
+        try
         {
-            await CombatService.StartEncounterCombatAsync(_selectedEncounterId!, _selectedHeroIds);
-            NavManager.NavigateTo("/arena");
+            var result = await CombatService.StartEncounterCombatAsync(_selectedEncounterId!, new List<int>(_selectedHeroIds));
+            if (result == EncounterStartResult.Ready)
+            {
+                NavManager.NavigateTo("/arena");
+                return;
+            }
+
+            _recoveryRequired = true;
+            _launchMessage = result == EncounterStartResult.Rejected
+                ? "The server did not start this encounter. Checking for an existing combat before you try again."
+                : "We couldn't confirm the Arena connection. Checking whether combat started before you try again.";
+            await RecoverLaunchAsync();
+        }
+        finally
+        {
+            _isLaunching = false;
+        }
+    }
+
+    private async Task RecoverLaunchAsync()
+    {
+        if (_isLaunching && _launchMessage is null) return;
+
+        _isLaunching = true;
+        try
+        {
+            var active = await CombatService.CheckActiveCombatAsync();
+            if (active is null)
+            {
+                _launchMessage = "We couldn't check whether combat started. Check your connection, then check active combat again before trying to fight.";
+            }
+            else if (active.HasActiveCombat)
+            {
+                if (await CombatService.RejoinCombatAsync(active.CombatId!))
+                {
+                    NavManager.NavigateTo("/arena");
+                    return;
+                }
+                _launchMessage = "Combat is active, but we couldn't connect to the Arena. Check your connection and try reconnecting.";
+            }
+            else
+            {
+                _recoveryRequired = false;
+                _launchMessage = "No active combat was found. Review your selection and try again.";
+            }
+        }
+        finally
+        {
+            _isLaunching = false;
         }
     }
 }
