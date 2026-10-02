@@ -38,5 +38,5 @@ public class AssetService : IAssetService
     // wwwroot
     // essences 
     public string GetEssenceIconUrl(string essenceType)
-        => $"images/essences/{essenceType.ToLower()}.jpg";
+        => $"images/essences/{essenceType.ToLower()}.png";
 }
