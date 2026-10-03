@@ -256,6 +256,9 @@
 }
 
 .hero-vital small {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     color: var(--ga-muted);
     font-size: .75rem;
     font-weight: 500;
@@ -457,7 +460,10 @@
     gap: 7px;
 }
 
-.ability-meta span {
+.ability-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 5px 8px;
     border: 1px solid var(--ga-line);
     color: var(--ga-muted);

@@ -1,0 +1,7 @@
+.resource-icon {
+    display: inline-block;
+    flex: none;
+    width: max(1em, 20px);
+    height: max(1em, 20px);
+    vertical-align: middle;
+}

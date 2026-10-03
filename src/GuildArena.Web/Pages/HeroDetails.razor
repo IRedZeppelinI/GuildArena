@@ -96,11 +96,11 @@
                     <div class="hero-vitals" aria-label="Hero resources">
                         <div class="hero-vital">
                             <span>Health points</span>
-                            <strong>@_hero.MaxHP <small>max HP</small></strong>
+                            <strong>@_hero.MaxHP <small>max <ResourceIcon Kind="ResourceIconKind.HealthPoints" /></small></strong>
                         </div>
                         <div class="hero-vital">
                             <span>Action points</span>
-                            <strong>@_hero.MaxActions <small>max AP</small></strong>
+                            <strong>@_hero.MaxActions <small>max <ResourceIcon Kind="ResourceIconKind.ActionPoints" /></small></strong>
                         </div>
                     </div>
                 </header>
@@ -172,8 +172,8 @@
                             <div class="ability-heading">
                                 <h3>@ability.Name</h3>
                                 <div class="ability-meta">
-                                    <span><strong>@ability.ActionPointCost</strong> AP cost</span>
-                                    <span>@(ability.BaseCooldown == 0 ? "No cooldown" : $"{ability.BaseCooldown} turn{(ability.BaseCooldown == 1 ? "" : "s")} cooldown")</span>
+                                    <span><ResourceIcon Kind="ResourceIconKind.ActionPoints" /><span><strong>@ability.ActionPointCost</strong> AP cost</span></span>
+                                    <span><ResourceIcon Kind="ResourceIconKind.Cooldown" /><span>@(ability.BaseCooldown == 0 ? "No cooldown" : $"{ability.BaseCooldown} turn{(ability.BaseCooldown == 1 ? "" : "s")} cooldown")</span></span>
                                 </div>
                             </div>
                         </header>
@@ -243,7 +243,7 @@
                                         }
                                         @if (ability.HPCost > 0)
                                         {
-                                            <span class="ability-cost"><span aria-hidden="true">❤️</span> <strong>@ability.HPCost</strong> HP</span>
+                                            <span class="ability-cost"><ResourceIcon Kind="ResourceIconKind.HealthPoints" /> <strong>@ability.HPCost</strong> HP</span>
                                         }
                                     </div>
                                 </div>

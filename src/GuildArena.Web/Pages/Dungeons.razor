@@ -7,6 +7,7 @@
 @using GuildArena.Shared.Requests
 @using GuildArena.Web.Services
 @using GuildArena.Web.State
+@using GuildArena.Web.Components
 @inject HttpClient Http
 @inject IAssetService AssetService
 @inject ICombatStateService CombatService
@@ -75,7 +76,7 @@
                                 <strong>@hero.Name</strong>
                                 <span class="hero-status">@(fallen ? "Fallen" : "Standing")</span>
                             </div>
-                            <div class="hp-heading"><span>Health</span><strong>@hero.CurrentHP / @hero.MaxHP HP</strong></div>
+                            <div class="hp-heading"><span class="hp-label"><ResourceIcon Kind="ResourceIconKind.HealthPoints" /> Health</span><strong>@hero.CurrentHP / @hero.MaxHP HP</strong></div>
                             <progress value="@hpPercent" max="100" aria-label="@hero.Name health: @hero.CurrentHP of @hero.MaxHP HP"></progress>
                         </li>
                     }

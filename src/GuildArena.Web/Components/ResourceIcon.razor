@@ -1,0 +1,13 @@
+<img class="resource-icon" src="@Source" width="20" height="20" alt="" aria-hidden="true" />
+
+@code {
+    [Parameter, EditorRequired] public ResourceIconKind Kind { get; set; }
+
+    private string Source => Kind switch
+    {
+        ResourceIconKind.ActionPoints => "/images/ui/ap.svg",
+        ResourceIconKind.HealthPoints => "/images/ui/hp.svg",
+        ResourceIconKind.Cooldown => "/images/ui/cooldown.svg",
+        _ => throw new ArgumentOutOfRangeException(nameof(Kind))
+    };
+}
