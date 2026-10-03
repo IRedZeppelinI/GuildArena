@@ -36,7 +36,10 @@ public class CreateNewsCommandHandler : IRequestHandler<CreateNewsCommand, Resul
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        string? imageUrl = null;
+        var imageSelection = NewsImageSelection.Resolve(request.IllustrationId, request.FileStream != null);
+        if (imageSelection.IsFailure) return Result.Failure(imageSelection.Error);
+
+        string? imageUrl = imageSelection.Value;
 
         if (request.FileStream is not null && !string.IsNullOrWhiteSpace(request.FileName))
         {

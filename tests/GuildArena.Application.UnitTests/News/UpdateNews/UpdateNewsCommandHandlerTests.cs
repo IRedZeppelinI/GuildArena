@@ -129,6 +129,76 @@ public class UpdateNewsCommandHandlerTests
         await _newsRepo.DidNotReceive().UpdateAsync(Arg.Any<NewsArticle>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("dungeon", "/images/public/news-dungeon.jpg")]
+    [InlineData("essence", "/images/public/news-essence.jpg")]
+    [InlineData("hero", "/images/public/news-hero.jpg")]
+    public async Task Handle_WithIllustration_ShouldReplaceUploadedImageWithoutUpload(string illustrationId, string expectedUrl)
+    {
+        var article = new NewsArticle
+        {
+            Id = 10, Title = "Old title", Summary = "Summary", Content = "Content", ImageUrl = "https://storage.example.com/old.jpg"
+        };
+        _newsRepo.GetPublishedByIdAsync(10, Arg.Any<CancellationToken>()).Returns(article);
+        var command = new UpdateNewsCommand
+        {
+            Id = 10, Title = "New title", Summary = "Summary", Content = "Content", IllustrationId = illustrationId
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        article.ImageUrl.ShouldBe(expectedUrl);
+        await _newsRepo.Received(1).UpdateAsync(article, Arg.Any<CancellationToken>());
+        await _storageService.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("/images/public/news-hero.jpg")]
+    [InlineData("https://storage.example.com/old.jpg")]
+    public async Task Handle_WithoutImageSelection_ShouldKeepExistingImage(string? imageUrl)
+    {
+        var article = new NewsArticle { Id = 10, Title = "Title", Summary = "Summary", Content = "Content", ImageUrl = imageUrl };
+        _newsRepo.GetPublishedByIdAsync(10, Arg.Any<CancellationToken>()).Returns(article);
+
+        var result = await _handler.Handle(new UpdateNewsCommand
+        {
+            Id = 10, Title = "New title", Summary = "Summary", Content = "Content"
+        }, CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        article.ImageUrl.ShouldBe(imageUrl);
+        await _newsRepo.Received(1).UpdateAsync(article, Arg.Any<CancellationToken>());
+        await _storageService.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("unknown", false, "News.InvalidIllustration")]
+    [InlineData("/images/public/news-hero.jpg", false, "News.InvalidIllustration")]
+    [InlineData("hero", true, "News.ConflictingImages")]
+    public async Task Handle_WithInvalidImageSelection_ShouldNotModifyArticleOrUpload(string illustrationId, bool upload, string expectedCode)
+    {
+        var article = new NewsArticle { Id = 10, Title = "Old title", Summary = "Summary", Content = "Content", ImageUrl = "old.jpg" };
+        _newsRepo.GetPublishedByIdAsync(10, Arg.Any<CancellationToken>()).Returns(article);
+        using var stream = new MemoryStream([1, 2, 3]);
+        var command = new UpdateNewsCommand
+        {
+            Id = 10, Title = "New title", Summary = "Summary", Content = "Content", IllustrationId = illustrationId,
+            FileStream = upload ? stream : null, FileName = upload ? "image.jpg" : null
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe(expectedCode);
+        result.Error.Type.ShouldBe(ErrorType.Validation);
+        article.Title.ShouldBe("Old title");
+        article.ImageUrl.ShouldBe("old.jpg");
+        await _newsRepo.DidNotReceive().UpdateAsync(Arg.Any<NewsArticle>(), Arg.Any<CancellationToken>());
+        await _storageService.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task Handle_WithCancelledToken_ShouldThrowOperationCanceledException()
     {

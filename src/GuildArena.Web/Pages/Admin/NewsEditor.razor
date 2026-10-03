@@ -44,20 +44,43 @@
                     <textarea id="news-content" @bind="_content" required rows="12" aria-describedby="content-hint"></textarea>
                     <p id="content-hint" class="auth-hint">Plain text with line breaks. HTML and Markdown are displayed as text.</p>
                 </div>
-                <div class="auth-field">
-                    <label for="news-image">Header image <span class="optional">(optional)</span></label>
-                    <InputFile id="news-image" OnChange="HandleFileSelected" accept="image/png,image/jpeg,image/webp" aria-describedby="image-hint" />
-                    <p id="image-hint" class="auth-hint">JPG, PNG or WebP, up to 5 MB. @(IsEditing ? "Leave empty to keep the current image." : "Without an upload, a GuildArena illustration is shown.")</p>
-                    @if (_selectedFile != null) { <p class="selected-image" role="status">Selected: @_selectedFile.Name</p> }
-                </div>
-                @if (IsEditing && _article != null)
-                {
-                    <div class="current-image">
-                        <p class="auth-hint">@(!string.IsNullOrWhiteSpace(_article.ImageUrl) ? "Current article image" : "Default GuildArena illustration")</p>
-                        <NewsImage ArticleId="ArticleId!.Value" ImageUrl="_article.ImageUrl" />
-                        <p class="auth-hint">Uploading a new image replaces the current one when you save.</p>
+                <fieldset class="image-options" aria-describedby="image-options-hint">
+                    <legend>Header image</legend>
+                    <p id="image-options-hint" class="auth-hint">Choose a built-in illustration or upload your own image.</p>
+                    <label class="image-choice @(_imageChoice == "unchanged" ? "selected" : "")">
+                        <input type="radio" name="news-image-choice" value="unchanged" checked="@(_imageChoice == "unchanged")" @onchange='() => SelectImage("unchanged")' />
+                        <span>@(IsEditing ? "Keep current image" : "Automatic GuildArena illustration")</span>
+                    </label>
+                    @if (IsEditing && _article != null && _imageChoice == "unchanged")
+                    {
+                        <div class="current-image">
+                            <p class="auth-hint">@(!string.IsNullOrWhiteSpace(_article.ImageUrl) ? "Current article image" : "Default GuildArena illustration")</p>
+                            <NewsImage ArticleId="ArticleId!.Value" ImageUrl="_article.ImageUrl" />
+                        </div>
+                    }
+                    <div class="illustration-grid">
+                        @foreach (var illustration in IllustrationChoices)
+                        {
+                            <label class="illustration-choice @(_imageChoice == illustration.Id ? "selected" : "")">
+                                <img src="@NewsIllustrations.GetImageUrl(illustration.Id)" width="1672" height="941" alt="" loading="lazy" />
+                                <span><input type="radio" name="news-image-choice" value="@illustration.Id" checked="@(_imageChoice == illustration.Id)" @onchange="() => SelectImage(illustration.Id)" />@illustration.Label</span>
+                            </label>
+                        }
                     </div>
-                }
+                    <label class="image-choice @(_imageChoice == "upload" ? "selected" : "")">
+                        <input type="radio" name="news-image-choice" value="upload" checked="@(_imageChoice == "upload")" @onchange='() => SelectImage("upload")' />
+                        <span>Upload an image</span>
+                    </label>
+                    @if (_imageChoice == "upload")
+                    {
+                        <div class="auth-field upload-field">
+                            <label for="news-image">Image file</label>
+                            <InputFile id="news-image" OnChange="HandleFileSelected" accept="image/png,image/jpeg,image/webp" aria-describedby="image-hint" />
+                            <p id="image-hint" class="auth-hint">JPG, PNG or WebP, up to 5 MB.</p>
+                            @if (_selectedFile != null) { <p class="selected-image" role="status">Selected: @_selectedFile.Name</p> }
+                        </div>
+                    }
+                </fieldset>
                 <div class="editor-footer">
                     <button type="submit" class="auth-action">@(_isSubmitting ? (IsEditing ? "Saving changes…" : "Publishing…") : (IsEditing ? "Save changes" : "Publish article"))</button>
                     @if (_isSubmitting)
@@ -82,6 +105,13 @@
     private NewsArticleDetailDto? _article;
     private string _title = "", _summary = "", _content = "";
     private IBrowserFile? _selectedFile;
+    private string _imageChoice = "unchanged";
+    private static readonly (string Id, string Label)[] IllustrationChoices =
+    [
+        (NewsIllustrations.Dungeon, "Dungeon portal"),
+        (NewsIllustrations.Essence, "Arcane essence"),
+        (NewsIllustrations.Hero, "A new hero")
+    ];
     private bool _isLoading, _loadFailed, _notFound, _isSubmitting;
     private string? _error;
     private const long MaxImageSize = 5 * 1024 * 1024;
@@ -94,6 +124,7 @@
         _article = null;
         _error = null;
         _selectedFile = null;
+        _imageChoice = "unchanged";
         _loadFailed = _notFound = false;
         _title = _summary = _content = "";
         if (!articleId.HasValue) return;
@@ -125,9 +156,17 @@
         _error = ImageValidationError();
     }
 
+    private void SelectImage(string choice)
+    {
+        _imageChoice = choice;
+        _selectedFile = null;
+        _error = null;
+    }
+
     private string? ImageValidationError()
     {
-        if (_selectedFile == null) return null;
+        if (_imageChoice != "upload") return null;
+        if (_selectedFile == null) return "Choose an image file to upload, or select a built-in illustration.";
         if (_selectedFile.Size > MaxImageSize) return "The image is larger than 5 MB. Choose a smaller file.";
         if (_selectedFile.ContentType is not ("image/png" or "image/jpeg" or "image/webp")) return "Choose a JPG, PNG or WebP image.";
         return null;
@@ -150,7 +189,11 @@
             content.Add(new StringContent(_title), "Title");
             content.Add(new StringContent(_summary), "Summary");
             content.Add(new StringContent(_content), "Content");
-            if (_selectedFile != null)
+            if (_imageChoice is not ("unchanged" or "upload"))
+            {
+                content.Add(new StringContent(_imageChoice), "IllustrationId");
+            }
+            if (_imageChoice == "upload" && _selectedFile != null)
             {
                 var fileContent = new StreamContent(_selectedFile.OpenReadStream(MaxImageSize));
                 content.Add(fileContent, "Image", _selectedFile.Name);

@@ -35,6 +35,9 @@ public class UpdateNewsCommandHandler : IRequestHandler<UpdateNewsCommand, Resul
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var imageSelection = NewsImageSelection.Resolve(request.IllustrationId, request.FileStream != null);
+        if (imageSelection.IsFailure) return Result.Failure(imageSelection.Error);
+
         var article = await _newsRepo.GetPublishedByIdAsync(request.Id, cancellationToken);
 
         if (article == null)
@@ -47,8 +50,11 @@ public class UpdateNewsCommandHandler : IRequestHandler<UpdateNewsCommand, Resul
         article.Summary = request.Summary;
         article.Content = request.Content;
 
-        // Se o admin enviou uma nova imagem, fazemos upload e substituímos o URL
-        if (request.FileStream is not null && !string.IsNullOrWhiteSpace(request.FileName))
+        if (imageSelection.Value != null)
+        {
+            article.ImageUrl = imageSelection.Value;
+        }
+        else if (request.FileStream is not null && !string.IsNullOrWhiteSpace(request.FileName))
         {
             var newImageUrl = await _storageService.UploadFileAsync(
                 request.FileStream,

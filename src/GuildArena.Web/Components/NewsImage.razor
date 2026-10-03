@@ -1,3 +1,5 @@
+@using GuildArena.Shared.DTOs.News
+
 <div class="news-image @Variant">
     <img @key="_source" src="@_source" alt="" width="1672" height="940" loading="lazy" @onerror="UseFallback" />
 </div>
@@ -10,8 +12,8 @@
     private string? _previousUrl;
     private int _previousId = -1;
     private string _source = "";
-    private static readonly string[] Illustrations = ["images/public/news-dungeon.jpg", "images/public/news-essence.jpg", "images/public/news-hero.jpg"];
-    private string Fallback => Illustrations[(int)((uint)ArticleId % Illustrations.Length)];
+    private static readonly string[] Illustrations = [NewsIllustrations.Dungeon, NewsIllustrations.Essence, NewsIllustrations.Hero];
+    private string Fallback => NewsIllustrations.GetImageUrl(Illustrations[(int)((uint)ArticleId % Illustrations.Length)])!;
 
     protected override void OnParametersSet()
     {

@@ -51,6 +51,7 @@ public class NewsController : BaseApiController
             Title = request.Title,
             Summary = request.Summary,
             Content = request.Content,
+            IllustrationId = request.IllustrationId,
             FileStream = fileStream,
             FileName = fileName,
             ContentType = contentType
@@ -90,6 +91,7 @@ public class NewsController : BaseApiController
             Title = request.Title,
             Summary = request.Summary,
             Content = request.Content,
+            IllustrationId = request.IllustrationId,
             FileStream = fileStream,
             FileName = fileName,
             ContentType = contentType
@@ -107,6 +109,7 @@ public class CreateNewsApiRequest
     public required string Title { get; set; }
     public required string Summary { get; set; }
     public required string Content { get; set; }
+    public string? IllustrationId { get; set; }
     public IFormFile? Image { get; set; }
 }
 
@@ -115,6 +118,7 @@ public class UpdateNewsApiRequest
     public required string Title { get; set; }
     public required string Summary { get; set; }
     public required string Content { get; set; }
-    // A imagem é opcional na edição. Se for null, mantemos a que já está na BD.
+    public string? IllustrationId { get; set; }
+    // Without an illustration selection or upload, retain the current image.
     public IFormFile? Image { get; set; }
 }

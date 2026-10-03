@@ -114,6 +114,46 @@ public class CreateNewsCommandHandlerTests
         await _newsRepo.Received(1).AddAsync(Arg.Is<NewsArticle>(a => a.ImageUrl == null), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("dungeon", "/images/public/news-dungeon.jpg")]
+    [InlineData("essence", "/images/public/news-essence.jpg")]
+    [InlineData("hero", "/images/public/news-hero.jpg")]
+    public async Task Handle_WithIllustration_ShouldPersistLocalPathWithoutUpload(string illustrationId, string expectedUrl)
+    {
+        var command = new CreateNewsCommand
+        {
+            Title = "Announcement", Summary = "Summary", Content = "Content", IllustrationId = illustrationId
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.ShouldBeTrue();
+        await _newsRepo.Received(1).AddAsync(Arg.Is<NewsArticle>(a => a.ImageUrl == expectedUrl), Arg.Any<CancellationToken>());
+        await _storageService.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("unknown", false, "News.InvalidIllustration")]
+    [InlineData("/images/public/news-hero.jpg", false, "News.InvalidIllustration")]
+    [InlineData("hero", true, "News.ConflictingImages")]
+    public async Task Handle_WithInvalidImageSelection_ShouldRejectWithoutSavingOrUploading(string illustrationId, bool upload, string expectedCode)
+    {
+        using var stream = new MemoryStream([1, 2, 3]);
+        var command = new CreateNewsCommand
+        {
+            Title = "Announcement", Summary = "Summary", Content = "Content", IllustrationId = illustrationId,
+            FileStream = upload ? stream : null, FileName = upload ? "image.jpg" : null
+        };
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.ShouldBeTrue();
+        result.Error.Code.ShouldBe(expectedCode);
+        result.Error.Type.ShouldBe(ErrorType.Validation);
+        await _newsRepo.DidNotReceive().AddAsync(Arg.Any<NewsArticle>(), Arg.Any<CancellationToken>());
+        await _storageService.DidNotReceive().UploadFileAsync(Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task Handle_WithCancelledToken_ShouldThrowOperationCanceledException()
     {
