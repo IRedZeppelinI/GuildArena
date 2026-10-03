@@ -1,0 +1,173 @@
+@using System.Net
+@using GuildArena.Shared.DTOs.News
+@using GuildArena.Web.Components
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="auth-page news-editor">
+    <header class="auth-intro">
+        <p class="auth-eyebrow">Guild register · Editorial tools</p>
+        <h1>@(IsEditing ? "Edit announcement" : "Post an announcement")</h1>
+        <p>@(IsEditing ? "Update the article and its appearance on the homepage." : "Share the latest news with your players.")</p>
+    </header>
+
+    @if (_isLoading)
+    {
+        <div class="auth-card" role="status">Loading article data…</div>
+    }
+    else if (_loadFailed || _notFound)
+    {
+        <div class="auth-card">
+            <h2>@(_notFound ? "Article not found" : "Article unavailable")</h2>
+            <p>@(_notFound ? "This announcement is no longer available." : "We couldn’t load the article. Please try again.")</p>
+            @if (_loadFailed) { <button type="button" class="auth-action" @onclick="LoadArticleAsync">Retry article</button> }
+            <a href="/" class="auth-secondary">Back to home</a>
+        </div>
+    }
+    else
+    {
+        <form class="auth-card" @onsubmit="SubmitAsync" @onsubmit:preventDefault="true" aria-busy="@(_isSubmitting ? "true" : "false")">
+            @if (_error != null) { <div class="auth-feedback error" role="alert">@_error</div> }
+            <fieldset disabled="@_isSubmitting">
+                <div class="auth-field">
+                    <label for="news-title">Title</label>
+                    <input id="news-title" @bind="_title" required maxlength="200" aria-describedby="title-hint" />
+                    <p id="title-hint" class="auth-hint">A clear headline. Up to 200 characters.</p>
+                </div>
+                <div class="auth-field">
+                    <label for="news-summary">Homepage summary</label>
+                    <textarea id="news-summary" @bind="_summary" required rows="3" maxlength="500" aria-describedby="summary-hint"></textarea>
+                    <p id="summary-hint" class="auth-hint">A short introduction for the news card. Up to 500 characters.</p>
+                </div>
+                <div class="auth-field">
+                    <label for="news-content">Full article</label>
+                    <textarea id="news-content" @bind="_content" required rows="12" aria-describedby="content-hint"></textarea>
+                    <p id="content-hint" class="auth-hint">Plain text with line breaks. HTML and Markdown are displayed as text.</p>
+                </div>
+                <div class="auth-field">
+                    <label for="news-image">Header image <span class="optional">(optional)</span></label>
+                    <InputFile id="news-image" OnChange="HandleFileSelected" accept="image/png,image/jpeg,image/webp" aria-describedby="image-hint" />
+                    <p id="image-hint" class="auth-hint">JPG, PNG or WebP, up to 5 MB. @(IsEditing ? "Leave empty to keep the current image." : "Without an upload, a GuildArena illustration is shown.")</p>
+                    @if (_selectedFile != null) { <p class="selected-image" role="status">Selected: @_selectedFile.Name</p> }
+                </div>
+                @if (IsEditing && _article != null)
+                {
+                    <div class="current-image">
+                        <p class="auth-hint">@(!string.IsNullOrWhiteSpace(_article.ImageUrl) ? "Current article image" : "Default GuildArena illustration")</p>
+                        <NewsImage ArticleId="ArticleId!.Value" ImageUrl="_article.ImageUrl" />
+                        <p class="auth-hint">Uploading a new image replaces the current one when you save.</p>
+                    </div>
+                }
+                <div class="editor-footer">
+                    <button type="submit" class="auth-action">@(_isSubmitting ? (IsEditing ? "Saving changes…" : "Publishing…") : (IsEditing ? "Save changes" : "Publish article"))</button>
+                    @if (_isSubmitting)
+                    {
+                        <button type="button" class="auth-secondary" disabled>Cancel</button>
+                    }
+                    else
+                    {
+                        <a href="@CancelUrl" class="auth-secondary">Cancel</a>
+                    }
+                </div>
+            </fieldset>
+            @if (_isSubmitting) { <p class="auth-hint" role="status">@(_selectedFile != null ? "Uploading the image and saving the article…" : "Saving the article…")</p> }
+        </form>
+    }
+</div>
+
+@code {
+    [Parameter] public int? ArticleId { get; set; }
+    private bool IsEditing => ArticleId.HasValue;
+    private string CancelUrl => IsEditing ? $"/news/{ArticleId}" : "/";
+    private NewsArticleDetailDto? _article;
+    private string _title = "", _summary = "", _content = "";
+    private IBrowserFile? _selectedFile;
+    private bool _isLoading, _loadFailed, _notFound, _isSubmitting;
+    private string? _error;
+    private const long MaxImageSize = 5 * 1024 * 1024;
+
+    protected override Task OnParametersSetAsync() => LoadArticleAsync();
+
+    private async Task LoadArticleAsync()
+    {
+        var articleId = ArticleId;
+        _article = null;
+        _error = null;
+        _selectedFile = null;
+        _loadFailed = _notFound = false;
+        _title = _summary = _content = "";
+        if (!articleId.HasValue) return;
+        _isLoading = true;
+        try
+        {
+            using var response = await Http.GetAsync($"api/news/{articleId}");
+            if (articleId != ArticleId) return;
+            if (response.StatusCode == HttpStatusCode.NotFound) _notFound = true;
+            else
+            {
+                response.EnsureSuccessStatusCode();
+                var article = await response.Content.ReadFromJsonAsync<NewsArticleDetailDto>()
+                    ?? throw new InvalidOperationException("The article response was empty.");
+                if (articleId != ArticleId) return;
+                _article = article;
+                _title = article.Title;
+                _summary = article.Summary;
+                _content = article.Content;
+            }
+        }
+        catch { if (articleId == ArticleId) _loadFailed = true; }
+        finally { if (articleId == ArticleId) _isLoading = false; }
+    }
+
+    private void HandleFileSelected(InputFileChangeEventArgs args)
+    {
+        _selectedFile = args.File;
+        _error = ImageValidationError();
+    }
+
+    private string? ImageValidationError()
+    {
+        if (_selectedFile == null) return null;
+        if (_selectedFile.Size > MaxImageSize) return "The image is larger than 5 MB. Choose a smaller file.";
+        if (_selectedFile.ContentType is not ("image/png" or "image/jpeg" or "image/webp")) return "Choose a JPG, PNG or WebP image.";
+        return null;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_isSubmitting) return;
+        _error = ImageValidationError();
+        if (_error != null) return;
+        if (string.IsNullOrWhiteSpace(_title) || string.IsNullOrWhiteSpace(_summary) || string.IsNullOrWhiteSpace(_content))
+        {
+            _error = "Title, summary and full article are required.";
+            return;
+        }
+        _isSubmitting = true;
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            content.Add(new StringContent(_title), "Title");
+            content.Add(new StringContent(_summary), "Summary");
+            content.Add(new StringContent(_content), "Content");
+            if (_selectedFile != null)
+            {
+                var fileContent = new StreamContent(_selectedFile.OpenReadStream(MaxImageSize));
+                content.Add(fileContent, "Image", _selectedFile.Name);
+                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(_selectedFile.ContentType);
+            }
+            using var response = IsEditing
+                ? await Http.PutAsync($"api/news/{ArticleId}", content)
+                : await Http.PostAsync("api/news", content);
+            if (response.IsSuccessStatusCode) NavManager.NavigateTo(CancelUrl);
+            else _error = response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden
+                ? "Your session no longer permits this action. Sign in with an administrator account and try again."
+                : "We couldn’t save the article. Your entries are still here; please try again.";
+        }
+        catch
+        {
+            _error = "Connection unavailable. Your entries are still here. Check the latest news before retrying: the article may already have been saved.";
+        }
+        finally { _isSubmitting = false; }
+    }
+}

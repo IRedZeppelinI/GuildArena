@@ -1,107 +1,175 @@
-﻿@page "/news/{Id:int}"
+@page "/news/{Id:int}"
+@using System.Net
 @using GuildArena.Shared.DTOs.News
+@using GuildArena.Web.Components
 @inject HttpClient Http
 @inject NavigationManager NavManager
 
-<PageTitle>@(_article?.Title ?? "Loading...")</PageTitle>
+<PageTitle>@(_article?.Title ?? "News") — GuildArena</PageTitle>
 
-<div class="container mt-4 text-light pb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <a href="/" class="btn btn-outline-secondary">← Back to Home</a>
-
-        <!-- BOTOES DE ADMIN -->
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <div class="d-flex gap-2">
-                    <a href="/admin/news/edit/@Id" class="btn btn-outline-warning">✏️ Edit</a>
-                    <button class="btn btn-outline-danger" @onclick="PromptDelete">🗑️ Delete</button>
-                </div>
-            </Authorized>
-        </AuthorizeView>
-    </div>
+<div class="article-page">
+    <nav class="article-navigation" aria-label="Article navigation">
+        <a href="/" class="article-back">← Back to home</a>
+        @if (_article != null)
+        {
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <div class="editor-actions">
+                        <a href="/admin/news/edit/@Id" class="article-button">Edit article</a>
+                        <button type="button" class="article-button danger" @ref="_deleteButton" @onclick="PromptDelete">Delete article</button>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </nav>
 
     @if (_isLoading)
     {
-        <p><em>Loading article...</em></p>
+        <div class="article-state" role="status"><h1>News from GuildArena</h1><p>Loading article…</p></div>
     }
-    else if (_article == null)
+    else if (_notFound)
     {
-        <div class="alert alert-danger border-danger">Article not found.</div>
+        <div class="article-state"><p class="eyebrow">Guild register</p><h1>Article not found</h1><p>This announcement is no longer available. Return home for the latest news.</p></div>
     }
-    else
+    else if (_loadFailed)
     {
-        <div class="card bg-dark border-secondary shadow-lg">
-            @if (!string.IsNullOrEmpty(_article.ImageUrl))
-            {
-                <img src="@_article.ImageUrl" class="card-img-top article-hero-img" alt="@_article.Title" />
-            }
-            <div class="card-body p-4">
-                <h2 class="text-warning mb-2 article-title">@_article.Title</h2>
-                <p class="text-muted small border-bottom border-secondary pb-3 mb-4">
-                    Published on @_article.CreatedAt.ToString("MMMM d, yyyy - HH:mm")
-                </p>
-
-                <div class="text-light article-content">
-                    @_article.Content
-                </div>
-            </div>
-        </div>
+        <div class="article-state" role="alert"><h1>Article unavailable</h1><p>We couldn’t load this announcement. Please try again.</p><button type="button" class="article-button" @onclick="LoadArticleAsync">Retry article</button></div>
+    }
+    else if (_article != null)
+    {
+        <article>
+            <header class="article-header">
+                <p class="eyebrow">Guild register · Announcement</p>
+                <h1>@_article.Title</h1>
+                <p class="article-meta">Published <time datetime="@_article.CreatedAt.ToString("O")">@_article.CreatedAt.ToString("MMMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</time></p>
+                @if (!string.IsNullOrWhiteSpace(_article.Summary))
+                {
+                    <p class="article-summary">@_article.Summary</p>
+                }
+            </header>
+            <NewsImage ArticleId="Id" ImageUrl="_article.ImageUrl" Variant="article" />
+            <div class="article-content">@_article.Content</div>
+            <footer class="article-footer"><a href="/">← More news from GuildArena</a></footer>
+        </article>
     }
 </div>
 
-<!-- Modal de Confirmação -->
-@if (_showDeleteModal)
+@if (_showDeleteDialog)
 {
-    <div class="modal-backdrop" @onclick="() => _showDeleteModal = false">
-        <div class="modal-content-custom" @onclick:stopPropagation="true">
-            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Delete Article?</h4>
-            <p class="text-light">This action cannot be undone.</p>
-            <div class="d-flex justify-content-center mt-4 gap-3">
-                <button class="btn btn-secondary px-4" @onclick="() => _showDeleteModal = false">Cancel</button>
-                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmDelete" disabled="@_isDeleting">
-                    @(_isDeleting ? "Deleting..." : "Yes, Delete")
-                </button>
+    <div class="delete-backdrop" @onclick="CloseDeleteDialog">
+        <section class="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-description" @onclick:stopPropagation="true" @onkeydown="HandleDialogKeyDown">
+            <span class="focus-boundary" tabindex="0" @onfocus="FocusLastControl" aria-label="End of dialog"></span>
+            <p class="eyebrow">Editorial tools</p>
+            <h2 id="delete-title">Delete this article?</h2>
+            <p id="delete-description">“@_article?.Title” will be removed from the news. This action cannot be undone.</p>
+            @if (_deleteError != null)
+            {
+                <p class="delete-error" role="alert">@_deleteError</p>
+            }
+            <div class="dialog-actions">
+                <button type="button" class="article-button" @ref="_cancelButton" @onclick="CloseDeleteDialog" disabled="@_isDeleting">Cancel</button>
+                <button type="button" class="article-button danger" @ref="_confirmButton" @onclick="ConfirmDeleteAsync" disabled="@_isDeleting">@(_isDeleting ? "Deleting…" : "Delete article")</button>
             </div>
-        </div>
+            <span class="focus-boundary" tabindex="0" @onfocus="FocusFirstControl" aria-label="Start of dialog"></span>
+        </section>
     </div>
 }
 
 @code {
-    [Parameter]
-    public int Id { get; set; }
+    [Parameter] public int Id { get; set; }
 
     private NewsArticleDetailDto? _article;
-    private bool _isLoading = true;
-    private bool _showDeleteModal = false;
-    private bool _isDeleting = false;
+    private bool _isLoading;
+    private bool _notFound;
+    private bool _loadFailed;
+    private bool _showDeleteDialog;
+    private bool _isDeleting;
+    private bool _focusDialog;
+    private string? _deleteError;
+    private ElementReference _deleteButton, _cancelButton, _confirmButton;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnParametersSetAsync()
     {
-        try
-        {
-            _article = await Http.GetFromJsonAsync<NewsArticleDetailDto>($"api/news/{Id}");
-        }
-        catch { _article = null; }
-        finally { _isLoading = false; }
+        _showDeleteDialog = false;
+        return LoadArticleAsync();
     }
 
-    private void PromptDelete() => _showDeleteModal = true;
-
-    private async Task ConfirmDelete()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _isDeleting = true;
+        if (_focusDialog)
+        {
+            _focusDialog = false;
+            await _cancelButton.FocusAsync(preventScroll: true);
+        }
+    }
+
+    private async Task LoadArticleAsync()
+    {
+        var articleId = Id;
+        _isLoading = true;
+        _notFound = _loadFailed = false;
+        _article = null;
         try
         {
-            var response = await Http.DeleteAsync($"api/news/{Id}");
-            if (response.IsSuccessStatusCode)
+            using var response = await Http.GetAsync($"api/news/{articleId}");
+            if (articleId != Id) return;
+            if (response.StatusCode == HttpStatusCode.NotFound) _notFound = true;
+            else
             {
-                NavManager.NavigateTo("/");
+                response.EnsureSuccessStatusCode();
+                var article = await response.Content.ReadFromJsonAsync<NewsArticleDetailDto>()
+                    ?? throw new InvalidOperationException("The article response was empty.");
+                if (articleId == Id) _article = article;
             }
+        }
+        catch
+        {
+            if (articleId == Id) _loadFailed = true;
+        }
+        finally
+        {
+            if (articleId == Id) _isLoading = false;
+        }
+    }
+
+    private void PromptDelete()
+    {
+        _deleteError = null;
+        _showDeleteDialog = _focusDialog = true;
+    }
+
+    private async Task CloseDeleteDialog()
+    {
+        if (_isDeleting) return;
+        _showDeleteDialog = false;
+        await _deleteButton.FocusAsync(preventScroll: true);
+    }
+
+    private Task FocusFirstControl() => _cancelButton.FocusAsync().AsTask();
+    private Task FocusLastControl() => _confirmButton.FocusAsync().AsTask();
+    private async Task HandleDialogKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape") await CloseDeleteDialog();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_isDeleting) return;
+        _isDeleting = true;
+        _deleteError = null;
+        try
+        {
+            using var response = await Http.DeleteAsync($"api/news/{Id}");
+            if (response.IsSuccessStatusCode) NavManager.NavigateTo("/");
+            else _deleteError = "We couldn’t delete this article. Please try again.";
+        }
+        catch
+        {
+            _deleteError = "Connection unavailable. Check the latest news before retrying: the article may already have been deleted.";
         }
         finally
         {
             _isDeleting = false;
-            _showDeleteModal = false;
         }
     }
 }

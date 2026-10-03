@@ -1,0 +1,28 @@
+<div class="news-image @Variant">
+    <img @key="_source" src="@_source" alt="" width="1672" height="940" loading="lazy" @onerror="UseFallback" />
+</div>
+
+@code {
+    [Parameter] public int ArticleId { get; set; }
+    [Parameter] public string? ImageUrl { get; set; }
+    [Parameter] public string Variant { get; set; } = "";
+
+    private string? _previousUrl;
+    private int _previousId = -1;
+    private string _source = "";
+    private static readonly string[] Illustrations = ["images/public/news-dungeon.jpg", "images/public/news-essence.jpg", "images/public/news-hero.jpg"];
+    private string Fallback => Illustrations[(int)((uint)ArticleId % Illustrations.Length)];
+
+    protected override void OnParametersSet()
+    {
+        if (_previousId == ArticleId && _previousUrl == ImageUrl) return;
+        _previousId = ArticleId;
+        _previousUrl = ImageUrl;
+        _source = string.IsNullOrWhiteSpace(ImageUrl) ? Fallback : ImageUrl;
+    }
+
+    private void UseFallback()
+    {
+        if (_source != Fallback) _source = Fallback;
+    }
+}

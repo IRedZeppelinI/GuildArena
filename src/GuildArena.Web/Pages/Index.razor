@@ -1,81 +1,149 @@
-﻿@page "/"
-@using Microsoft.AspNetCore.Components.Authorization
+@page "/"
 @using GuildArena.Shared.DTOs.News
-@inject AuthenticationStateProvider AuthState
+@using GuildArena.Web.Components
 @inject HttpClient Http
 
-<PageTitle>GuildArena - The Ultimate Tactical RPG</PageTitle>
+<PageTitle>GuildArena — Heroes, essence &amp; turn-based tactics</PageTitle>
 
-<div class="jumbotron text-center py-5 mb-5 rounded shadow landing-banner">
-    <h1 class="display-3 text-warning fw-bold mb-3 landing-title">GuildArena</h1>
-    <p class="lead text-light mb-4">Draft your heroes. Master the essence. Conquer the Arena.</p>
+<div class="home-page">
+    <section class="landing-hero" aria-labelledby="home-title">
+        <img class="hero-art" src="images/public/guild-frontier.jpg" width="1672" height="940" alt="" fetchpriority="high" />
+        <div class="hero-copy">
+            <p class="eyebrow">A tactical fantasy browser game</p>
+            <h1 id="home-title">Your guild.<br />Your heroes.<br /><span>Your next move.</span></h1>
+            <p class="hero-description">Bring three heroes into turn-based battles. Master their abilities, make every essence count, and lead your guild deeper into the unknown.</p>
+            <div class="hero-actions">
+                <AuthorizeView>
+                    <Authorized>
+                        <a class="home-action" href="/guild">Enter your guild <span aria-hidden="true">→</span></a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a class="home-action" href="/register">Create your account <span aria-hidden="true">→</span></a>
+                        <a class="home-secondary" href="/login">Sign in</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+            <p class="hero-footnote">Hero collection · PvE encounters · Dungeon expeditions</p>
+        </div>
+    </section>
 
-    <AuthorizeView>
-        <Authorized>
-            <a href="/guild" class="btn btn-warning btn-lg fw-bold px-5 py-3 shadow">Enter your Guild</a>
-        </Authorized>
-        <NotAuthorized>
-            <a href="/login" class="btn btn-warning btn-lg fw-bold px-5 py-2 me-3 shadow">Play Now</a>
-            <a href="/register" class="btn btn-outline-light btn-lg px-4 py-2">Create Account</a>
-        </NotAuthorized>
-    </AuthorizeView>
-</div>
+    <section class="game-pillars" aria-label="Build your guild, plan your battles, explore dungeons">
+        <div class="pillar">
+            <span class="section-number" aria-hidden="true">01</span>
+            <h2>Build your guild</h2>
+            <p>Recruit heroes in the Tavern, meet their unlock requirements, and grow your roster as your guild progresses.</p>
+        </div>
+        <div class="pillar">
+            <span class="section-number" aria-hidden="true">02</span>
+            <h2>Find your strategy</h2>
+            <p>Choose a team of three. Combine their abilities, protect your allies, and decide when to spend your resources.</p>
+        </div>
+        <div class="pillar">
+            <span class="section-number" aria-hidden="true">03</span>
+            <h2>Go a little deeper</h2>
+            <p>Take on encounters or venture into multi-stage dungeons, where your heroes’ remaining health carries into the next fight.</p>
+        </div>
+    </section>
 
-<div class="row">
-    <div class="col-12 mb-4 d-flex justify-content-between align-items-center border-bottom border-secondary pb-2">
-        <h2 class="m-0">Latest News</h2>
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <a href="/admin/news/create" class="btn btn-sm btn-outline-info">Post News</a>
-            </Authorized>
-        </AuthorizeView>
-    </div>
+    <section class="gameplay-section" aria-labelledby="gameplay-title">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">Inside the Arena</p>
+                <h2 id="gameplay-title">Three heroes. Many possibilities.</h2>
+            </div>
+            <span class="section-note">Actual gameplay</span>
+        </div>
+        <p class="section-intro">Every turn is a choice: attack, support, or hold back for what comes next.</p>
+        <div class="screenshot-choices" role="group" aria-label="Choose a gameplay screenshot">
+            @for (var index = 0; index < GameplayScreens.Length; index++)
+            {
+                var screenIndex = index;
+                <button type="button" aria-pressed="@(_selectedScreen == screenIndex ? "true" : "false")" aria-controls="gameplay-figure" @onclick="() => _selectedScreen = screenIndex">@GameplayScreens[index].Label</button>
+            }
+        </div>
+        <figure class="gameplay-figure" id="gameplay-figure">
+            <a href="@SelectedScreen.Image" target="_blank" rel="noopener" aria-label="View full-size @SelectedScreen.Label screenshot (opens in a new tab)">
+                <img src="@SelectedScreen.Image" alt="@SelectedScreen.Alt" width="2000" height="1000" loading="lazy" />
+            </a>
+            <figcaption aria-live="polite">
+                <span>@SelectedScreen.Caption</span>
+                <a href="@SelectedScreen.Image" target="_blank" rel="noopener">View full size <span class="visually-hidden">(opens in a new tab)</span><span aria-hidden="true">↗</span></a>
+            </figcaption>
+        </figure>
+        <div class="tactics-notes">
+            <div><h3>Spend your essence wisely</h3><p>Abilities use essence and action points. Balance what your team can do now with the resources you want to keep.</p></div>
+            <div><h3>Read the battlefield</h3><p>Inspect abilities and active effects. Damage, healing, shields and status effects all shape your next decision.</p></div>
+            <div><h3>Survive the expedition</h3><p>Return to camp between dungeon stages, review your team’s health, and prepare for the next battle and its boss.</p></div>
+        </div>
+    </section>
 
-    @if (_isLoading)
-    {
-        <p class="text-muted"><em>Loading latest news...</em></p>
-    }
-    else if (_news == null || !_news.Any())
-    {
-        <p class="text-muted">No news available at the moment.</p>
-    }
-    else
-    {
-        @foreach (var article in _news)
+    <section class="news-section" aria-labelledby="news-title">
+        <div class="section-heading">
+            <div><p class="eyebrow">From the guild register</p><h2 id="news-title">Latest news</h2></div>
+            <AuthorizeView Roles="Admin"><Authorized><a class="home-secondary" href="/admin/news/create">Post news</a></Authorized></AuthorizeView>
+        </div>
+        @if (_isLoading)
         {
-            <div class="col-md-6 mb-4">
-                <div class="card bg-dark border-secondary h-100 shadow d-flex flex-column news-card">
-                    @if (!string.IsNullOrEmpty(article.ImageUrl))
-                    {
-                        <div class="news-card-img" style="background-image: url('@article.ImageUrl');"></div>
-                    }
-                    <div class="card-body d-flex flex-column">
-                        <h4 class="card-title text-info">@article.Title</h4>
-                        <p class="card-text news-card-summary flex-grow-1">@article.Summary</p>
-                        <a href="/news/@article.Id" class="btn btn-outline-warning mt-2 align-self-start">Read More</a>
-                    </div>
-                    <div class="card-footer border-secondary news-card-date text-end">
-                        <small>@article.CreatedAt.ToString("MMM d, yyyy")</small>
-                    </div>
-                </div>
+            <div class="news-state" role="status">Loading the latest news…</div>
+        }
+        else if (_newsFailed)
+        {
+            <div class="news-state error" role="alert"><h3>News is unavailable</h3><p>We couldn’t load the latest announcements. Please try again.</p><button type="button" class="home-secondary" @onclick="LoadNewsAsync">Retry news</button></div>
+        }
+        else if (_news.Count == 0)
+        {
+            <div class="news-state"><h3>A new chapter awaits</h3><p>There are no announcements yet. Check back for news from GuildArena.</p></div>
+        }
+        else
+        {
+            <div class="news-grid">
+                @foreach (var article in _news)
+                {
+                    <article class="news-card" @key="article.Id">
+                        <a class="news-link" href="/news/@article.Id">
+                            <NewsImage ArticleId="article.Id" ImageUrl="article.ImageUrl" />
+                            <div class="news-copy">
+                                <time datetime="@article.CreatedAt.ToString("O")">@article.CreatedAt.ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture)</time>
+                                <h3>@article.Title</h3>
+                                <p>@article.Summary</p>
+                                <span class="read-more">Read article <span aria-hidden="true">→</span></span>
+                            </div>
+                        </a>
+                    </article>
+                }
             </div>
         }
-    }
+    </section>
 </div>
 
 @code {
-    private List<NewsSummaryDto>? _news;
-    private bool _isLoading = true;
+    private List<NewsSummaryDto> _news = [];
+    private bool _isLoading;
+    private bool _newsFailed;
+    private int _selectedScreen;
+    private static readonly (string Label, string Image, string Alt, string Caption)[] GameplayScreens =
+    [
+        ("Encounters", "images/public/combat-encounter.jpg", "Garret, Korg and Elysia face three bandits in a forest encounter, with essence, abilities and the battle log visible.", "A forest ambush. Your team’s abilities and essence are at your command."),
+        ("Dungeon stages", "images/public/combat-dungeon.jpg", "A three-hero team faces acolytes and a stone sentinel in the Shadow Maw Depths dungeon.", "Deeper into the Shadow Maw Depths, with your heroes’ health carrying between stages."),
+        ("Boss battles", "images/public/combat-boss.jpg", "Garret, Korg and Elysia face Malthus, Void Caller, and two stone sentinels in a dungeon boss battle.", "A dungeon boss and its allies await at the end of the expedition.")
+    ];
+    private (string Label, string Image, string Alt, string Caption) SelectedScreen => GameplayScreens[_selectedScreen];
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadNewsAsync();
+
+    private async Task LoadNewsAsync()
     {
+        if (_isLoading) return;
+        _isLoading = true;
+        _newsFailed = false;
         try
         {
-            _news = await Http.GetFromJsonAsync<List<NewsSummaryDto>>("api/news?limit=4");
+            _news = await Http.GetFromJsonAsync<List<NewsSummaryDto>>("api/news?limit=4")
+                ?? throw new InvalidOperationException("The news response was empty.");
         }
         catch
         {
-            // Silently fail on homepage
+            _newsFailed = true;
         }
         finally
         {
