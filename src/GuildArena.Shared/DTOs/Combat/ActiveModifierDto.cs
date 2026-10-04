@@ -9,6 +9,10 @@ public class ActiveModifierDto
 {
     public required string DefinitionId { get; set; }
 
+    /// <summary>Presentation metadata from the server's modifier catalog, when available.</summary>
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+
     // NOVO: Necessário para a UI saber quem aplicou o Taunt, ou outras mecânicas de "Link"
     public int CasterId { get; set; }
 

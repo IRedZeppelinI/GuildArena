@@ -1,6 +1,8 @@
 ﻿using GuildArena.Api.Mappers;
 using GuildArena.Application.Abstractions;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Abstractions.Repositories;
+using GuildArena.Domain.Enums.Modifiers;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Stats;
 using GuildArena.Domain.Enums.Targeting;
@@ -22,6 +24,7 @@ public class CombatStateMapperTests
     private readonly IEssenceService _essenceServiceMock;
     private readonly IEffectTooltipService _tooltipServiceMock;
     private readonly IStatCalculationService _statServiceMock; 
+    private readonly IModifierDefinitionRepository _modifierRepository;
     private readonly CombatStateMapper _mapper;
 
     public CombatStateMapperTests()
@@ -30,6 +33,8 @@ public class CombatStateMapperTests
         _essenceServiceMock = Substitute.For<IEssenceService>();
         _tooltipServiceMock = Substitute.For<IEffectTooltipService>();
         _statServiceMock = Substitute.For<IStatCalculationService>();
+        _modifierRepository = Substitute.For<IModifierDefinitionRepository>();
+        _modifierRepository.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>());
         // Ensure the mock returns a valid empty object to avoid null references in tests
         _tooltipServiceMock.GeneratePreview(Arg.Any<Combatant>(), Arg.Any<EffectDefinition>())
             .Returns(new AbilityEffectSummaryDto());
@@ -47,7 +52,46 @@ public class CombatStateMapperTests
 
                 return 10f; 
             });
-        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock, _tooltipServiceMock, _statServiceMock);
+        _mapper = new CombatStateMapper(_targetServiceMock, _essenceServiceMock, _tooltipServiceMock, _statServiceMock, _modifierRepository);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MapToDto_ModifierMetadataUsesCatalogAndPreservesLiveState(bool knownDefinition)
+    {
+        var modifier = new ActiveModifier
+        {
+            DefinitionId = "MOD_SILENCE", CasterId = 42, TurnsRemaining = 2,
+            StackCount = 3, CurrentBarrierValue = 18,
+            ActiveStatusEffects = [StatusEffectType.Silence]
+        };
+        if (knownDefinition)
+            _modifierRepository.GetAllDefinitions().Returns(new Dictionary<string, ModifierDefinition>
+            {
+                [modifier.DefinitionId] = new()
+                {
+                    Id = modifier.DefinitionId, Name = "Silenced", Description = "Cannot cast Spells.",
+                    // Status snapshots belong to the active instance, not the current catalog.
+                    GrantedStatusEffects = [StatusEffectType.Stun]
+                }
+            });
+        var state = new GameState
+        {
+            Combatants = [new Combatant { Id = 1, Name = "Hero", RaceId = "RACE_HUMAN", BaseStats = new(), ActiveModifiers = [modifier] }]
+        };
+
+        var result = _mapper.MapToDto(state).Combatants.Single().ActiveModifiers.Single();
+
+        result.Name.ShouldBe(knownDefinition ? "Silenced" : null);
+        result.Description.ShouldBe(knownDefinition ? "Cannot cast Spells." : null);
+        result.DefinitionId.ShouldBe(modifier.DefinitionId);
+        result.CasterId.ShouldBe(42);
+        result.TurnsRemaining.ShouldBe(2);
+        result.StackCount.ShouldBe(3);
+        result.CurrentBarrierValue.ShouldBe(18);
+        result.ActiveStatusEffects.ShouldBe([StatusEffectType.Silence]);
+        result.ActiveStatusEffects.ShouldNotBeSameAs(modifier.ActiveStatusEffects);
     }
 
     [Fact]

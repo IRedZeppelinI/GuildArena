@@ -1,4 +1,8 @@
 ﻿.ability-slot {
+    padding: 0;
+    border: 1px solid #887b59;
+    background: #172019;
+    flex-shrink: 0;
     position: relative;
     width: 36px;
     height: 36px;
@@ -7,6 +11,8 @@
     overflow: hidden;
     transition: transform 0.1s ease;
 }
+
+.ability-slot:focus-visible { outline: 3px solid #a4edeb; outline-offset: 2px; }
 
     .ability-slot:hover {
         transform: scale(1.1);

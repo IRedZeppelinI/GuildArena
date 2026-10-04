@@ -1,5 +1,6 @@
 ﻿using GuildArena.Application.Abstractions;
 using GuildArena.Core.Combat.Abstractions;
+using GuildArena.Domain.Abstractions.Repositories;
 using GuildArena.Domain.Definitions;
 using GuildArena.Domain.Enums.Resources;
 using GuildArena.Domain.Enums.Stats;
@@ -19,21 +20,25 @@ public class CombatStateMapper : ICombatStateMapper
     private readonly IEssenceService _essenceService;
     private readonly IEffectTooltipService _tooltipService;
     private readonly IStatCalculationService _statService;
+    private readonly IModifierDefinitionRepository _modifierRepository;
 
     public CombatStateMapper(
         ITargetResolutionService targetService,
         IEssenceService essenceService,
         IEffectTooltipService tooltipService,
-        IStatCalculationService statService)
+        IStatCalculationService statService,
+        IModifierDefinitionRepository modifierRepository)
     {
         _targetService = targetService;
         _essenceService = essenceService;
         _tooltipService = tooltipService;
         _statService = statService;
+        _modifierRepository = modifierRepository;
     }
 
     public GameStateDto MapToDto(GameState state)
     {
+        var modifiers = _modifierRepository.GetAllDefinitions();
         return new GameStateDto
         {
             CurrentTurnNumber = state.CurrentTurnNumber,
@@ -47,11 +52,11 @@ public class CombatStateMapper : ICombatStateMapper
                 MaxTotalEssence = p.MaxTotalEssence,
                 EssencePool = new Dictionary<EssenceType, int>(p.EssencePool)
             }).ToList(),
-            Combatants = state.Combatants.Select(c => MapCombatantToDto(c, state)).ToList()
+            Combatants = state.Combatants.Select(c => MapCombatantToDto(c, state, modifiers)).ToList()
         };
     }
 
-    private CombatantDto MapCombatantToDto(Combatant c, GameState state)
+    private CombatantDto MapCombatantToDto(Combatant c, GameState state, IReadOnlyDictionary<string, ModifierDefinition> modifiers)
     {
         return new CombatantDto
         {
@@ -79,15 +84,23 @@ public class CombatStateMapper : ICombatStateMapper
             Abilities = c.Abilities
                 .Select(a => MapAbility(a, c, state)).ToList(),
 
-            ActiveModifiers = c.ActiveModifiers.Select(m => new ActiveModifierDto
-            {
-                DefinitionId = m.DefinitionId,
-                CasterId = m.CasterId,
-                TurnsRemaining = m.TurnsRemaining,
-                StackCount = m.StackCount,
-                CurrentBarrierValue = m.CurrentBarrierValue,
-                ActiveStatusEffects = m.ActiveStatusEffects.ToList()
-            }).ToList()
+            ActiveModifiers = c.ActiveModifiers.Select(m => MapModifier(m, modifiers)).ToList()
+        };
+    }
+
+    private static ActiveModifierDto MapModifier(ActiveModifier modifier, IReadOnlyDictionary<string, ModifierDefinition> definitions)
+    {
+        definitions.TryGetValue(modifier.DefinitionId, out var definition);
+        return new ActiveModifierDto
+        {
+            DefinitionId = modifier.DefinitionId,
+            Name = definition?.Name,
+            Description = definition?.Description,
+            CasterId = modifier.CasterId,
+            TurnsRemaining = modifier.TurnsRemaining,
+            StackCount = modifier.StackCount,
+            CurrentBarrierValue = modifier.CurrentBarrierValue,
+            ActiveStatusEffects = modifier.ActiveStatusEffects.ToList()
         };
     }
 

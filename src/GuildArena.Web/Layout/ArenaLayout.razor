@@ -1,6 +1,8 @@
 ﻿@inherits LayoutComponentBase
 @using GuildArena.Web.State
 @inject ICombatStateService CombatState
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <div class="arena-wrapper">
     <header class="arena-header d-flex justify-content-between align-items-center px-3">
@@ -21,6 +23,17 @@
     </main>
 </div>
 
+<dialog class="orientation-gate" @ref="_orientationGate" aria-labelledby="orientation-title" aria-describedby="orientation-description">
+    <div class="orientation-content">
+        <img src="/images/ui/estandarte.svg" width="54" height="64" alt="GuildArena" />
+        <div class="orientation-symbol" aria-hidden="true">↻</div>
+        <h1 id="orientation-title">Rotate to enter the arena</h1>
+        <p id="orientation-description">Combat requires landscape. Rotate your device to see both teams and the action controls.</p>
+        <button class="orientation-button" @ref="_orientationButton" autofocus>Try fullscreen &amp; landscape</button>
+        <p class="orientation-note" @ref="_orientationNote" role="status">If automatic rotation is unavailable, rotate your device manually. Combat continues while this message is shown.</p>
+    </div>
+</dialog>
+
 <!-- Modal de Confirmação de Surrender -->
 @if (_showSurrenderModal)
 {
@@ -40,15 +53,43 @@
 
 @code {
     private bool _showSurrenderModal = false;
+    private ElementReference _orientationGate;
+    private ElementReference _orientationButton;
+    private ElementReference _orientationNote;
+    private IJSObjectReference? _orientationModule;
+    private IJSObjectReference? _orientationController;
+    private bool _disposed;
 
     protected override void OnInitialized()
     {
-        CombatState.OnChange += StateHasChanged;
+        CombatState.OnChange += OnCombatChanged;
     }
 
-    public void Dispose()
+    private void OnCombatChanged() => _ = InvokeAsync(StateHasChanged);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        CombatState.OnChange -= StateHasChanged;
+        if (_disposed) return;
+        if (firstRender)
+        {
+            _orientationModule = await JS.InvokeAsync<IJSObjectReference>("import", "./Layout/ArenaLayout.razor.js");
+            _orientationController = await _orientationModule.InvokeAsync<IJSObjectReference>("createOrientationGate", _orientationGate, _orientationButton, _orientationNote);
+        }
+        if (_orientationController is not null && !_disposed)
+            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        CombatState.OnChange -= OnCombatChanged;
+        if (_orientationController is not null)
+        {
+            await _orientationController.InvokeVoidAsync("dispose");
+            await _orientationController.DisposeAsync();
+        }
+        if (_orientationModule is not null)
+            await _orientationModule.DisposeAsync();
     }
 
     private void PromptSurrender()

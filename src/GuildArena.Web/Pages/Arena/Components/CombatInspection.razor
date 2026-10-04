@@ -1,0 +1,111 @@
+@using GuildArena.Domain.Enums.Combat
+@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Web.Components
+@inject IAssetService AssetService
+
+<section class="combat-inspection" aria-label="Combat inspection">
+    @if (Ability is not null)
+    {
+        <header class="inspection-heading">
+            <img class="inspection-image" src="@AssetService.GetAbilityIconUrl(Ability.Id)" alt="" />
+            <div class="inspection-identity" tabindex="0"><h2>@Ability.Name</h2></div>
+            @HeadingAction
+        </header>
+        <div class="inspection-body" tabindex="0" aria-label="Ability details">
+            <div class="resources">
+                <span><ResourceIcon Kind="ResourceIconKind.ActionPoints" /> @Ability.ActionPointCost AP</span>
+                <span><ResourceIcon Kind="ResourceIconKind.Cooldown" /> @Ability.BaseCooldown turn@(Ability.BaseCooldown == 1 ? "" : "s") cooldown</span>
+                @if (Ability.HPCost > 0)
+                {
+                    <span><ResourceIcon Kind="ResourceIconKind.HealthPoints" /> @Ability.HPCost HP cost</span>
+                }
+                @foreach (var cost in Ability.Costs.Where(c => c.Value > 0))
+                {
+                    <span><img class="essence-icon" src="@AssetService.GetEssenceIconUrl(cost.Key.ToString())" alt="" /> @cost.Value @cost.Key</span>
+                }
+            </div>
+            <p class="description">@Ability.Description</p>
+            @foreach (var effect in Ability.Effects)
+            {
+                @if (effect.Type is EffectType.DAMAGE or EffectType.HEAL)
+                {
+                    <div class="effect">
+                        <strong class="@(effect.Type == EffectType.HEAL ? "healing" : "damage")">@effect.PredictedValue @(effect.Type == EffectType.HEAL ? "Healing" : "Damage")</strong>
+                        <p class="effect-detail">Base @effect.BaseAmount + @((int)Math.Round(effect.ScalingFactor * 100))% @effect.ScalingStat</p>
+                    </div>
+                }
+                else if (effect.Type == EffectType.APPLY_MODIFIER && !string.IsNullOrEmpty(effect.ModifierName))
+                {
+                    <div class="effect">
+                        <div class="effect-heading"><strong>Applies @effect.ModifierName</strong><span>@Duration(effect.DurationInTurns)</span></div>
+                        <p class="effect-detail">@effect.ModifierDescription</p>
+                    </div>
+                }
+            }
+        </div>
+    }
+    else if (Combatant is not null)
+    {
+        <header class="inspection-heading">
+            <img class="inspection-image" src="@AssetService.GetPortraitUrl(Combatant.DefinitionId)" alt="" />
+            <div class="inspection-identity" tabindex="0"><h2>@Combatant.Name</h2><p>@Combatant.RaceId.Replace("RACE_", "").Replace("_", " ")</p></div>
+            @HeadingAction
+        </header>
+        <div class="inspection-body" tabindex="0" aria-label="Hero stats and active effects">
+            @if (!EffectsOnly)
+            {
+                <div class="resources">
+                    <span><ResourceIcon Kind="ResourceIconKind.HealthPoints" /> @Combatant.CurrentHP / @Combatant.MaxHP HP</span>
+                    <span><ResourceIcon Kind="ResourceIconKind.ActionPoints" /> @Math.Max(0, Combatant.MaxActions - Combatant.ActionsTakenThisTurn) / @Combatant.MaxActions AP remaining</span>
+                </div>
+                <dl class="stats">
+                    <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 5-5m2-2 8-8-4 1-7 7 3 3 7-7 1-4M3 17l4 4m-4 0 4-4" /></svg>Attack</dt><dd>@Combatant.Attack</dd></div>
+                    <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3 8 8 11 5-3 8-6 8-11V5l-8-3Zm0 4v12m-4-8h8" /></svg>Defense</dt><dd>@Combatant.Defense</dd></div>
+                    <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c5 0 6-4 10-4h7M3 12c3 0 5-5 9-5h8M7 21c3 0 4-3 8-3h5" /></svg>Agility</dt><dd>@Combatant.Agility</dd></div>
+                    <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2L12 2Z" /></svg>Magic</dt><dd>@Combatant.Magic</dd></div>
+                    <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3 8 8 11 5-3 8-6 8-11V5l-8-3Zm0 5 1.2 3.8L17 12l-3.8 1.2L12 17l-1.2-3.8L7 12l3.8-1.2L12 7Z" /></svg>Magic defense</dt><dd>@Combatant.MagicDefense</dd></div>
+                </dl>
+            }
+            <h3>Active effects <span>· @Combatant.ActiveModifiers.Count</span></h3>
+            @if (Combatant.ActiveModifiers.Count == 0)
+            {
+                <p class="effect-detail">No active effects.</p>
+            }
+            @foreach (var modifier in ModifierPresentation.Order(Combatant.ActiveModifiers))
+            {
+                <div class="effect">
+                    <div class="effect-heading">
+                        <strong>@ModifierPresentation.Name(modifier)</strong>
+                        <span>@ModifierPresentation.Duration(modifier.TurnsRemaining)</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(modifier.Description))
+                    {
+                        <p class="effect-detail">@modifier.Description</p>
+                    }
+                    @if (modifier.StackCount > 1)
+                    {
+                        <p class="effect-detail">@modifier.StackCount stacks</p>
+                    }
+                    @if (modifier.CurrentBarrierValue > 0)
+                    {
+                        <p class="effect-detail">Barrier: @modifier.CurrentBarrierValue</p>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <header class="inspection-heading"><h2>Combat details</h2>@HeadingAction</header>
+        <div class="inspection-body"><p class="description">Inspect a hero or ability to see its stats, costs and effects.</p></div>
+    }
+</section>
+
+@code {
+    [Parameter] public AbilitySummaryDto? Ability { get; set; }
+    [Parameter] public CombatantDto? Combatant { get; set; }
+    [Parameter] public bool EffectsOnly { get; set; }
+    [Parameter] public RenderFragment? HeadingAction { get; set; }
+
+    private static string Duration(int turns) => turns == -1 ? "Permanent" : $"{turns} turn{(turns == 1 ? "" : "s")}";
+}

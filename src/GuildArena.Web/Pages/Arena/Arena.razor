@@ -1,7 +1,6 @@
 ﻿@page "/arena"
 @layout GuildArena.Web.Layout.ArenaLayout
 @using GuildArena.Domain.Enums.Resources
-@using GuildArena.Domain.Enums.Targeting
 @using GuildArena.Shared.DTOs.Combat
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Web.Pages.Arena.State
@@ -61,6 +60,7 @@ else
                  OnCancelPayment="CancelPayment" />
 
     <ArenaBoard GameState="CombatState.GameState"
+                InspectedCombatantId="@(_inspectedCombatant?.Id ?? _inspectedAbilitySourceId)"
                 LocalPlayerId="LocalPlayerId"
                 TargetingState="_targetingState"
                 OnBackgroundClicked="CancelTargeting"
@@ -68,9 +68,11 @@ else
                 OnAbilityActivated="StartTargeting"
                 OnCombatantClicked="SelectTarget"
                 OnInspectAbility="ShowAbilityTooltip" 
-                OnCombatantHovered="ShowCombatantTooltip" /> 
+                OnCombatantHovered="ShowCombatantTooltip"
+                OnInspectCombatantRequested="InspectCombatantAsync"
+                OnInspectEffectsRequested="InspectEffectsAsync" />
 
-    <ArenaFooter InspectedAbility="_inspectedAbility"
+    <ArenaFooter @ref="_footer" InspectedAbility="_inspectedAbility"
                  InspectedCombatant="_inspectedCombatant" 
                  BattleLogs="CombatState.BattleLogs"
                  IsLocalPlayerTurn="IsLocalPlayerTurn"
@@ -86,12 +88,15 @@ else
     private bool _showPaymentModal = false;
     private bool _checkingCombat = true;
     private bool _resumeError;
+    private bool _executingAbility;
 
     private int _neutralCostPending = 0;
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
 
     private AbilitySummaryDto? _inspectedAbility;
+    private int? _inspectedAbilitySourceId;
     private CombatantDto? _inspectedCombatant; 
+    private ArenaFooter? _footer;
     
     private readonly TargetingStateManager _targetingState = new();
 
@@ -105,7 +110,7 @@ else
 
     protected override void OnInitialized()
     {
-        CombatState.OnChange += StateHasChanged;
+        CombatState.OnChange += OnCombatStateChanged;
     }
 
     protected override async Task OnInitializedAsync()
@@ -136,8 +141,24 @@ else
 
     public void Dispose()
     {
-        CombatState.OnChange -= StateHasChanged;
+        CombatState.OnChange -= OnCombatStateChanged;
     }
+
+    private void OnCombatStateChanged() => _ = InvokeAsync(() =>
+    {
+        // Inspection may stay open during server updates. Render the current snapshot,
+        // rather than holding on to the object that was originally hovered.
+        if (_inspectedCombatant is not null)
+            _inspectedCombatant = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == _inspectedCombatant.Id);
+
+        if (_inspectedAbility is not null)
+        {
+            var source = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == _inspectedAbilitySourceId);
+            _inspectedAbility = source?.Abilities.FirstOrDefault(a => a.Id == _inspectedAbility.Id)
+                ?? (source?.SpecialAbility?.Id == _inspectedAbility.Id ? source.SpecialAbility : null);
+        }
+        StateHasChanged();
+    });
 
     // Quando passas o rato na Magia, guarda a Magia e "apaga" o Herói da memória
     private void ShowAbilityTooltip(AbilitySummaryDto? ability)
@@ -145,6 +166,8 @@ else
         if (ability != null)
         {
             _inspectedAbility = ability;
+            _inspectedAbilitySourceId = CombatState.GameState?.Combatants
+                .FirstOrDefault(c => c.SpecialAbility == ability || c.Abilities.Contains(ability))?.Id;
             _inspectedCombatant = null;
         }
     }
@@ -156,18 +179,33 @@ else
         {
             _inspectedCombatant = combatant;
             _inspectedAbility = null;
+            _inspectedAbilitySourceId = null;
         }
     }
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
+
+    private async Task InspectCombatantAsync(CombatantDto combatant)
+    {
+        ShowCombatantTooltip(combatant);
+        if (_footer is not null)
+            await _footer.ShowInspectionAsync();
+    }
+
+    private async Task InspectEffectsAsync(CombatantDto combatant)
+    {
+        ShowCombatantTooltip(combatant);
+        if (_footer is not null)
+            await _footer.ShowEffectsAsync();
+    }
 
     private async Task EndTurnAsync()
     {
         await CombatState.EndTurnAsync();
     }
 
-    private void StartTargeting((int SourceId, string AbilityId) payload)
+    private async Task StartTargeting((int SourceId, string AbilityId) payload)
     {
-        if (!IsLocalPlayerTurn) return;
+        if (!IsLocalPlayerTurn || _executingAbility || _showPaymentModal) return;
 
         var source = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
         var ability = source?.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId) ?? source?.SpecialAbility;
@@ -176,26 +214,17 @@ else
 
         _targetingState.StartTargeting(payload.SourceId, ability);
 
-        bool requiresManualClicks = ability.TargetingRules.Any(r =>
-            r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type));
-
-        if (!requiresManualClicks)
+        if (!_targetingState.RequiresTargetSelection)
         {
-            TransitionToPaymentOrExecute();
+            await TransitionToPaymentOrExecuteAsync();
         }
     }
 
-    private bool IsAoE(TargetType type)
-    {
-        return type == TargetType.All || type == TargetType.AllEnemies ||
-               type == TargetType.AllAllies || type == TargetType.AllFriendlies;
-    }
-
-    private void SelectTarget(CombatantDto target)
+    private async Task SelectTarget(CombatantDto target)
     {
         if (_targetingState.TrySelectTarget(target, out bool allRulesSatisfied) && allRulesSatisfied)
         {
-            TransitionToPaymentOrExecute();
+            await TransitionToPaymentOrExecuteAsync();
         }
     }
 
@@ -204,7 +233,7 @@ else
         _targetingState.Cancel();
     }
 
-    private void TransitionToPaymentOrExecute()
+    private async Task TransitionToPaymentOrExecuteAsync()
     {
         var ability = _targetingState.ActiveAbility!;
         int neutralCost = ability.Costs.ContainsKey(EssenceType.Neutral) ? ability.Costs[EssenceType.Neutral] : 0;
@@ -228,7 +257,7 @@ else
         else
         {
             var finalPayment = ability.Costs.ToDictionary(k => k.Key, v => v.Value);
-            _ = ExecuteAbilityAsync(finalPayment);
+            await ExecuteAbilityAsync(finalPayment);
         }
     }
 
@@ -242,7 +271,9 @@ else
     {
         _showPaymentModal = false;
 
-        var finalPayment = _targetingState.ActiveAbility!.Costs
+        if (_targetingState.ActiveAbility is not { } ability) return;
+
+        var finalPayment = ability.Costs
             .Where(c => c.Key != EssenceType.Neutral)
             .ToDictionary(k => k.Key, v => v.Value);
 
@@ -257,7 +288,10 @@ else
 
     private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)
     {
-        if (!string.IsNullOrEmpty(CombatState.CombatId) && _targetingState.IsActive)
+        if (_executingAbility || string.IsNullOrEmpty(CombatState.CombatId) || !_targetingState.IsActive) return;
+
+        _executingAbility = true;
+        try
         {
             var targetSelections = _targetingState.SelectedTargets.ToDictionary(
                 entry => entry.Key,
@@ -270,7 +304,11 @@ else
                 payment);
         }
 
-        _targetingState.Cancel();
+        finally
+        {
+            _targetingState.Cancel();
+            _executingAbility = false;
+        }
     }
 
     private async Task ExecuteExchangeAsync((Dictionary<EssenceType, int> Spent, EssenceType Gained) payload)

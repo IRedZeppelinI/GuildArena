@@ -2,36 +2,39 @@
 @using GuildArena.Web.Services
 @inject IAssetService AssetService
 
-<div class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
+<button type="button" class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
+     aria-label="@Ability.Name" aria-disabled="@(!CanCast)"
      @onclick="OnClick"
-     @onmouseenter="OnMouseEnter"     
+     @onclick:stopPropagation="true"
+     @onmouseenter="OnMouseEnter"
+     @onfocus="OnMouseEnter"
      title="@Ability.Name">
 
-    <div class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></div>
+    <span class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></span>
 
     @if (IsOnCooldown)
     {
-        <div class="cooldown-overlay">
+        <span class="cooldown-overlay">
             <span>@Ability.CurrentCooldownTurns</span>
-        </div>
+        </span>
     }
 
     @if (Ability.Costs.Any())
     {
-        <div class="ability-costs">
+        <span class="ability-costs">
             @foreach (var cost in Ability.Costs.Where(c => c.Value > 0))
             {
                 @for (int i = 0; i < cost.Value; i++)
                 {
-                    <div class="mini-essence"
+                    <span class="mini-essence"
                          style="background-image: url('@AssetService.GetEssenceIconUrl(cost.Key.ToString())');"
                          title="@cost.Key">
-                    </div>
+                    </span>
                 }
             }
-        </div>
+        </span>
     }
-</div>
+</button>
 
 @code {
     [Parameter, EditorRequired]

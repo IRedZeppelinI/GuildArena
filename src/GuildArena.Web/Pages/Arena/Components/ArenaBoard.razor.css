@@ -1,8 +1,10 @@
 ﻿.arena-board {
     flex-grow: 1;
+    flex-basis: 0;
+    min-height: 0;
     display: flex;
     justify-content: space-between;
-    padding: 20px 20px 50px 20px;
+    padding: 16px max(20px, env(safe-area-inset-right)) 32px max(20px, env(safe-area-inset-left));
     background-color: #222;
     background-size: cover;
     background-position: center;
@@ -13,6 +15,8 @@
     width: 38%;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
 }
 
 .arena-center {
@@ -35,32 +39,39 @@
 
 .combatants-column {
     display: grid;
-    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-rows: repeat(3, minmax(min-content, 1fr));
     align-items: center;
     gap: 10px;
     height: 100%;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
 }
 
 .enemy-grid {
     display: grid;
-    grid-template-rows: 1fr 1fr 1fr;
+    grid-template-rows: repeat(3, minmax(min-content, 1fr));
     align-items: center;
     gap: 10px;
     height: 100%;
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
 }
 
     .enemy-grid.two-columns {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .enemy-grid.single-column {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .enemy-grid > div {
         display: flex;
         justify-content: flex-end;
         width: 100%;
+        min-width: 0;
     }
 
 .grid-front-top {
@@ -110,7 +121,7 @@
 
 @media (max-height: 650px) {
     .arena-board {
-        padding: 5px 10px 25px 10px;
+        padding: 5px max(10px, env(safe-area-inset-right)) 18px max(10px, env(safe-area-inset-left));
     }
 
     .combatants-column, .enemy-grid {
@@ -126,18 +137,4 @@
         width: 42%;
     }
 
-    ::deep .combatant-card {
-        border-width: 12px;
-        padding: 2px 4px;
-    }
-
-    ::deep .hp-container {
-        height: 10px;
-        margin-top: 1px;
-    }
-
-    ::deep .hp-text {
-        font-size: 0.5rem;
-        line-height: 10px;
-    }
 }

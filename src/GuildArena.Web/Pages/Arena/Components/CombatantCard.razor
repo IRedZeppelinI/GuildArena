@@ -1,35 +1,45 @@
 ﻿@using GuildArena.Shared.DTOs.Combat
 @using GuildArena.Web.Services
+@using GuildArena.Web.Components
 @inject IAssetService AssetService
 
-<div class="combatant-card @(Combatant.IsAlive ? "" : "dead") @(IsTargetingMode ? "targeting-mode" : "") @(IsValidTarget ? "valid-target" : "") @(IsSelectedTarget ? "selected-target" : "")"
+<article class="combatant-card @(Combatant.IsAlive ? "" : "dead") @(IsInspected ? "inspected" : "") @(IsTargetingMode ? "targeting-mode" : "") @(IsValidTarget ? "valid-target" : "") @(IsSelectedTarget ? "selected-target" : "")"
+     aria-label="@Combatant.Name"
      @onclick="OnCardClicked">
-    <!-- COLUNA ESQUERDA: Retrato e Modifiers (ZONA 1 DE HOVER DO HERÓI) -->
     <div class="card-left" @onmouseenter="() => OnCombatantHovered.InvokeAsync(Combatant)">
-        <div class="portrait-placeholder" style="background-image: url('@AssetService.GetPortraitUrl(Combatant.DefinitionId)');">
-        </div>
-
-        <div class="modifiers-zone">
-            @foreach (var mod in Combatant.ActiveModifiers)
-            {
-                <div class="modifier-icon placeholder" title="@mod.DefinitionId"></div>
-            }
-        </div>
+        <button type="button" class="portrait-placeholder" style="background-image: url('@AssetService.GetPortraitUrl(Combatant.DefinitionId)');"
+                aria-label="@(IsTargetingMode ? $"Select {Combatant.Name} as target" : $"Inspect {Combatant.Name}")"
+                aria-disabled="@(IsTargetingMode && (!IsValidTarget || IsSelectedTarget))"
+                @onfocus="() => OnCombatantHovered.InvokeAsync(Combatant)"
+                @onclick="InspectCombatant" @onclick:stopPropagation="true">
+        </button>
+        @if (Combatant.ActiveModifiers.Count > 0)
+        {
+            var restriction = ModifierPresentation.Order(Combatant.ActiveModifiers).FirstOrDefault(ModifierPresentation.IsRestriction);
+            <button type="button" class="mobile-effects @(restriction is null ? "" : "restriction")"
+                    aria-label="@($"{(restriction is null ? "" : ModifierPresentation.Name(restriction) + ". ")}View all {Combatant.ActiveModifiers.Count} effects on {Combatant.Name}")"
+                    @onclick="InspectEffects" @onclick:stopPropagation="true">
+                @(restriction is null ? $"{Combatant.ActiveModifiers.Count} effects" : ModifierPresentation.Name(restriction))
+            </button>
+        }
     </div>
 
-    <!-- COLUNA DIREITA: Info e Habilidades -->
     <div class="card-right">
-
-        <!-- INFO TOPO: Nome e HP (ZONA 2 DE HOVER DO HERÓI) -->
         <div class="info-top" @onmouseenter="() => OnCombatantHovered.InvokeAsync(Combatant)">
-            <div class="name">@Combatant.Name</div>
-            <div class="hp-container">
+            <div class="identity-row">
+                <button class="name" type="button" @onclick="InspectCombatant" @onclick:stopPropagation="true"
+                        aria-label="@(IsTargetingMode ? $"Select {Combatant.Name} as target" : $"Inspect {Combatant.Name}")"
+                        aria-disabled="@(IsTargetingMode && (!IsValidTarget || IsSelectedTarget))">@Combatant.Name</button>
+                <span class="action-points" aria-label="@($"{RemainingActionPoints} of {Combatant.MaxActions} action points remaining")" title="Remaining / maximum AP">
+                    <ResourceIcon Kind="ResourceIconKind.ActionPoints" /> @RemainingActionPoints/@Combatant.MaxActions
+                </span>
+            </div>
+            <div class="hp-container" aria-label="@($"Health: {Combatant.CurrentHP} / {Combatant.MaxHP}")">
                 <div class="hp-fill" style="width: @(HpPercentage)%"></div>
                 <span class="hp-text">@Combatant.CurrentHP / @Combatant.MaxHP</span>
             </div>
         </div>
 
-        <!-- ZONA DAS MAGIAS  -->
         <div class="abilities-zone">
             @foreach (var ability in AllAbilities)
             {
@@ -39,7 +49,33 @@
             }
         </div>
     </div>
-</div>
+    @if (Combatant.ActiveModifiers.Count > 0)
+    {
+        <div class="modifiers-zone" aria-label="Active effects">
+            @foreach (var modifier in ModifierPresentation.Order(Combatant.ActiveModifiers).Take(2))
+            {
+                <button type="button" class="modifier-label @(ModifierPresentation.IsRestriction(modifier) ? "restriction" : modifier.TurnsRemaining == -1 ? "permanent" : "")"
+                        aria-label="@($"{ModifierPresentation.Name(modifier)}, {ModifierPresentation.Duration(modifier.TurnsRemaining)}. View all effects on {Combatant.Name}")"
+                        @onclick="InspectEffects" @onclick:stopPropagation="true">
+                    <span class="modifier-name">@ModifierPresentation.Name(modifier)</span>
+                    <span class="modifier-duration" aria-hidden="true">@ModifierPresentation.CompactDuration(modifier.TurnsRemaining)</span>
+                </button>
+            }
+            @if (Combatant.ActiveModifiers.Count > 2)
+            {
+                <button type="button" class="more-effects" aria-label="@($"View all {Combatant.ActiveModifiers.Count} effects on {Combatant.Name}")"
+                        @onclick="InspectEffects" @onclick:stopPropagation="true">+@(Combatant.ActiveModifiers.Count - 2)</button>
+            }
+        </div>
+    }
+    @if (!Combatant.IsAlive || IsTargetingMode)
+    {
+        <div class="card-state">
+            @if (!Combatant.IsAlive) { <span>Fallen</span> }
+            @if (IsTargetingMode) { <span>@(IsSelectedTarget ? "Target selected" : IsValidTarget ? "Select target" : "Not a valid target")</span> }
+        </div>
+    }
+</article>
 
 @code {
     [Parameter, EditorRequired]
@@ -54,6 +90,8 @@
     [Parameter]
     public bool IsSelectedTarget { get; set; } = false;
 
+    [Parameter] public bool IsInspected { get; set; }
+
     [Parameter]
     public EventCallback<CombatantDto> OnCombatantClicked { get; set; }
 
@@ -66,7 +104,14 @@
     [Parameter]
     public EventCallback<CombatantDto?> OnCombatantHovered { get; set; }
 
+    [Parameter]
+    public EventCallback<CombatantDto> OnInspectCombatantRequested { get; set; }
+
+    [Parameter] public EventCallback<CombatantDto> OnInspectEffectsRequested { get; set; }
+
     private int HpPercentage => Combatant.MaxHP == 0 ? 0 : (int)Math.Clamp(((double)Combatant.CurrentHP / Combatant.MaxHP) * 100, 0, 100);
+
+    private int RemainingActionPoints => Math.Max(0, Combatant.MaxActions - Combatant.ActionsTakenThisTurn);
 
     private IEnumerable<AbilitySummaryDto> AllAbilities
     {
@@ -83,7 +128,17 @@
         {
             await OnCombatantClicked.InvokeAsync(Combatant);
         }
+        else if (!IsTargetingMode)
+        {
+            await OnCombatantHovered.InvokeAsync(Combatant);
+        }
     }
+
+    private Task InspectCombatant() => IsTargetingMode
+        ? OnCardClicked()
+        : OnInspectCombatantRequested.InvokeAsync(Combatant);
+
+    private Task InspectEffects() => OnInspectEffectsRequested.InvokeAsync(Combatant);
 
     private async Task HandleAbilityClick(string abilityId)
     {

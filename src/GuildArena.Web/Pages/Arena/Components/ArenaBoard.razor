@@ -20,14 +20,18 @@
             <div class="combatants-column">
                 @foreach (var hero in MyTeam)
                 {
-                    <CombatantCard Combatant="hero"
+                     <CombatantCard Combatant="hero"
+                                    @key="hero.Id"
+                                    IsInspected="@(InspectedCombatantId == hero.Id)"
                                    IsTargetingMode="TargetingState.IsActive"
                                    IsValidTarget="TargetingState.IsValidTarget(hero)"
                                    IsSelectedTarget="TargetingState.IsSelected(hero.Id)"
                                    OnAbilityActivated="OnAbilityActivated"
                                    OnCombatantClicked="OnCombatantClicked"
                                    OnInspectAbility="OnInspectAbility"
-                                   OnCombatantHovered="OnCombatantHovered" /> 
+                                    OnCombatantHovered="OnCombatantHovered"
+                                    OnInspectCombatantRequested="OnInspectCombatantRequested"
+                                    OnInspectEffectsRequested="OnInspectEffectsRequested" />
                 }
             </div>
         }
@@ -56,15 +60,18 @@
             <div class="enemy-grid @(IsSingleEnemyColumn ? "single-column" : "two-columns")">
                 @foreach (var enemy in EnemyTeam)
                 {
-                    <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)">
+                    <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)" @key="enemy.Id">
                         <CombatantCard Combatant="enemy"
+                                       IsInspected="@(InspectedCombatantId == enemy.Id)"
                                        IsTargetingMode="TargetingState.IsActive"
                                        IsValidTarget="TargetingState.IsValidTarget(enemy)"
                                        IsSelectedTarget="TargetingState.IsSelected(enemy.Id)"
                                        OnAbilityActivated="OnAbilityActivated"
                                        OnCombatantClicked="OnCombatantClicked"
                                        OnInspectAbility="OnInspectAbility"
-                                       OnCombatantHovered="OnCombatantHovered" /> 
+                                        OnCombatantHovered="OnCombatantHovered"
+                                        OnInspectCombatantRequested="OnInspectCombatantRequested"
+                                        OnInspectEffectsRequested="OnInspectEffectsRequested" />
                     </div>
                 }
             </div>
@@ -84,6 +91,9 @@
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
     
     [Parameter] public EventCallback<CombatantDto?> OnCombatantHovered { get; set; }
+    [Parameter] public EventCallback<CombatantDto> OnInspectCombatantRequested { get; set; }
+    [Parameter] public EventCallback<CombatantDto> OnInspectEffectsRequested { get; set; }
+    [Parameter] public int? InspectedCombatantId { get; set; }
 
     private IEnumerable<CombatantDto> MyTeam =>
         GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();

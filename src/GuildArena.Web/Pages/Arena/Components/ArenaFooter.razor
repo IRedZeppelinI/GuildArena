@@ -1,205 +1,48 @@
-﻿@using GuildArena.Shared.DTOs.Combat
-@using GuildArena.Domain.Enums.Combat
-@using GuildArena.Web.Services
-@inject IAssetService AssetService
+@using GuildArena.Shared.DTOs.Combat
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div class="arena-footer">
-    <!-- Left Section: Tooltip -->
-    <div class="footer-section footer-left">
-        <button class="btn btn-outline-info mobile-logs-btn text-nowrap" @onclick="OnToggleMobileLogs">
-            📜 BattleLogs
-        </button>
-        
-
-        <div class="desktop-tooltip">
-            @if (InspectedAbility != null)
-            {
-                <!-- LINHA 1: Ícone, Nome, AP, CD -->
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="tooltip-ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(InspectedAbility.Id)');"></div>
-                        <h6 class="tooltip-ability-name text-warning m-0 fw-bold text-uppercase">
-                            @InspectedAbility.Name
-                        </h6>
-                    </div>
-                    <div class="d-flex gap-1">
-                        <span class="badge bg-dark border border-secondary text-light">⚡ @InspectedAbility.ActionPointCost AP</span>
-                        <span class="badge bg-dark border border-secondary text-light">⏳ @InspectedAbility.BaseCooldown CD</span>
-                    </div>
-                </div>
-                
-                <!-- LINHA 2: DESCRIÇÃO E CUSTOS (Descrição à Esq, Custos à Dir) -->
-                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-
-                    <!-- Descrição Narrativa (ocupa o espaço à esquerda) -->
-                    <div class="tooltip-narrative text-light mb-0 flex-grow-1">
-                        @InspectedAbility.Description
-                    </div>
-
-                    <!-- Bloco de Custos (fixo à direita) com barra divisória (border-start) -->
-                    <div class="d-flex gap-2 align-items-center flex-shrink-0 border-start border-secondary ps-2">
-                        @if (InspectedAbility.HPCost > 0)
-                        {
-                            <div class="d-flex align-items-center" title="HP Cost">
-                                <span class="tooltip-cost-val text-danger fw-bold me-1">@InspectedAbility.HPCost</span>
-                                <div class="tooltip-hp-icon d-flex justify-content-center align-items-center">❤️</div>
-                            </div>
-                        }
-                        @foreach (var c in InspectedAbility.Costs.Where(x => x.Value > 0))
-                        {
-                            <div class="d-flex align-items-center" title="@c.Key">
-                                <span class="tooltip-cost-val text-light fw-bold me-1">@c.Value</span>
-                                <div class="tooltip-essence-icon-compact" style="background-image: url('@AssetService.GetEssenceIconUrl(c.Key.ToString())');"></div>
-                            </div>
-                        }
-                    </div>
-                </div>
-
-                <!-- LINHA 3: EFEITOS E MATEMÁTICA -->
-                @if(InspectedAbility.Effects != null && InspectedAbility.Effects.Any())
-                {
-                    <div class="tooltip-effects-box p-1 rounded border border-secondary mt-auto">
-                        @foreach(var eff in InspectedAbility.Effects)
-                        {
-                            @if (eff.Type == EffectType.DAMAGE || eff.Type == EffectType.HEAL)
-                            {
-                                var isHeal = eff.Type == EffectType.HEAL;
-                                var colorClass = isHeal ? "text-success" : "text-danger";
-                                var actionText = isHeal ? "Healing" : "Damage";
-
-                                <div class="d-flex justify-content-between align-items-center tooltip-effect-title">
-                                    <span>
-                                        <span class="@colorClass fw-bold">@eff.PredictedValue</span> 
-                                        <span class="text-light">@actionText</span>
-                                    </span>
-                                    <span class="tooltip-effect-math">
-                                        (Base @eff.BaseAmount + @((int)Math.Round(eff.ScalingFactor * 100))% @eff.ScalingStat)
-                                    </span>
-                                </div>
-                            }
-                            else if (eff.Type == EffectType.APPLY_MODIFIER && !string.IsNullOrEmpty(eff.ModifierName))
-                            {
-                                <div class="d-flex flex-column tooltip-effect-title mt-1">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-warning fw-bold">🛡️ Applies @eff.ModifierName</span>
-                                        @if (eff.DurationInTurns == -1)
-                                        {
-                                            <span class="text-info fw-bold tooltip-effect-duration">Perm</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-info fw-bold tooltip-effect-duration">@eff.DurationInTurns Turn@(eff.DurationInTurns > 1 ? "s" : "")</span>
-                                        }
-                                    </div>
-                                    <span class="tooltip-effect-desc mb-0">@eff.ModifierDescription</span>
-                                </div>
-                            }
-                        }
-                    </div>
-                }
-            }
-            else if (InspectedCombatant != null)
-            {
-                <!-- TOPO: Retrato, Nome, Raça, HP e AP -->
-                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary pb-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="tooltip-combatant-portrait" style="background-image: url('@AssetService.GetPortraitUrl(InspectedCombatant.DefinitionId)');"></div>
-                        <div>
-                            <h6 class="text-warning m-0 fw-bold text-uppercase" style="font-family: 'Cinzel', serif; letter-spacing: 1px; line-height: 1;">
-                                @InspectedCombatant.Name
-                            </h6>
-                            <!-- Como a Raça vem como "RACE_HUMAN", cortamos o "RACE_" no ecrã para ficar limpo -->
-                            <span class="text-info" style="font-size: 0.75rem;">@InspectedCombatant.RaceId.Replace("RACE_", "")</span>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-column align-items-end gap-1">
-                        <span class="badge bg-danger border border-dark" style="font-size: 0.75rem;">❤️ @InspectedCombatant.CurrentHP / @InspectedCombatant.MaxHP</span>
-                        <span class="badge bg-warning text-dark border border-dark" style="font-size: 0.75rem;">⚡ @InspectedCombatant.MaxActions AP</span>
-                    </div>
-                </div>
-
-                <!-- MEIO: STATS EM LINHA (Lado a Lado) -->
-                <div class="d-flex justify-content-between align-items-center bg-black p-2 rounded border border-secondary mb-3 shadow-sm">
-                    <div class="text-center" title="Attack"><span class="fs-6 d-block">⚔️</span><span class="fw-bold text-light" style="font-size: 0.85rem;">@InspectedCombatant.Attack</span></div>
-                    <div class="text-center" title="Defense"><span class="fs-6 d-block">🛡️</span><span class="fw-bold text-secondary" style="font-size: 0.85rem;">@InspectedCombatant.Defense</span></div>
-                    <div class="text-center" title="Agility"><span class="fs-6 d-block">💨</span><span class="fw-bold text-success" style="font-size: 0.85rem;">@InspectedCombatant.Agility</span></div>
-                    <div class="text-center" title="Magic"><span class="fs-6 d-block">🔮</span><span class="fw-bold text-info" style="font-size: 0.85rem;">@InspectedCombatant.Magic</span></div>
-                    <div class="text-center" title="Magic Def"><span class="fs-6 d-block">🧿</span><span class="fw-bold text-primary" style="font-size: 0.85rem;">@InspectedCombatant.MagicDefense</span></div>
-                </div>
-
-                <!-- FUNDO: ACTIVE MODIFIERS (Buffs e Debuffs em Tempo Real) -->
-                @if (InspectedCombatant.ActiveModifiers.Any())
-                {
-                    <div class="tooltip-effects-box p-2 rounded border border-secondary mt-auto">
-                        <h6 class="text-warning mb-2 border-bottom border-dark pb-1" style="font-size: 0.7rem; text-transform: uppercase;">Active Effects</h6>
-                        @foreach (var mod in InspectedCombatant.ActiveModifiers)
-                        {
-                            <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 0.75rem;">
-                                <!-- Limpamos a string para mostrar "GARRET TRAIT" em vez de "MOD_GARRET_TRAIT" -->
-                                <span class="text-info fw-bold">@mod.DefinitionId.Replace("MOD_", "").Replace("_", " ")</span>
-
-                                <div class="d-flex gap-2 align-items-center">
-                                    @if (mod.StackCount > 1)
-                                    {
-                                        <span class="text-warning fw-bold">x@mod.StackCount</span>
-                                    }
-                                    @if (mod.CurrentBarrierValue > 0)
-                                    {
-                                        <span class="text-primary fw-bold">🛡️ @mod.CurrentBarrierValue</span>
-                                    }
-                                    <span class="text-muted fst-italic" style="font-size: 0.65rem;">
-                                        @(mod.TurnsRemaining == -1 ? "Perm" : $"{mod.TurnsRemaining} Turn(s)")
-                                    </span>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="tooltip-placeholder">
-                    Hover over a combatant or ability to inspect details.
-                </div>
-            }
-        </div>
+<footer class="arena-footer">
+    <section class="desktop-inspection" aria-label="Inspection panel">
+        <CombatInspection Ability="InspectedAbility" Combatant="InspectedCombatant">
+            <HeadingAction>
+                <button type="button" class="expand-inspection" @onclick="ShowInspectionAsync" aria-label="Expand combat details" title="Expand combat details">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 19 5M10 5h9v9M5 9v10h10" /></svg>
+                </button>
+            </HeadingAction>
+        </CombatInspection>
+    </section>
+    <div class="desktop-logs-wrapper">
+        <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="desktop-logs-container" />
     </div>
-
-    <!-- Center Section: Battle Logs -->
-    <div class="footer-section footer-center">
-        <div class="desktop-logs-wrapper w-100 h-100">
-            <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="desktop-logs-container" />
-        </div>
-        <div class="mobile-ticker">
-            @(BattleLogs.LastOrDefault() ?? "Waiting for actions...")
-        </div>
+    <div class="compact-tools">
+        <button class="utility-button" @onclick="ShowInspectionAsync">Inspect</button>
+        <button class="utility-button" @onclick="OnToggleMobileLogs">Battle log</button>
     </div>
-
-    <!-- Right Section: Actions -->
-    <div class="footer-section footer-right">
+    <p class="mobile-ticker">@(BattleLogs.LastOrDefault() ?? "Waiting for actions...")</p>
+    <div class="footer-actions">
         @if (IsLocalPlayerTurn)
         {
-            if (IsTargetingActive)
-            {
-                <button class="end-turn-btn" @onclick="OnCancelTargeting">
-                    Cancel Action
-                </button>
-            }
-            else
-            {
-                <button class="end-turn-btn" @onclick="OnEndTurn">
-                    End Turn
-                </button>
-            }
+            <button class="end-turn-btn" @onclick="@(IsTargetingActive ? OnCancelTargeting : OnEndTurn)">
+                @(IsTargetingActive ? "Cancel Action" : "End Turn")
+            </button>
         }
         else
         {
-            <button class="end-turn-btn" disabled>
-                Enemy Turn
-            </button>
+            <button class="end-turn-btn" disabled>Enemy Turn</button>
         }
     </div>
-</div>
+</footer>
+
+<dialog class="inspection-dialog" @ref="_inspectionDialog" aria-labelledby="inspection-dialog-title">
+    <div class="dialog-layout">
+        <header class="dialog-heading">
+            <h2 id="inspection-dialog-title">@(_effectsOnly ? "Active effects" : "Combat details")</h2>
+            <button class="utility-button" @onclick="CloseInspectionAsync" autofocus>Close</button>
+        </header>
+        <div class="dialog-inspection"><CombatInspection Ability="InspectedAbility" Combatant="InspectedCombatant" EffectsOnly="_effectsOnly" /></div>
+    </div>
+</dialog>
 
 @code {
     [Parameter] public AbilitySummaryDto? InspectedAbility { get; set; }
@@ -207,8 +50,34 @@
     [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
     [Parameter] public bool IsLocalPlayerTurn { get; set; }
     [Parameter] public bool IsTargetingActive { get; set; }
-
     [Parameter] public EventCallback OnToggleMobileLogs { get; set; }
     [Parameter] public EventCallback OnCancelTargeting { get; set; }
     [Parameter] public EventCallback OnEndTurn { get; set; }
+
+    private ElementReference _inspectionDialog;
+    private IJSObjectReference? _module;
+    private bool _effectsOnly;
+
+    public Task ShowInspectionAsync() => OpenInspectionAsync(false);
+    public Task ShowEffectsAsync() => OpenInspectionAsync(true);
+
+    private async Task OpenInspectionAsync(bool effectsOnly)
+    {
+        _effectsOnly = effectsOnly;
+        StateHasChanged();
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./Pages/Arena/Components/ArenaFooter.razor.js");
+        await _module.InvokeVoidAsync("show", _inspectionDialog);
+    }
+
+    private async Task CloseInspectionAsync()
+    {
+        if (_module is not null)
+            await _module.InvokeVoidAsync("close", _inspectionDialog);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+            await _module.DisposeAsync();
+    }
 }

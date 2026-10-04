@@ -16,6 +16,10 @@ public class TargetingStateManager
 
     public bool IsActive => SourceId.HasValue && ActiveAbility != null;
 
+    // Self, area effects and automatic strategies are resolved by the server.
+    // A singleton enemy/friendly candidate is still a manual choice.
+    public bool RequiresTargetSelection => IsActive && ActiveAbility!.TargetingRules.Any(RequiresManualSelection);
+
     public void StartTargeting(int sourceId, AbilitySummaryDto ability)
     {
         SourceId = sourceId;
@@ -42,7 +46,7 @@ public class TargetingStateManager
     {
         if (!IsActive) return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type)))
+        foreach (var rule in ActiveAbility!.TargetingRules.Where(RequiresManualSelection))
         {
             int currentSelectedCount = SelectedTargets.TryGetValue(rule.RuleId, out var list) ? list.Count : 0;
 
@@ -67,7 +71,7 @@ public class TargetingStateManager
         if (!IsActive || !IsValidTarget(target) || IsSelected(target.Id))
             return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(r => r.Strategy == TargetSelectionStrategy.Manual && !IsAoE(r.Type)))
+        foreach (var rule in ActiveAbility!.TargetingRules.Where(RequiresManualSelection))
         {
             if (!SelectedTargets.TryGetValue(rule.RuleId, out var targetList))
             {
@@ -83,13 +87,17 @@ public class TargetingStateManager
         }
 
         allRulesSatisfied = ActiveAbility!.TargetingRules
-            .Where(r => r.Strategy == TargetSelectionStrategy.Manual)
+            .Where(RequiresManualSelection)
             .All(r => SelectedTargets.TryGetValue(r.RuleId, out var list) && list.Count == r.Count);
 
         return true;
     }
 
-    private bool IsAoE(TargetType type)
+    private static bool RequiresManualSelection(TargetingRuleDto rule) =>
+        rule.Strategy == TargetSelectionStrategy.Manual && rule.Count > 0 &&
+        rule.Type != TargetType.Self && !IsAoE(rule.Type);
+
+    private static bool IsAoE(TargetType type)
     {
         return type == TargetType.All || type == TargetType.AllEnemies ||
                type == TargetType.AllAllies || type == TargetType.AllFriendlies;

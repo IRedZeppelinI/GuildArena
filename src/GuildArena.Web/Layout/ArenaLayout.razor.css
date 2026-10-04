@@ -1,14 +1,18 @@
 ﻿.arena-wrapper {
+    --arena-text: #f0eee4;
+    --arena-brass: #d4b577;
+    color-scheme: dark;
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Ocupa 100% da altura do ecrã do telemóvel/monitor */
-    width: 100vw;
+    height: 100dvh;
+    width: 100%;
     background-color: #1a1a1a; /* Fundo escuro de jogo */
     overflow: hidden; /* Impede scroll indesejado da página inteira */
 }
 
 .arena-header {
-    height: 3rem;
+    min-height: 3rem;
+    flex-shrink: 0;
     background-color: #0d0d0d;
     border-bottom: 1px solid #333;
 }
@@ -18,7 +22,30 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
 }
+
+.orientation-gate {
+    color-scheme: dark;
+    inset: 0;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    border: 0;
+    background: #111e18;
+    color: #f0eee4;
+}
+.orientation-gate::backdrop { background: #111e18; }
+.orientation-content { min-height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; text-align: center; max-width: 400px; margin: auto; }
+.orientation-content h1 { font: 2rem/1.2 Georgia, serif; margin: 0; }
+.orientation-content p { color: #c1d0c5; margin: 0; }
+.orientation-symbol { width: 85px; height: 46px; border: 2px solid #d4b577; border-radius: 8px; font-size: 28px; }
+.orientation-button { min-height: 44px; border: 1px solid #e8cf96; border-radius: 4px; padding: 10px 16px; background: #c6ac76; color: #171f17; font-weight: 700; }
+.orientation-button:focus-visible { outline: 3px solid #a4edeb; outline-offset: 3px; }
+.orientation-note { font-size: .85rem; }
 
 
 /* --- Modal de Surrender --- */
