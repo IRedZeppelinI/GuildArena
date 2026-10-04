@@ -38,6 +38,16 @@ h3 span { color: #bdc6bc; }
 .effect-detail { color: #bac5bf; font-size: .8rem; line-height: 1.5; margin: 4px 0 0; }
 .effect .damage { color: #ffb5a9; }
 .effect .healing { color: #a9dfbd; }
+.inspected-ability { border: 1px solid #566b59; border-radius: 3px; margin-bottom: 6px; }
+.inspected-ability summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 5px 8px; color: #d2e5da; font-size: .8rem; cursor: pointer; touch-action: manipulation; }
+.inspected-ability summary::after { content: '+'; margin-left: auto; flex-shrink: 0; color: #d4b577; font-size: 1.2rem; }
+.inspected-ability[open] > summary::after { content: '−'; }
+.inspected-ability summary:hover { background: #344338; }
+.inspected-ability summary:focus-visible { outline: 3px solid #a4edeb; outline-offset: -3px; }
+.inspected-ability summary .inspection-image { width: 28px; height: 28px; }
+.inspected-ability-details { padding: 0 8px 8px; }
+.inspected-ability-details ::deep .combat-inspection { height: auto; border: 0; padding: 0; }
+.inspected-ability-details ::deep .inspection-heading { max-height: none; }
 
 @media (max-height: 650px) {
     .combat-inspection { border-width: 16px; padding: 2px 6px; }

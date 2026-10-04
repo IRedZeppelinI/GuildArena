@@ -119,9 +119,9 @@
     grid-row: 3;
 }
 
-@media (max-height: 650px) {
+@media (max-height: 650px), (max-width: 850px) {
     .arena-board {
-        padding: 5px max(10px, env(safe-area-inset-right)) 18px max(10px, env(safe-area-inset-left));
+        padding: 5px max(10px, env(safe-area-inset-right)) 10px max(10px, env(safe-area-inset-left));
     }
 
     .combatants-column, .enemy-grid {
@@ -136,5 +136,8 @@
     .team-side {
         width: 42%;
     }
+
+    .arena-center { width: 16%; padding-top: 0; }
+    .combatants-column, .enemy-grid { grid-template-rows: repeat(3, minmax(min-content, 1fr)); }
 
 }

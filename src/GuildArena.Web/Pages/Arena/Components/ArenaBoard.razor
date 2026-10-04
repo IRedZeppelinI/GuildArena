@@ -22,7 +22,9 @@
                 {
                      <CombatantCard Combatant="hero"
                                     @key="hero.Id"
-                                    IsInspected="@(InspectedCombatantId == hero.Id)"
+                                     IsSelectedCombatant="@(SelectedCombatantId == hero.Id)"
+                                     IsLocalCombatant="true"
+                                     OnCombatantSelected="OnCombatantSelected"
                                    IsTargetingMode="TargetingState.IsActive"
                                    IsValidTarget="TargetingState.IsValidTarget(hero)"
                                    IsSelectedTarget="TargetingState.IsSelected(hero.Id)"
@@ -62,7 +64,6 @@
                 {
                     <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)" @key="enemy.Id">
                         <CombatantCard Combatant="enemy"
-                                       IsInspected="@(InspectedCombatantId == enemy.Id)"
                                        IsTargetingMode="TargetingState.IsActive"
                                        IsValidTarget="TargetingState.IsValidTarget(enemy)"
                                        IsSelectedTarget="TargetingState.IsSelected(enemy.Id)"
@@ -93,7 +94,8 @@
     [Parameter] public EventCallback<CombatantDto?> OnCombatantHovered { get; set; }
     [Parameter] public EventCallback<CombatantDto> OnInspectCombatantRequested { get; set; }
     [Parameter] public EventCallback<CombatantDto> OnInspectEffectsRequested { get; set; }
-    [Parameter] public int? InspectedCombatantId { get; set; }
+    [Parameter] public int? SelectedCombatantId { get; set; }
+    [Parameter] public EventCallback<CombatantDto> OnCombatantSelected { get; set; }
 
     private IEnumerable<CombatantDto> MyTeam =>
         GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId) ?? Array.Empty<CombatantDto>();

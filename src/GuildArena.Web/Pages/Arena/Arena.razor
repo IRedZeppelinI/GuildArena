@@ -60,19 +60,26 @@ else
                  OnCancelPayment="CancelPayment" />
 
     <ArenaBoard GameState="CombatState.GameState"
-                InspectedCombatantId="@(_inspectedCombatant?.Id ?? _inspectedAbilitySourceId)"
+                SelectedCombatantId="_selectedCombatantId"
                 LocalPlayerId="LocalPlayerId"
                 TargetingState="_targetingState"
                 OnBackgroundClicked="CancelTargeting"
                 OnExchangeRequested="() => _showExchangeModal = true"
                 OnAbilityActivated="StartTargeting"
                 OnCombatantClicked="SelectTarget"
+                OnCombatantSelected="SelectCombatant"
                 OnInspectAbility="ShowAbilityTooltip" 
                 OnCombatantHovered="ShowCombatantTooltip"
                 OnInspectCombatantRequested="InspectCombatantAsync"
                 OnInspectEffectsRequested="InspectEffectsAsync" />
 
     <ArenaFooter @ref="_footer" InspectedAbility="_inspectedAbility"
+                 SelectedCombatant="SelectedCombatant"
+                 IsActivationBlocked="@(_executingAbility || _showPaymentModal)"
+                 OnAbilityActivated="StartTargeting"
+                 OnInspectAbility="ShowAbilityTooltip"
+                 OnInspectAbilityRequested="InspectAbilityAsync"
+                 OnInspectSelectedCombatant="InspectSelectedCombatantAsync"
                  InspectedCombatant="_inspectedCombatant" 
                  BattleLogs="CombatState.BattleLogs"
                  IsLocalPlayerTurn="IsLocalPlayerTurn"
@@ -96,6 +103,8 @@ else
     private AbilitySummaryDto? _inspectedAbility;
     private int? _inspectedAbilitySourceId;
     private CombatantDto? _inspectedCombatant; 
+    private int? _selectedCombatantId;
+    private CombatantDto? SelectedCombatant => CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == _selectedCombatantId);
     private ArenaFooter? _footer;
     
     private readonly TargetingStateManager _targetingState = new();
@@ -119,6 +128,7 @@ else
             await ResumeCombatAsync();
         else
             _checkingCombat = false;
+        EnsureSelectedCombatant();
     }
 
     private async Task ResumeCombatAsync()
@@ -146,6 +156,7 @@ else
 
     private void OnCombatStateChanged() => _ = InvokeAsync(() =>
     {
+        EnsureSelectedCombatant();
         // Inspection may stay open during server updates. Render the current snapshot,
         // rather than holding on to the object that was originally hovered.
         if (_inspectedCombatant is not null)
@@ -160,7 +171,20 @@ else
         StateHasChanged();
     });
 
-    // Quando passas o rato na Magia, guarda a Magia e "apaga" o Herói da memória
+    private void EnsureSelectedCombatant()
+    {
+        if (SelectedCombatant is not null) return;
+        var team = CombatState.GameState?.Combatants.Where(c => c.OwnerId == LocalPlayerId);
+        _selectedCombatantId = (team?.FirstOrDefault(c => c.IsAlive) ?? team?.FirstOrDefault())?.Id;
+    }
+
+    private void SelectCombatant(CombatantDto combatant)
+    {
+        if (_targetingState.IsActive || combatant.OwnerId != LocalPlayerId) return;
+        _selectedCombatantId = combatant.Id;
+        ShowCombatantTooltip(combatant);
+    }
+
     private void ShowAbilityTooltip(AbilitySummaryDto? ability)
     {
         if (ability != null)
@@ -172,7 +196,6 @@ else
         }
     }
 
-    // Quando passas o rato na Carta do Herói, guarda o Herói e "apaga" a Magia da memória
     private void ShowCombatantTooltip(CombatantDto? combatant)
     {
         if (combatant != null)
@@ -183,6 +206,17 @@ else
         }
     }
     private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
+
+    private async Task InspectAbilityAsync(AbilitySummaryDto ability)
+    {
+        ShowAbilityTooltip(ability);
+        if (_footer is not null)
+            await _footer.ShowInspectionAsync();
+    }
+
+    private Task InspectSelectedCombatantAsync() => SelectedCombatant is { } combatant
+        ? InspectCombatantAsync(combatant)
+        : Task.CompletedTask;
 
     private async Task InspectCombatantAsync(CombatantDto combatant)
     {
@@ -208,10 +242,13 @@ else
         if (!IsLocalPlayerTurn || _executingAbility || _showPaymentModal) return;
 
         var source = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
-        var ability = source?.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId) ?? source?.SpecialAbility;
+        if (source is null || source.OwnerId != LocalPlayerId || !source.IsAlive) return;
+        var ability = source.Abilities.FirstOrDefault(a => a.Id == payload.AbilityId)
+            ?? (source.SpecialAbility?.Id == payload.AbilityId ? source.SpecialAbility : null);
 
-        if (ability == null || !ability.IsAffordable) return;
+        if (ability == null || !ability.IsAffordable || ability.CurrentCooldownTurns > 0) return;
 
+        _selectedCombatantId = source.Id;
         _targetingState.StartTargeting(payload.SourceId, ability);
 
         if (!_targetingState.RequiresTargetSelection)

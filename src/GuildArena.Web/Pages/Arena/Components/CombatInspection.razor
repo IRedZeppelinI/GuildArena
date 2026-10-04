@@ -14,7 +14,17 @@
         <div class="inspection-body" tabindex="0" aria-label="Ability details">
             <div class="resources">
                 <span><ResourceIcon Kind="ResourceIconKind.ActionPoints" /> @Ability.ActionPointCost AP</span>
-                <span><ResourceIcon Kind="ResourceIconKind.Cooldown" /> @Ability.BaseCooldown turn@(Ability.BaseCooldown == 1 ? "" : "s") cooldown</span>
+                <span><ResourceIcon Kind="ResourceIconKind.Cooldown" /> Base cooldown: @Ability.BaseCooldown turn@(Ability.BaseCooldown == 1 ? "" : "s")</span>
+                <span><ResourceIcon Kind="ResourceIconKind.Cooldown" />
+                    @if (Ability.CurrentCooldownTurns > 0)
+                    {
+                        <text>Cooldown remaining: @Ability.CurrentCooldownTurns turn@(Ability.CurrentCooldownTurns == 1 ? "" : "s")</text>
+                    }
+                    else
+                    {
+                        <text>Not on cooldown</text>
+                    }
+                </span>
                 @if (Ability.HPCost > 0)
                 {
                     <span><ResourceIcon Kind="ResourceIconKind.HealthPoints" /> @Ability.HPCost HP cost</span>
@@ -51,7 +61,7 @@
             <div class="inspection-identity" tabindex="0"><h2>@Combatant.Name</h2><p>@Combatant.RaceId.Replace("RACE_", "").Replace("_", " ")</p></div>
             @HeadingAction
         </header>
-        <div class="inspection-body" tabindex="0" aria-label="Hero stats and active effects">
+        <div class="inspection-body" tabindex="0" aria-label="Combatant attributes, abilities and active effects">
             @if (!EffectsOnly)
             {
                 <div class="resources">
@@ -92,6 +102,20 @@
                     }
                 </div>
             }
+            @if (!EffectsOnly)
+            {
+                <h3>Abilities</h3>
+                @foreach (var ability in CombatantAbilities)
+                {
+                    <details class="inspected-ability" @key="(Combatant.Id, ability.Id)">
+                        <summary>
+                            <img class="inspection-image" src="@AssetService.GetAbilityIconUrl(ability.Id)" alt="" />
+                            <span>@ability.Name</span>
+                        </summary>
+                        <div class="inspected-ability-details"><CombatInspection Ability="ability" /></div>
+                    </details>
+                }
+            }
         </div>
     }
     else
@@ -106,6 +130,10 @@
     [Parameter] public CombatantDto? Combatant { get; set; }
     [Parameter] public bool EffectsOnly { get; set; }
     [Parameter] public RenderFragment? HeadingAction { get; set; }
+
+    private IEnumerable<AbilitySummaryDto> CombatantAbilities => Combatant is { } combatant
+        ? (combatant.SpecialAbility is { } special ? new[] { special }.Concat(combatant.Abilities) : combatant.Abilities)
+        : Array.Empty<AbilitySummaryDto>();
 
     private static string Duration(int turns) => turns == -1 ? "Permanent" : $"{turns} turn{(turns == 1 ? "" : "s")}";
 }

@@ -15,12 +15,27 @@
     <div class="desktop-logs-wrapper">
         <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="desktop-logs-container" />
     </div>
-    <div class="compact-tools">
-        <button class="utility-button" @onclick="ShowInspectionAsync">Inspect</button>
-        <button class="utility-button" @onclick="OnToggleMobileLogs">Battle log</button>
-    </div>
-    <p class="mobile-ticker">@(BattleLogs.LastOrDefault() ?? "Waiting for actions...")</p>
+    <section class="mobile-command-deck" aria-label="Selected hero actions">
+        <header class="deck-heading">
+            <h2 title="@SelectedCombatant?.Name">@(SelectedCombatant?.Name ?? "Select a hero")</h2>
+            @if (SelectedCombatant is { IsAlive: false }) { <span class="fallen-label">Fallen</span> }
+            <button type="button" class="utility-button inspection-mode" aria-pressed="@(_inspectAbilities ? "true" : "false")" @onclick="() => _inspectAbilities = !_inspectAbilities">@(_inspectAbilities ? "Use abilities" : "Inspect abilities")</button>
+            <button type="button" class="utility-button" @onclick="OnToggleMobileLogs">Battle log</button>
+        </header>
+        <div class="deck-abilities" aria-label="@(_inspectAbilities ? "Choose an ability to inspect" : "Choose an ability to activate")">
+            @if (SelectedCombatant is { } hero)
+            {
+                @foreach (var ability in SelectedAbilities)
+                {
+                    <AbilityButton @key="(hero.Id, ability.Id)" Ability="ability" ShowName="true" InspectionOnly="_inspectAbilities"
+                                   IsActivationBlocked="@(IsActivationBlocked || !IsLocalPlayerTurn || !hero.IsAlive)"
+                                   OnAbilityClicked="ActivateSelectedAbility" OnInspectStart="OnInspectAbility" OnInspectRequested="OnInspectAbilityRequested" />
+                }
+            }
+        </div>
+    </section>
     <div class="footer-actions">
+        <button type="button" class="utility-button inspect-selected" disabled="@(SelectedCombatant is null)" @onclick="OnInspectSelectedCombatant">Inspect hero</button>
         @if (IsLocalPlayerTurn)
         {
             <button class="end-turn-btn" @onclick="@(IsTargetingActive ? OnCancelTargeting : OnEndTurn)">
@@ -47,6 +62,12 @@
 @code {
     [Parameter] public AbilitySummaryDto? InspectedAbility { get; set; }
     [Parameter] public CombatantDto? InspectedCombatant { get; set; }
+    [Parameter] public CombatantDto? SelectedCombatant { get; set; }
+    [Parameter] public bool IsActivationBlocked { get; set; }
+    [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
+    [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
+    [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbilityRequested { get; set; }
+    [Parameter] public EventCallback OnInspectSelectedCombatant { get; set; }
     [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
     [Parameter] public bool IsLocalPlayerTurn { get; set; }
     [Parameter] public bool IsTargetingActive { get; set; }
@@ -57,6 +78,14 @@
     private ElementReference _inspectionDialog;
     private IJSObjectReference? _module;
     private bool _effectsOnly;
+    private bool _inspectAbilities;
+
+    private IEnumerable<AbilitySummaryDto> SelectedAbilities => SelectedCombatant is { } hero
+        ? (hero.SpecialAbility is { } special ? new[] { special }.Concat(hero.Abilities) : hero.Abilities)
+        : Array.Empty<AbilitySummaryDto>();
+
+    private Task ActivateSelectedAbility(string abilityId) => SelectedCombatant is { } hero
+        ? OnAbilityActivated.InvokeAsync((hero.Id, abilityId)) : Task.CompletedTask;
 
     public Task ShowInspectionAsync() => OpenInspectionAsync(false);
     public Task ShowEffectsAsync() => OpenInspectionAsync(true);

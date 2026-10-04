@@ -2,8 +2,8 @@
 @using GuildArena.Web.Services
 @inject IAssetService AssetService
 
-<button type="button" class="ability-slot @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
-     aria-label="@Ability.Name" aria-disabled="@(!CanCast)"
+<button type="button" class="ability-slot @(ShowName ? "named-ability" : "") @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
+     aria-label="@(InspectionOnly ? $"Inspect {Ability.Name}" : $"{Ability.Name}{(IsOnCooldown ? $", cooldown: {Ability.CurrentCooldownTurns} turns" : !CanCast ? ", unavailable" : "")}")" aria-disabled="@(!InspectionOnly && !CanCast ? "true" : "false")"
      @onclick="OnClick"
      @onclick:stopPropagation="true"
      @onmouseenter="OnMouseEnter"
@@ -11,6 +11,10 @@
      title="@Ability.Name">
 
     <span class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></span>
+    @if (ShowName)
+    {
+        <span class="ability-name">@Ability.Name</span>
+    }
 
     @if (IsOnCooldown)
     {
@@ -42,13 +46,19 @@
 
     [Parameter] public EventCallback<string> OnAbilityClicked { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectStart { get; set; }
+    [Parameter] public EventCallback<AbilitySummaryDto> OnInspectRequested { get; set; }
+    [Parameter] public bool ShowName { get; set; }
+    [Parameter] public bool InspectionOnly { get; set; }
+    [Parameter] public bool IsActivationBlocked { get; set; }
 
     private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
-    private bool CanCast => !IsOnCooldown && Ability.IsAffordable;
+    private bool CanCast => !IsActivationBlocked && !IsOnCooldown && Ability.IsAffordable;
 
     private async Task OnClick()
     {
-        if (CanCast)
+        if (InspectionOnly)
+            await OnInspectRequested.InvokeAsync(Ability);
+        else if (CanCast)
         {
             await OnAbilityClicked.InvokeAsync(Ability.Id);
         }

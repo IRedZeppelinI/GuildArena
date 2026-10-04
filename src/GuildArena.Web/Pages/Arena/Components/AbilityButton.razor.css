@@ -13,6 +13,15 @@
 }
 
 .ability-slot:focus-visible { outline: 3px solid #a4edeb; outline-offset: 2px; }
+.named-ability { display: flex; align-items: center; gap: 5px; width: auto; height: 58px; min-width: 44px; min-height: 44px; flex: 1 0 85px; max-width: 120px; padding: 4px; text-align: left; color: #f0eee4; }
+.named-ability .ability-icon { position: relative; inset: auto; width: 38px; height: 38px; flex: 0 0 38px; }
+.ability-name { min-width: 0; font: 700 .625rem/1.2 'Lato', sans-serif; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.ability-slot.named-ability:hover { transform: none; border-color: #d4b577; }
+.named-ability .cooldown-overlay { right: auto; width: 38px; height: 38px; top: 9px; left: 4px; border-radius: 2px; }
+.named-ability .ability-costs { bottom: 2px; left: 23px; max-width: 38px; flex-wrap: wrap; justify-content: center; }
+.named-ability.unaffordable { filter: none; background: #242924; color: #bac2b8; border-style: dashed; }
+.named-ability.unaffordable .ability-icon { filter: brightness(.55) grayscale(.8); }
+.named-ability[aria-disabled="true"] { cursor: not-allowed; }
 
     .ability-slot:hover {
         transform: scale(1.1);
@@ -85,18 +94,15 @@
     }
 
 
-/* RESPONSIVIDADE MOBILE */
 @media (max-height: 650px) {
-    .ability-slot {
-        width: 24px; /* Mais pequeno em telemóveis */
-        height: 24px;
-    }
-
-    .ability-icon-placeholder {
-        font-size: 0.8rem;
-    }
-
     .cooldown-overlay {
         font-size: 0.9rem;
     }
+}
+
+@media (max-height: 650px), (max-width: 850px) {
+    .named-ability { height: 48px; }
+    .named-ability .ability-icon { width: 32px; height: 32px; flex-basis: 32px; }
+    .named-ability .cooldown-overlay { width: 32px; height: 32px; top: 7px; }
+    .named-ability .ability-costs { left: 20px; max-width: 32px; }
 }
