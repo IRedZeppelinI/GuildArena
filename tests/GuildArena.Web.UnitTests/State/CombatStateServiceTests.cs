@@ -187,6 +187,168 @@ public class CombatStateServiceTests
         _service.CombatId.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task CommandsWithoutAConnectedCombatAreUnavailableAndDoNotSendRequests()
+    {
+        (await _service.EndTurnAsync()).Outcome.ShouldBe(CombatCommandOutcome.Unavailable);
+        (await _service.ExecuteAbilityAsync(1, "GUARD", new(), new())).Outcome.ShouldBe(CombatCommandOutcome.Unavailable);
+        (await _service.ExchangeEssenceAsync(new(), GuildArena.Domain.Enums.Resources.EssenceType.Mind)).Outcome.ShouldBe(CombatCommandOutcome.Unavailable);
+        (await _service.SurrenderAsync()).Outcome.ShouldBe(CombatCommandOutcome.Unavailable);
+        _mockHttpHandler.RequestCount.ShouldBe(0);
+        _service.IsCommandPending.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RecoveryWithoutACombatDoesNotCreateOrRepeatAnyCommand()
+    {
+        (await _service.RefreshCombatAsync()).ShouldBeFalse();
+        _mockHttpHandler.RequestCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ConcurrentRejoinRequestsShareOneRecovery()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mockHttpHandler.DelayUntil = release.Task;
+        _mockHttpHandler.SetResponse(HttpStatusCode.NotFound, "Expired combat");
+
+        var first = _service.RejoinCombatAsync("C1", MatchType.Encounter);
+        var second = _service.RejoinCombatAsync("C1", MatchType.Encounter);
+
+        second.ShouldBeSameAs(first);
+        _mockHttpHandler.RequestCount.ShouldBe(1);
+        (await _service.RejoinCombatAsync("C2", MatchType.Dungeon)).ShouldBeFalse();
+        release.SetResult();
+        (await first).ShouldBeFalse();
+        _service.IsConnecting.ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(MatchType.Encounter)]
+    [InlineData(MatchType.Dungeon)]
+    public async Task RecoveryWhenServerConfirmsNoActiveCombatPreservesReturnContextWithoutInventingResult(MatchType matchType)
+    {
+        await PrepareDisconnectedCombatAsync(matchType);
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new ActiveCombatDto()));
+
+        (await _service.RefreshCombatAsync()).ShouldBeTrue();
+
+        _service.IsCombatUnavailable.ShouldBeTrue();
+        _service.CombatId.ShouldBe("C1");
+        _service.MatchType.ShouldBe(matchType);
+        _service.CombatResult.ShouldBeNull();
+        _service.RequiresSynchronization.ShouldBeTrue();
+        (await _service.EndTurnAsync()).Outcome.ShouldBe(CombatCommandOutcome.Unavailable);
+
+        await _service.DisconnectAsync();
+        _service.IsCombatUnavailable.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RecoveryWhenActiveLookupFailsDoesNotClaimCombatHasEnded()
+    {
+        await PrepareDisconnectedCombatAsync(MatchType.Dungeon);
+        _mockHttpHandler.SetResponse(HttpStatusCode.ServiceUnavailable, "{}");
+
+        (await _service.RefreshCombatAsync()).ShouldBeFalse();
+
+        _service.IsCombatUnavailable.ShouldBeFalse();
+        _service.RequiresSynchronization.ShouldBeTrue();
+        _service.CombatId.ShouldBe("C1");
+        _service.MatchType.ShouldBe(MatchType.Dungeon);
+        _service.CombatResult.ShouldBeNull();
+    }
+
+    private async Task PrepareDisconnectedCombatAsync(MatchType matchType)
+    {
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new StartCombatResponse
+        {
+            CombatId = "C1", InitialState = new GameStateDto(), InitialLogs = []
+        }));
+        var result = matchType == MatchType.Dungeon
+            ? await _service.EnterDungeonCombatAsync()
+            : await _service.StartEncounterCombatAsync("ENC_1", [1, 2, 3]);
+        result.ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.IsConnected.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task DelayedRejoinCannotRestoreADisconnectedSession()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new StartCombatResponse
+        {
+            CombatId = "C1", InitialState = new GameStateDto(), InitialLogs = ["Old combat"]
+        }));
+        _mockHttpHandler.DelayUntil = release.Task;
+        _mockHttpHandler.IgnoreCancellation = true;
+        var recovery = _service.RejoinCombatAsync("C1", MatchType.Dungeon);
+
+        await _service.DisconnectAsync();
+        release.SetResult();
+
+        (await recovery).ShouldBeFalse();
+        _service.CombatId.ShouldBeNull();
+        _service.GameState.ShouldBeNull();
+        _service.BattleLogs.ShouldBeEmpty();
+        _service.IsConnecting.ShouldBeFalse();
+        _service.RequiresSynchronization.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task OldRecoveryCannotClearAnotherSessionEvenIfCombatIdsMatch()
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new StartCombatResponse
+        {
+            CombatId = "C1", InitialState = new GameStateDto { CurrentTurnNumber = 1 }, InitialLogs = ["Old recovery"]
+        }));
+        _mockHttpHandler.DelayUntil = release.Task;
+        _mockHttpHandler.IgnoreCancellation = true;
+        var recovery = _service.RejoinCombatAsync("C1", MatchType.Encounter);
+
+        await _service.DisconnectAsync();
+        _mockHttpHandler.DelayUntil = null;
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new StartCombatResponse
+        {
+            CombatId = "C1", InitialState = new GameStateDto { CurrentTurnNumber = 9 }, InitialLogs = ["New session"]
+        }));
+        (await _service.EnterDungeonCombatAsync()).ShouldBe(EncounterStartResult.Unconfirmed);
+        release.SetResult();
+
+        (await recovery).ShouldBeFalse();
+        _service.CombatId.ShouldBe("C1");
+        _service.MatchType.ShouldBe(MatchType.Dungeon);
+        _service.GameState!.CurrentTurnNumber.ShouldBe(9);
+        _service.BattleLogs.ShouldBe(["New session"]);
+        _service.IsConnecting.ShouldBeFalse();
+        _service.RequiresSynchronization.ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DelayedStartResponseCannotRepopulateStateAfterDisconnect(bool dungeon)
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mockHttpHandler.SetResponse(HttpStatusCode.OK, JsonSerializer.Serialize(new StartCombatResponse
+        {
+            CombatId = "C1", InitialState = new GameStateDto(), InitialLogs = ["Old start"]
+        }));
+        _mockHttpHandler.DelayUntil = release.Task;
+        var start = dungeon ? _service.EnterDungeonCombatAsync() : _service.StartEncounterCombatAsync("ENC_1", [1, 2, 3]);
+
+        await _service.DisconnectAsync();
+        release.SetResult();
+
+        (await start).ShouldBe(EncounterStartResult.Unconfirmed);
+        _service.CombatId.ShouldBeNull();
+        _service.GameState.ShouldBeNull();
+        _service.BattleLogs.ShouldBeEmpty();
+        _service.IsConnecting.ShouldBeFalse();
+        _service.RequiresSynchronization.ShouldBeFalse();
+    }
+
     // ==========================================================
     // HELPER CLASS: Um Fake HttpMessageHandler para testes de UI
     // ==========================================================
@@ -195,6 +357,9 @@ public class CombatStateServiceTests
         private HttpStatusCode _statusCode;
         private string _content = string.Empty;
         private bool _failRequest;
+        public int RequestCount { get; private set; }
+        public Task? DelayUntil { get; set; }
+        public bool IgnoreCancellation { get; set; }
 
         public void FailRequest() => _failRequest = true;
 
@@ -204,15 +369,23 @@ public class CombatStateServiceTests
             _content = content;
         }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            RequestCount++;
+            var statusCode = _statusCode;
+            var content = _content;
+            if (DelayUntil is not null)
+            {
+                if (IgnoreCancellation) await DelayUntil;
+                else await DelayUntil.WaitAsync(cancellationToken);
+            }
             if (_failRequest) throw new HttpRequestException("Connection lost");
             var response = new HttpResponseMessage
             {
-                StatusCode = _statusCode,
-                Content = new StringContent(_content)
+                StatusCode = statusCode,
+                Content = new StringContent(content)
             };
-            return Task.FromResult(response);
+            return response;
         }
     }
 }

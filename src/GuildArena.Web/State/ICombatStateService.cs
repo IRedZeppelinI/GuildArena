@@ -22,6 +22,12 @@ public interface ICombatStateService
     IReadOnlyList<string> BattleLogs { get; }
     bool IsConnecting { get; }
     CombatResultDto? CombatResult { get; }
+    bool IsConnected { get; }
+    bool IsCommandPending { get; }
+    bool RequiresSynchronization { get; }
+    bool IsCombatUnavailable { get; }
+    string? PendingCommandName { get; }
+    CombatCommandResult? LastCommandResult { get; }
 
     /// <summary>
     /// Initializes a PvE combat session by calling the API and establishing a SignalR connection.
@@ -33,12 +39,12 @@ public interface ICombatStateService
     /// <summary>
     /// Signals the API that the local player has ended their turn.
     /// </summary>
-    Task EndTurnAsync();
+    Task<CombatCommandResult> EndTurnAsync();
 
     /// <summary>
     /// Sends a request to the API to execute a specific combat ability.
     /// </summary>
-    Task ExecuteAbilityAsync(
+    Task<CombatCommandResult> ExecuteAbilityAsync(
         int sourceId,
         string abilityId,
         Dictionary<string, List<int>> targetSelections,
@@ -47,7 +53,7 @@ public interface ICombatStateService
     /// <summary>
     /// Sends a request to the API to exchange two existing essences for a new one.
     /// </summary>
-    Task ExchangeEssenceAsync(
+    Task<CombatCommandResult> ExchangeEssenceAsync(
         Dictionary<EssenceType, int> spent,
         EssenceType gained);
 
@@ -56,7 +62,13 @@ public interface ICombatStateService
     /// </summary>
     Task DisconnectAsync();
 
-    Task SurrenderAsync();
+    Task<CombatCommandResult> SurrenderAsync();
+
+    /// <summary>
+    /// Reads current state or confirms that no active combat remains, restoring the subscription
+    /// when needed. Never repeats a command; returns false when recovery is still unresolved.
+    /// </summary>
+    Task<bool> RefreshCombatAsync();
 
 
     /// <summary>
