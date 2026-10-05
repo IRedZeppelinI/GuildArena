@@ -46,13 +46,14 @@
             </div>
         }
 
-        <button class="btn btn-lg return-btn mt-4 w-100" @onclick="OnReturnClicked">
-            @(ReturnToDungeon ? "Return to Dungeons" : "Return to Encounters")
+        <button class="btn btn-lg return-btn mt-4 w-100" disabled="@IsPending" @onclick="OnReturnClicked">
+            @(IsPending ? "Finishing…" : ReturnToDungeon ? "Return to Dungeons" : "Return to Encounters")
         </button>
     </div>
 </div>
 
 @code {
+    [Parameter] public bool IsPending { get; set; }
     [Parameter, EditorRequired]
     public required CombatResultDto Result { get; set; }
 

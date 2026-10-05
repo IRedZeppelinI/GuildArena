@@ -14,6 +14,7 @@
             {
                 <PlayerResourceBar Player="me"
                                    ShowExchangeButton="@(GameState.CurrentPlayerId == LocalPlayerId)"
+                                   IsExchangeBlocked="@(IsActivationBlocked || TargetingState.IsActive)"
                                    OnExchangeClicked="OnExchangeRequested" />
             }
 
@@ -24,9 +25,10 @@
                                     @key="hero.Id"
                                      IsSelectedCombatant="@(SelectedCombatantId == hero.Id)"
                                      IsLocalCombatant="true"
+                                     IsActivationBlocked="@(IsActivationBlocked || GameState.CurrentPlayerId != LocalPlayerId || !hero.IsAlive)"
                                      OnCombatantSelected="OnCombatantSelected"
                                    IsTargetingMode="TargetingState.IsActive"
-                                   IsValidTarget="TargetingState.IsValidTarget(hero)"
+                                   IsValidTarget="@(!IsActivationBlocked && TargetingState.IsValidTarget(hero))"
                                    IsSelectedTarget="TargetingState.IsSelected(hero.Id)"
                                    OnAbilityActivated="OnAbilityActivated"
                                    OnCombatantClicked="OnCombatantClicked"
@@ -47,6 +49,7 @@
                 Turn @GameState.CurrentTurnNumber
             </div>
         }
+        @ActionFeedback
     </div>
 
     <!-- Enemy Team -->
@@ -65,7 +68,7 @@
                     <div class="@GetGridClass(enemy.Position, IsSingleEnemyColumn)" @key="enemy.Id">
                         <CombatantCard Combatant="enemy"
                                        IsTargetingMode="TargetingState.IsActive"
-                                       IsValidTarget="TargetingState.IsValidTarget(enemy)"
+                                       IsValidTarget="@(!IsActivationBlocked && TargetingState.IsValidTarget(enemy))"
                                        IsSelectedTarget="TargetingState.IsSelected(enemy.Id)"
                                        OnAbilityActivated="OnAbilityActivated"
                                        OnCombatantClicked="OnCombatantClicked"
@@ -86,6 +89,8 @@
     [Parameter, EditorRequired] public TargetingStateManager TargetingState { get; set; } = default!;
 
     [Parameter] public EventCallback OnBackgroundClicked { get; set; }
+    [Parameter] public RenderFragment? ActionFeedback { get; set; }
+    [Parameter] public bool IsActivationBlocked { get; set; }
     [Parameter] public EventCallback OnExchangeRequested { get; set; }
     [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
     [Parameter] public EventCallback<CombatantDto> OnCombatantClicked { get; set; }

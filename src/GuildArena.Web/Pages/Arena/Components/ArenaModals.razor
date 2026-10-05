@@ -18,6 +18,7 @@
 @if (ShowExchangeModal && PlayerEssencePool != null)
 {
     <ExchangeEssenceModal PlayerEssencePool="PlayerEssencePool"
+                          IsPending="IsPending" Feedback="@Feedback"
                           OnConfirmExchange="OnConfirmExchange"
                           OnCancel="OnCancelExchange" />
 }
@@ -25,12 +26,15 @@
 @if (ShowPaymentModal && AvailableEssenceForPayment != null)
 {
     <PaymentModal AvailableEssence="AvailableEssenceForPayment"
+                  IsPending="IsPending" Feedback="@Feedback"
                   RequiredAmount="NeutralCostPending"
                   OnConfirmPayment="OnConfirmPayment"
                   OnCancel="OnCancelPayment" />
 }
 
 @code {
+    [Parameter] public bool IsPending { get; set; }
+    [Parameter] public string? Feedback { get; set; }
     [Parameter] public bool ShowMobileLogs { get; set; }
     [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
     [Parameter] public EventCallback OnCloseMobileLogs { get; set; }

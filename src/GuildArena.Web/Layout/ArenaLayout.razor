@@ -13,7 +13,7 @@
             <button class="btn btn-sm btn-outline-light me-2">Options</button>
             @if (!string.IsNullOrEmpty(CombatState.CombatId))
             {
-                <button class="btn btn-sm btn-outline-danger" @onclick="PromptSurrender">Surrender</button>
+                <button class="btn btn-sm btn-outline-danger" disabled="@ActionsBlocked" @onclick="PromptSurrender">Surrender</button>
             }
         </div>
     </header>
@@ -53,6 +53,7 @@
 
 @code {
     private bool _showSurrenderModal = false;
+    private bool ActionsBlocked => CombatState.IsCommandPending || CombatState.IsConnecting || !CombatState.IsConnected || CombatState.RequiresSynchronization || CombatState.IsCombatUnavailable || CombatState.CombatResult is not null;
     private ElementReference _orientationGate;
     private ElementReference _orientationButton;
     private ElementReference _orientationNote;
@@ -76,7 +77,7 @@
             _orientationController = await _orientationModule.InvokeAsync<IJSObjectReference>("createOrientationGate", _orientationGate, _orientationButton, _orientationNote);
         }
         if (_orientationController is not null && !_disposed)
-            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId));
+            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId) && !CombatState.IsCombatUnavailable);
     }
 
     public async ValueTask DisposeAsync()
@@ -94,6 +95,7 @@
 
     private void PromptSurrender()
     {
+        if (ActionsBlocked) return;
         _showSurrenderModal = true;
     }
 
@@ -104,6 +106,7 @@
 
     private async Task ConfirmSurrender()
     {
+        if (ActionsBlocked) return;
         _showSurrenderModal = false;
         await CombatState.SurrenderAsync(); 
     }

@@ -38,8 +38,8 @@
         <button type="button" class="utility-button inspect-selected" disabled="@(SelectedCombatant is null)" @onclick="OnInspectSelectedCombatant">Inspect hero</button>
         @if (IsLocalPlayerTurn)
         {
-            <button class="end-turn-btn" @onclick="@(IsTargetingActive ? OnCancelTargeting : OnEndTurn)">
-                @(IsTargetingActive ? "Cancel Action" : "End Turn")
+            <button class="end-turn-btn" disabled="@(IsCommandPending || (IsActivationBlocked && !IsTargetingActive))" @onclick="@(IsTargetingActive ? OnCancelTargeting : OnEndTurn)">
+                @(IsCommandPending ? "Processing…" : IsTargetingActive ? "Cancel Action" : "End Turn")
             </button>
         }
         else
@@ -64,6 +64,7 @@
     [Parameter] public CombatantDto? InspectedCombatant { get; set; }
     [Parameter] public CombatantDto? SelectedCombatant { get; set; }
     [Parameter] public bool IsActivationBlocked { get; set; }
+    [Parameter] public bool IsCommandPending { get; set; }
     [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbilityRequested { get; set; }

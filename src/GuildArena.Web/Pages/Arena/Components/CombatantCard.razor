@@ -9,7 +9,7 @@
     <div class="card-left" @onmouseenter="() => OnCombatantHovered.InvokeAsync(Combatant)">
         <button type="button" class="portrait-placeholder" style="background-image: url('@AssetService.GetPortraitUrl(Combatant.DefinitionId)');"
                 aria-label="@CombatantActionLabel" aria-pressed="@(IsLocalCombatant && !IsTargetingMode ? (IsSelectedCombatant ? "true" : "false") : null)"
-                aria-disabled="@(IsTargetingMode && (!IsValidTarget || IsSelectedTarget) ? "true" : "false")"
+                aria-disabled="@(IsTargetingMode && !IsValidTarget ? "true" : "false")"
                 @onfocus="() => OnCombatantHovered.InvokeAsync(Combatant)"
                 @onclick="InspectCombatant" @onclick:stopPropagation="true">
         </button>
@@ -20,7 +20,7 @@
             <div class="identity-row">
                 <button class="name" type="button" @onclick="InspectCombatant" @onclick:stopPropagation="true"
                         aria-label="@CombatantActionLabel" title="@Combatant.Name"
-                        aria-disabled="@(IsTargetingMode && (!IsValidTarget || IsSelectedTarget) ? "true" : "false")">@Combatant.Name</button>
+                         aria-disabled="@(IsTargetingMode && !IsValidTarget ? "true" : "false")">@Combatant.Name</button>
                 <span class="action-points" aria-label="@($"{RemainingActionPoints} of {Combatant.MaxActions} action points remaining")" title="Remaining / maximum AP">
                     <ResourceIcon Kind="ResourceIconKind.ActionPoints" /> @RemainingActionPoints/@Combatant.MaxActions
                 </span>
@@ -35,6 +35,9 @@
             @foreach (var ability in AllAbilities)
             {
                 <AbilityButton Ability="ability"
+                               IsActivationBlocked="@(IsActivationBlocked || !IsLocalCombatant || !Combatant.IsAlive)"
+                               InspectionOnly="@(!IsLocalCombatant)"
+                               OnInspectRequested="OnInspectAbility"
                                OnAbilityClicked="HandleAbilityClick"
                                OnInspectStart="OnInspectAbility" />
             }
@@ -107,6 +110,7 @@
 
     [Parameter]
     public bool IsTargetingMode { get; set; } = false;
+    [Parameter] public bool IsActivationBlocked { get; set; }
 
     [Parameter]
     public bool IsValidTarget { get; set; } = false;

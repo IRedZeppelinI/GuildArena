@@ -14,7 +14,7 @@
 
 @if (CombatState.CombatResult != null)
 {
-    <CombatResultModal Result="CombatState.CombatResult" ReturnToDungeon="@(CombatState.MatchType == MatchType.Dungeon)" OnReturnClicked="LeaveArena" />
+    <CombatResultModal Result="CombatState.CombatResult" IsPending="@(CombatState.IsCommandPending || _leavingArena)" ReturnToDungeon="@(CombatState.MatchType == MatchType.Dungeon)" OnReturnClicked="LeaveArena" />
 }
 
 
@@ -34,6 +34,18 @@ else if (_resumeError)
         </div>
     </div>
 }
+else if (CombatState.IsCombatUnavailable && CombatState.CombatResult is null)
+{
+    <div class="startup-screen">
+        <div class="startup-box" role="status">
+            <h3 class="text-warning">Combat no longer active</h3>
+            <p class="text-light">The server confirmed there is no active combat. The battle may have ended or expired; its result could not be recovered.</p>
+            <button class="btn btn-outline-info mt-3" disabled="@(CombatState.IsCommandPending || _leavingArena)" @onclick="LeaveArena">
+                @(CombatState.MatchType == MatchType.Dungeon ? "Return to Dungeons" : "Return to Encounters")
+            </button>
+        </div>
+    </div>
+}
 else if (string.IsNullOrEmpty(CombatState.CombatId))
 {
     <div class="startup-screen">
@@ -49,7 +61,9 @@ else
     <ArenaModals ShowMobileLogs="_showMobileLogs"
                  BattleLogs="CombatState.BattleLogs"
                  OnCloseMobileLogs="ToggleMobileLogs"
-                 ShowExchangeModal="_showExchangeModal"
+                  ShowExchangeModal="_showExchangeModal"
+                  IsPending="@CombatState.IsCommandPending"
+                  Feedback="@ActionFeedback"
                  PlayerEssencePool="LocalPlayerEssencePool"
                  OnConfirmExchange="ExecuteExchangeAsync"
                  OnCancelExchange="() => _showExchangeModal = false"
@@ -57,25 +71,37 @@ else
                  AvailableEssenceForPayment="_availableEssenceForPayment"
                  NeutralCostPending="_neutralCostPending"
                  OnConfirmPayment="ProcessManualPaymentAndExecute"
-                 OnCancelPayment="CancelPayment" />
+                  OnCancelPayment="CancelPayment" />
 
     <ArenaBoard GameState="CombatState.GameState"
                 SelectedCombatantId="_selectedCombatantId"
                 LocalPlayerId="LocalPlayerId"
                 TargetingState="_targetingState"
                 OnBackgroundClicked="CancelTargeting"
-                OnExchangeRequested="() => _showExchangeModal = true"
+                 IsActivationBlocked="@(ActionsBlocked || _showPaymentModal || _showExchangeModal)"
+                 OnExchangeRequested="OpenExchange"
                 OnAbilityActivated="StartTargeting"
                 OnCombatantClicked="SelectTarget"
                 OnCombatantSelected="SelectCombatant"
                 OnInspectAbility="ShowAbilityTooltip" 
                 OnCombatantHovered="ShowCombatantTooltip"
                 OnInspectCombatantRequested="InspectCombatantAsync"
-                OnInspectEffectsRequested="InspectEffectsAsync" />
+                 OnInspectEffectsRequested="InspectEffectsAsync">
+        <ActionFeedback>
+            <div class="action-feedback @(HasActionError ? "action-error" : "")" role="status" aria-live="polite" aria-atomic="true" @onclick:stopPropagation="true">
+                <span class="feedback-message" tabindex="0" aria-label="Action feedback">@ActionFeedback</span>
+                @if ((CombatState.RequiresSynchronization || !CombatState.IsConnected || LocalPlayerEssencePool is null) && !CombatState.IsCommandPending)
+                {
+                    <button type="button" disabled="@CombatState.IsConnecting" @onclick="RefreshCombatAsync">@(CombatState.IsConnecting ? "Reconnecting…" : "Refresh combat")</button>
+                }
+            </div>
+        </ActionFeedback>
+    </ArenaBoard>
 
     <ArenaFooter @ref="_footer" InspectedAbility="_inspectedAbility"
                  SelectedCombatant="SelectedCombatant"
-                 IsActivationBlocked="@(_executingAbility || _showPaymentModal)"
+                 IsActivationBlocked="@(ActionsBlocked || _showPaymentModal || _showExchangeModal)"
+                 IsCommandPending="@CombatState.IsCommandPending"
                  OnAbilityActivated="StartTargeting"
                  OnInspectAbility="ShowAbilityTooltip"
                  OnInspectAbilityRequested="InspectAbilityAsync"
@@ -95,7 +121,39 @@ else
     private bool _showPaymentModal = false;
     private bool _checkingCombat = true;
     private bool _resumeError;
-    private bool _executingAbility;
+    private GameStateDto? _lastSnapshot;
+    private bool _submittingPreparedAction;
+    private bool _leavingArena;
+    private string? _interactionFeedback;
+    private string? _recoveryFeedback;
+    private bool ActionsBlocked => CombatState.IsCommandPending || CombatState.IsConnecting ||
+        CombatState.RequiresSynchronization || !CombatState.IsConnected || CombatState.IsCombatUnavailable || CombatState.CombatResult is not null;
+    private bool HasActionError => _recoveryFeedback is not null || CombatState.LastCommandResult?.Outcome is CombatCommandOutcome.Rejected or CombatCommandOutcome.Unconfirmed;
+    private string ActionFeedback
+    {
+        get
+        {
+            if (CombatState.IsCommandPending)
+                return $"{CombatState.PendingCommandName}… Waiting for the server.";
+            if (CombatState.IsConnecting)
+                return "Restoring combat connection…";
+            if (_recoveryFeedback is not null) return _recoveryFeedback;
+            if (!CombatState.IsConnected)
+                return "Combat connection lost. Actions are paused until the connection and state are restored.";
+            if (CombatState.RequiresSynchronization)
+            {
+                var message = CombatState.LastCommandResult?.Message ?? "Combat state needs refreshing.";
+                return CombatState.LastCommandResult?.Outcome == CombatCommandOutcome.Unconfirmed
+                    ? message : $"{message} Refresh combat to continue.";
+            }
+            if (_interactionFeedback is not null) return _interactionFeedback;
+            if (_targetingState.PendingRule is { } rule)
+                return $"{_targetingState.ActiveAbility!.Name}: choose {rule.Type} targets ({_targetingState.PendingRuleSelectedCount}/{rule.Count}). Choice {_targetingState.PendingRuleNumber}/{_targetingState.ManualRuleCount}.";
+            return CombatState.LastCommandResult?.Message ?? (IsLocalPlayerTurn
+                ? "Your turn. Choose an ability or end your turn."
+                : "Enemy turn. You can inspect heroes, abilities and the battle log.");
+        }
+    }
 
     private int _neutralCostPending = 0;
     private Dictionary<EssenceType, int>? _availableEssenceForPayment;
@@ -129,6 +187,58 @@ else
         else
             _checkingCombat = false;
         EnsureSelectedCombatant();
+        RefreshPreparedAction();
+    }
+
+    private void RefreshPreparedAction()
+    {
+        var snapshot = CombatState.GameState;
+        if ((!CombatState.IsConnected || CombatState.IsCombatUnavailable || CombatState.CombatResult is not null ||
+            CombatState.LastCommandResult?.Outcome == CombatCommandOutcome.Unconfirmed) && !CombatState.IsCommandPending)
+        {
+            CancelPreparedAction();
+            _showExchangeModal = false;
+        }
+        else if (CombatState.RequiresSynchronization && !CombatState.IsCommandPending && !_submittingPreparedAction)
+        {
+            if (_showPaymentModal)
+            {
+                CancelPreparedAction();
+                _interactionFeedback = "Combat changed during payment. Choose the ability again using the current costs and targets.";
+            }
+            if (_showExchangeModal)
+            {
+                _showExchangeModal = false;
+                _interactionFeedback = "Combat changed during the exchange. Open exchange again to use the current essences.";
+            }
+            // Keep manual choices blocked until the coordinated GET supplies current eligibility.
+            // Do not consume this snapshot here; it must be reconciled after synchronization.
+            return;
+        }
+        else if (!CombatState.IsCommandPending && !_submittingPreparedAction && !ReferenceEquals(_lastSnapshot, snapshot))
+        {
+            if (_showPaymentModal)
+            {
+                CancelPreparedAction();
+                _interactionFeedback = "Combat changed during payment. Choose the ability again using the current costs and targets.";
+            }
+            else if (_targetingState.IsActive)
+            {
+                if (!_targetingState.Refresh(snapshot, LocalPlayerId))
+                    _interactionFeedback = "The prepared ability is no longer available. Choose another action.";
+                else if (_targetingState.IsComplete)
+                {
+                    CancelPreparedAction();
+                    _interactionFeedback = "Target requirements changed. Choose the ability again to confirm the current targets.";
+                }
+            }
+            if (_showExchangeModal)
+            {
+                _showExchangeModal = false;
+                _interactionFeedback = "Combat changed during the exchange. Open exchange again to use the current essences.";
+            }
+        }
+        _lastSnapshot = snapshot;
     }
 
     private async Task ResumeCombatAsync()
@@ -156,7 +266,16 @@ else
 
     private void OnCombatStateChanged() => _ = InvokeAsync(() =>
     {
+        // Also clear local messages for commands initiated by the layout (surrender).
+        if (CombatState.IsCommandPending || CombatState.IsConnecting)
+        {
+            _interactionFeedback = null;
+            _recoveryFeedback = null;
+        }
+        else if (!CombatState.RequiresSynchronization && CombatState.IsConnected)
+            _recoveryFeedback = null;
         EnsureSelectedCombatant();
+        RefreshPreparedAction();
         // Inspection may stay open during server updates. Render the current snapshot,
         // rather than holding on to the object that was originally hovered.
         if (_inspectedCombatant is not null)
@@ -234,12 +353,27 @@ else
 
     private async Task EndTurnAsync()
     {
+        if (ActionsBlocked || !IsLocalPlayerTurn || _showPaymentModal || _showExchangeModal || _targetingState.IsActive) return;
+        _interactionFeedback = null;
         await CombatState.EndTurnAsync();
+    }
+
+    private async Task RefreshCombatAsync()
+    {
+        CancelPreparedAction();
+        _showExchangeModal = false;
+        _interactionFeedback = null;
+        _recoveryFeedback = null;
+        var refreshed = await CombatState.RefreshCombatAsync();
+        _interactionFeedback = refreshed
+            ? "Combat refreshed. Review the current state before choosing another action. No command was repeated."
+            : null;
+        _recoveryFeedback = refreshed ? null : "Unable to refresh combat. Check your connection and try again.";
     }
 
     private async Task StartTargeting((int SourceId, string AbilityId) payload)
     {
-        if (!IsLocalPlayerTurn || _executingAbility || _showPaymentModal) return;
+        if (!IsLocalPlayerTurn || ActionsBlocked || _showPaymentModal || _showExchangeModal) return;
 
         var source = CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == payload.SourceId);
         if (source is null || source.OwnerId != LocalPlayerId || !source.IsAlive) return;
@@ -249,6 +383,7 @@ else
         if (ability == null || !ability.IsAffordable || ability.CurrentCooldownTurns > 0) return;
 
         _selectedCombatantId = source.Id;
+        _interactionFeedback = null;
         _targetingState.StartTargeting(payload.SourceId, ability);
 
         if (!_targetingState.RequiresTargetSelection)
@@ -259,6 +394,7 @@ else
 
     private async Task SelectTarget(CombatantDto target)
     {
+        if (ActionsBlocked || _showPaymentModal || _showExchangeModal || !_targetingState.Refresh(CombatState.GameState, LocalPlayerId)) return;
         if (_targetingState.TrySelectTarget(target, out bool allRulesSatisfied) && allRulesSatisfied)
         {
             await TransitionToPaymentOrExecuteAsync();
@@ -267,11 +403,21 @@ else
 
     private void CancelTargeting()
     {
+        if (CombatState.IsCommandPending || (!_targetingState.IsActive && !_showPaymentModal)) return;
+        CancelPreparedAction();
+        _interactionFeedback = "Action cancelled. No command was sent.";
+    }
+
+    private void CancelPreparedAction()
+    {
+        _showPaymentModal = false;
+        _availableEssenceForPayment = null;
         _targetingState.Cancel();
     }
 
     private async Task TransitionToPaymentOrExecuteAsync()
     {
+        if (ActionsBlocked || !_targetingState.Refresh(CombatState.GameState, LocalPlayerId) || !_targetingState.IsComplete) return;
         var ability = _targetingState.ActiveAbility!;
         int neutralCost = ability.Costs.ContainsKey(EssenceType.Neutral) ? ability.Costs[EssenceType.Neutral] : 0;
 
@@ -279,17 +425,24 @@ else
         {
             _neutralCostPending = neutralCost;
 
-            if (LocalPlayerEssencePool != null)
+            if (LocalPlayerEssencePool is { } pool)
             {
-                _availableEssenceForPayment = new Dictionary<EssenceType, int>(LocalPlayerEssencePool);
+                _availableEssenceForPayment = new Dictionary<EssenceType, int>(pool);
 
                 foreach (var cost in ability.Costs.Where(c => c.Key != EssenceType.Neutral))
                 {
-                    _availableEssenceForPayment[cost.Key] -= cost.Value;
+                    _availableEssenceForPayment[cost.Key] = _availableEssenceForPayment.GetValueOrDefault(cost.Key) - cost.Value;
                 }
+            }
+            else
+            {
+                CancelPreparedAction();
+                _interactionFeedback = "Essence information is unavailable. Refresh combat before paying.";
+                return;
             }
 
             _showPaymentModal = true;
+            _interactionFeedback = $"Choose {neutralCost} essences for the neutral cost. No command has been sent.";
         }
         else
         {
@@ -300,14 +453,13 @@ else
 
     private void CancelPayment()
     {
-        _showPaymentModal = false;
-        _targetingState.Cancel();
+        CancelTargeting();
     }
 
     private async Task ProcessManualPaymentAndExecute(List<EssenceType> neutralPaymentChoices)
     {
-        _showPaymentModal = false;
-
+        if (ActionsBlocked || !_showPaymentModal || _availableEssenceForPayment is null || neutralPaymentChoices.Count != _neutralCostPending ||
+            neutralPaymentChoices.GroupBy(e => e).Any(g => _availableEssenceForPayment.GetValueOrDefault(g.Key) < g.Count())) return;
         if (_targetingState.ActiveAbility is not { } ability) return;
 
         var finalPayment = ability.Costs
@@ -325,9 +477,9 @@ else
 
     private async Task ExecuteAbilityAsync(Dictionary<EssenceType, int> payment)
     {
-        if (_executingAbility || string.IsNullOrEmpty(CombatState.CombatId) || !_targetingState.IsActive) return;
-
-        _executingAbility = true;
+        if (ActionsBlocked || !_targetingState.Refresh(CombatState.GameState, LocalPlayerId) || !_targetingState.IsComplete) return;
+        _interactionFeedback = null;
+        _submittingPreparedAction = true;
         try
         {
             var targetSelections = _targetingState.SelectedTargets.ToDictionary(
@@ -343,19 +495,38 @@ else
 
         finally
         {
-            _targetingState.Cancel();
-            _executingAbility = false;
+            CancelPreparedAction();
+            _submittingPreparedAction = false;
         }
     }
 
     private async Task ExecuteExchangeAsync((Dictionary<EssenceType, int> Spent, EssenceType Gained) payload)
     {
-        await CombatState.ExchangeEssenceAsync(payload.Spent, payload.Gained);
-        _showExchangeModal = false;
+        if (ActionsBlocked || !IsLocalPlayerTurn || !_showExchangeModal) return;
+        _interactionFeedback = null;
+        _submittingPreparedAction = true;
+        try
+        {
+            await CombatState.ExchangeEssenceAsync(payload.Spent, payload.Gained);
+        }
+        finally
+        {
+            _submittingPreparedAction = false;
+            _showExchangeModal = false;
+        }
+    }
+
+    private void OpenExchange()
+    {
+        if (ActionsBlocked || !IsLocalPlayerTurn || _showPaymentModal || _targetingState.IsActive) return;
+        _interactionFeedback = null;
+        _showExchangeModal = true;
     }
 
     private async Task LeaveArena()
     {
+        if (CombatState.IsCommandPending || _leavingArena) return;
+        _leavingArena = true;
         var destination = CombatState.MatchType == MatchType.Dungeon ? "/dungeons" : "/encounters";
         await CombatState.DisconnectAsync();
         NavManager.NavigateTo(destination);

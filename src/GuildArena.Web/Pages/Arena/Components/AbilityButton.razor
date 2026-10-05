@@ -3,12 +3,12 @@
 @inject IAssetService AssetService
 
 <button type="button" class="ability-slot @(ShowName ? "named-ability" : "") @(IsOnCooldown ? "on-cooldown" : "") @(!Ability.IsAffordable ? "unaffordable" : "")"
-     aria-label="@(InspectionOnly ? $"Inspect {Ability.Name}" : $"{Ability.Name}{(IsOnCooldown ? $", cooldown: {Ability.CurrentCooldownTurns} turns" : !CanCast ? ", unavailable" : "")}")" aria-disabled="@(!InspectionOnly && !CanCast ? "true" : "false")"
+     aria-label="@(InspectionOnly ? $"Inspect {Ability.Name}" : $"{Ability.Name}{(!CanCast ? $", {AvailabilityReason}" : "")}")" aria-disabled="@(!InspectionOnly && !CanCast ? "true" : "false")"
      @onclick="OnClick"
      @onclick:stopPropagation="true"
      @onmouseenter="OnMouseEnter"
      @onfocus="OnMouseEnter"
-     title="@Ability.Name">
+     title="@(InspectionOnly || CanCast ? Ability.Name : $"{Ability.Name}: {AvailabilityReason}")">
 
     <span class="ability-icon" style="background-image: url('@AssetService.GetAbilityIconUrl(Ability.Id)');"></span>
     @if (ShowName)
@@ -53,6 +53,9 @@
 
     private bool IsOnCooldown => Ability.CurrentCooldownTurns > 0;
     private bool CanCast => !IsActivationBlocked && !IsOnCooldown && Ability.IsAffordable;
+    private string AvailabilityReason => IsOnCooldown ? $"cooldown: {Ability.CurrentCooldownTurns} turns"
+        : !Ability.IsAffordable ? "unavailable with the current resources or combat restrictions"
+        : "activation paused; review the current turn or pending action";
 
     private async Task OnClick()
     {

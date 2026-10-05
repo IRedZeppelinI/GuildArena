@@ -19,6 +19,12 @@ public class TargetingStateManager
     // Self, area effects and automatic strategies are resolved by the server.
     // A singleton enemy/friendly candidate is still a manual choice.
     public bool RequiresTargetSelection => IsActive && ActiveAbility!.TargetingRules.Any(RequiresManualSelection);
+    public TargetingRuleDto? PendingRule => ActiveAbility?.TargetingRules.Where(RequiresManualSelection)
+        .FirstOrDefault(r => !SelectedTargets.TryGetValue(r.RuleId, out var list) || list.Count < r.Count);
+    public bool IsComplete => IsActive && PendingRule is null;
+    public int PendingRuleSelectedCount => PendingRule is { } rule && SelectedTargets.TryGetValue(rule.RuleId, out var list) ? list.Count : 0;
+    public int ManualRuleCount => ActiveAbility?.TargetingRules.Count(RequiresManualSelection) ?? 0;
+    public int PendingRuleNumber => ActiveAbility?.TargetingRules.Where(RequiresManualSelection).ToList().FindIndex(r => r == PendingRule) + 1 ?? 0;
 
     public void StartTargeting(int sourceId, AbilitySummaryDto ability)
     {
@@ -36,7 +42,10 @@ public class TargetingStateManager
 
     public bool IsSelected(int combatantId)
     {
-        return SelectedTargets.Values.Any(list => list.Contains(combatantId));
+        // Selection is per rule. The same combatant can satisfy distinct rules on the server.
+        return PendingRule is { } rule
+            ? SelectedTargets.TryGetValue(rule.RuleId, out var list) && list.Contains(combatantId)
+            : SelectedTargets.Values.Any(list => list.Contains(combatantId));
     }
 
     /// <summary>
@@ -46,18 +55,7 @@ public class TargetingStateManager
     {
         if (!IsActive) return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(RequiresManualSelection))
-        {
-            int currentSelectedCount = SelectedTargets.TryGetValue(rule.RuleId, out var list) ? list.Count : 0;
-
-            if (currentSelectedCount < rule.Count)
-            {
-                // O Backend já fez a matemática do Taunt, Stealth e Raças!
-                // Basta verificar se o ID do alvo está na lista de autorizados.
-                return rule.ValidTargetIds.Contains(target.Id);
-            }
-        }
-        return false;
+        return PendingRule is { } rule && rule.ValidTargetIds.Contains(target.Id) && !IsSelected(target.Id);
     }
 
     /// <summary>
@@ -68,28 +66,41 @@ public class TargetingStateManager
     {
         allRulesSatisfied = false;
 
-        if (!IsActive || !IsValidTarget(target) || IsSelected(target.Id))
+        if (!IsValidTarget(target))
             return false;
 
-        foreach (var rule in ActiveAbility!.TargetingRules.Where(RequiresManualSelection))
+        var rule = PendingRule!;
+        if (!SelectedTargets.TryGetValue(rule.RuleId, out var targetList))
         {
-            if (!SelectedTargets.TryGetValue(rule.RuleId, out var targetList))
-            {
-                targetList = new List<int>();
-                SelectedTargets[rule.RuleId] = targetList;
-            }
-
-            if (targetList.Count < rule.Count)
-            {
-                targetList.Add(target.Id);
-                break;
-            }
+            targetList = new List<int>();
+            SelectedTargets[rule.RuleId] = targetList;
         }
+        targetList.Add(target.Id);
 
-        allRulesSatisfied = ActiveAbility!.TargetingRules
-            .Where(RequiresManualSelection)
-            .All(r => SelectedTargets.TryGetValue(r.RuleId, out var list) && list.Count == r.Count);
+        allRulesSatisfied = IsComplete;
 
+        return true;
+    }
+
+    /// <summary>Replace stale eligibility and retain only selections authorized by this snapshot.</summary>
+    public bool Refresh(GameStateDto? state, int localPlayerId)
+    {
+        if (!IsActive) return false;
+        var source = state?.Combatants.FirstOrDefault(c => c.Id == SourceId);
+        var ability = source?.Abilities.FirstOrDefault(a => a.Id == ActiveAbility!.Id)
+            ?? (source?.SpecialAbility?.Id == ActiveAbility!.Id ? source.SpecialAbility : null);
+        if (state?.CurrentPlayerId != localPlayerId || source is null || source.OwnerId != localPlayerId ||
+            !source.IsAlive || ability is null || !ability.IsAffordable || ability.CurrentCooldownTurns > 0)
+        {
+            Cancel();
+            return false;
+        }
+        ActiveAbility = ability;
+        SelectedTargets = ability.TargetingRules.Where(RequiresManualSelection)
+            .Where(r => SelectedTargets.ContainsKey(r.RuleId))
+            .ToDictionary(r => r.RuleId, r => SelectedTargets[r.RuleId]
+                .Where(id => r.ValidTargetIds.Contains(id) && state.Combatants.Any(c => c.Id == id))
+                .Distinct().Take(r.Count).ToList());
         return true;
     }
 

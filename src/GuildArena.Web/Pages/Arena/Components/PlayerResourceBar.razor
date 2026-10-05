@@ -20,7 +20,7 @@
 
         @if (ShowExchangeButton)
         {
-            <button class="btn btn-sm btn-outline-warning exchange-btn" @onclick="OnExchangeClicked" title="Exchange Essence (2 for 1)">
+            <button class="btn btn-sm btn-outline-warning exchange-btn" disabled="@IsExchangeBlocked" @onclick="OnExchangeClicked" title="Exchange Essence (2 for 1)" aria-label="Exchange essences: spend two to gain one">
                 ⇄
             </button>
         }
@@ -33,6 +33,7 @@
 
     [Parameter]
     public bool ShowExchangeButton { get; set; } = false;
+    [Parameter] public bool IsExchangeBlocked { get; set; }
 
     [Parameter]
     public EventCallback OnExchangeClicked { get; set; }
