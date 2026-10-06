@@ -11,10 +11,89 @@
 }
 
 .arena-header {
-    min-height: 3rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 16px;
+    min-height: 56px;
     flex-shrink: 0;
-    background-color: #0d0d0d;
-    border-bottom: 1px solid #333;
+    padding: env(safe-area-inset-top) max(22px, env(safe-area-inset-right)) 0 max(22px, env(safe-area-inset-left));
+    background: #101915;
+    border-bottom: 1px solid #59614c;
+    color: var(--arena-text);
+}
+
+.arena-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    font: 22px/1.2 Georgia, serif;
+}
+
+.arena-brand img {
+    width: 30px;
+    height: 34px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.arena-context {
+    color: #b8c5be;
+    font-size: 12px;
+    letter-spacing: .07em;
+}
+
+.arena-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.arena-surrender {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 14px;
+    border: 1px solid #ae7770;
+    border-radius: 4px;
+    background: #32211f;
+    color: #f1b3a8;
+    font: 14px/1.4 "Segoe UI", sans-serif;
+    touch-action: manipulation;
+    cursor: pointer;
+}
+
+.arena-surrender:hover:not(:disabled) {
+    background: #46302b;
+    border-color: var(--arena-brass);
+}
+
+.arena-surrender:focus-visible {
+    outline: 3px solid #a4edeb;
+    outline-offset: -4px;
+}
+
+.arena-surrender:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+@media (min-height: 651px) and (max-height: 800px) and (min-width: 851px) {
+    .arena-header { min-height: 48px; }
+}
+
+@media (max-height: 650px), (max-width: 850px) {
+    .arena-header {
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 48px;
+        gap: 8px;
+        padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+    }
+    .arena-brand { font-size: 18px; gap: 7px; }
+    .arena-brand img { width: 23px; height: 28px; }
+    .arena-context { display: none; }
+    .arena-surrender { padding: 5px 10px; font-size: 12px; }
 }
 
 .arena-main {
