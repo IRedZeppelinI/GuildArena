@@ -1,95 +1,42 @@
-﻿@using GuildArena.Domain.Enums.Resources
-@using GuildArena.Web.Services
-@inject IAssetService AssetService
+@using GuildArena.Domain.Enums.Resources
 
-<div class="custom-modal-backdrop" @onclick="Cancel">
-    <div class="custom-modal-content" @onclick:stopPropagation="true">
-        <h4 class="text-warning text-center border-bottom border-secondary pb-2">Exchange Essence</h4>
-
-        <div class="row mt-3 text-center">
-            <!-- ESQUERDA: Sacrificar 2 -->
-            <div class="col-6 border-end border-secondary">
-                <h6>Sacrifice (Select 2)</h6>
-                <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
-                    @foreach (var kvp in PlayerEssencePool.Where(e => e.Value > 0))
-                    {
-                        int selectedCount = _spentList.Count(x => x == kvp.Key);
-                        int availableCount = kvp.Value - selectedCount;
-
-                        if (availableCount > 0)
-                        {
-                            @* <button class="btn btn-dark essence-btn @kvp.Key.ToString().ToLower()"
-                                    @onclick="() => SelectToSpend(kvp.Key)"
-                                    disabled="@(_spentList.Count >= 2)">
-                                @kvp.Key
-                            </button> *@
-                            <button class="essence-btn"
-                                    style="background-image: url('@AssetService.GetEssenceIconUrl(kvp.Key.ToString())');"
-                                    title="@kvp.Key" aria-label="@($"Spend {kvp.Key}. {availableCount} available.")"
-                                    @onclick="() => SelectToSpend(kvp.Key)"
-                                    disabled="@(IsPending || _spentList.Count >= 2)">
-                            </button>
-                        }
-                    }
+<CombatDialog Title="Exchange essence" CssClass="exchange-dialog" ReturnFocusSelector=".exchange-btn" IsPending="IsPending" OnDismiss="Cancel">
+    <ChildContent>
+        <p class="dialog-copy">Choose two essences to spend and one essence to receive. The server confirms the exchange.</p>
+        <div class="exchange-columns">
+            <section aria-label="Essences to spend">
+                <h3>Spend two essences</h3>
+                <EssenceChoices Types="PlayerEssencePool.Where(e => e.Value > 0).Select(e => e.Key)" Pool="PlayerEssencePool"
+                                Selection="_spentList" Limit="2" IsPending="IsPending" OnSelect="SelectToSpend" />
+                <div class="exchange-selection" role="status">
+                    <p><strong>Selected: @_spentList.Count / 2</strong><br />@(_spentList.Count > 0 ? string.Join(", ", _spentList) : "No essences selected")</p>
+                    <button type="button" class="dialog-button" disabled="@(IsPending || _spentList.Count == 0)" @onclick="ResetSelection">Clear</button>
                 </div>
-                <div class="mt-2 text-muted small">
-                    Selected: @string.Join(", ", _spentList)
-                    @if (_spentList.Count > 0 && !IsPending)
-                    {
-                        <a href="#" class="text-danger ms-2" @onclick:preventDefault @onclick="ResetSelection">Clear</a>
-                    }
-                </div>
-            </div>
-
-            <!-- DIREITA: Obter 1 -->
-            <div class="col-6">
-                <h6>Gain (Select 1)</h6>
-                <div class="d-flex justify-content-center gap-2 flex-wrap mt-2">
-                    @foreach (var type in _allEssenceTypes)
-                    {
-                        @* <button class="btn btn-dark essence-btn @type.ToString().ToLower() @(_gainedType == type ? "selected-outline" : "")"
-                                @onclick="() => _gainedType = type">
-                            @type
-                        </button> *@
-                        <button class="essence-btn @(_gainedType == type ? "selected-outline" : "")"
-                                style="background-image: url('@AssetService.GetEssenceIconUrl(type.ToString())');"
-                                title="@type" aria-label="@($"Gain {type}")" aria-pressed="@(_gainedType == type ? "true" : "false")" disabled="@IsPending"
-                                @onclick="() => _gainedType = type">
-                        </button>
-                    }
-                </div>
-            </div>
+            </section>
+            <section aria-label="Essence to receive">
+                <h3>Receive one essence</h3>
+                <EssenceChoices Types="_allEssenceTypes" Selection="GainedSelection" IsPending="IsPending" OnSelect="SelectGain" />
+            </section>
         </div>
-
-        <p class="text-light small" role="status">@Feedback</p>
-        <div class="d-flex justify-content-end mt-4 pt-3 border-top border-secondary gap-2">
-            <button class="btn btn-secondary" disabled="@IsPending" @onclick="Cancel">Cancel</button>
-            <button class="btn btn-warning" disabled="@(IsPending || !CanConfirm)" @onclick="Confirm">@(IsPending ? "Processing…" : "Transmute")</button>
-        </div>
-    </div>
-</div>
+        <p class="dialog-feedback" role="status">@Feedback</p>
+    </ChildContent>
+    <Actions>
+        <button type="button" class="dialog-button" disabled="@IsPending" @onclick="Cancel" autofocus>Cancel</button>
+        <button type="button" class="dialog-button dialog-primary" disabled="@(IsPending || !CanConfirm)" @onclick="Confirm">@(IsPending ? "Processing…" : "Transmute")</button>
+    </Actions>
+</CombatDialog>
 
 @code {
     [Parameter] public bool IsPending { get; set; }
     [Parameter] public string? Feedback { get; set; }
-    [Parameter, EditorRequired]
-    public required Dictionary<EssenceType, int> PlayerEssencePool { get; set; }
+    [Parameter, EditorRequired] public required Dictionary<EssenceType, int> PlayerEssencePool { get; set; }
+    [Parameter] public EventCallback<(Dictionary<EssenceType, int> Spent, EssenceType Gained)> OnConfirmExchange { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
 
-    [Parameter]
-    public EventCallback<(Dictionary<EssenceType, int> Spent, EssenceType Gained)> OnConfirmExchange { get; set; }
-
-    [Parameter]
-    public EventCallback OnCancel { get; set; }
-
-    private List<EssenceType> _spentList = new();
-    private EssenceType? _gainedType = null;
-
-    private readonly EssenceType[] _allEssenceTypes = new[]
-    {
-        EssenceType.Vigor, EssenceType.Mind, EssenceType.Light,
-        EssenceType.Shadow, EssenceType.Flux
-    };
-
+    private readonly List<EssenceType> _spentList = [];
+    private EssenceType? _gainedType;
+    private IReadOnlyCollection<EssenceType> GainedSelection => _gainedType is { } type ? [type] : [];
+    private readonly EssenceType[] _allEssenceTypes = [EssenceType.Vigor, EssenceType.Mind, EssenceType.Light, EssenceType.Shadow, EssenceType.Flux];
     private bool CanConfirm => _spentList.Count == 2 && _gainedType != null;
 
     private void SelectToSpend(EssenceType type)
@@ -97,23 +44,21 @@
         if (!IsPending && _spentList.Count < 2 && _spentList.Count(e => e == type) < PlayerEssencePool.GetValueOrDefault(type)) _spentList.Add(type);
     }
 
+    private void SelectGain(EssenceType type)
+    {
+        if (!IsPending) _gainedType = type;
+    }
+
     private void ResetSelection()
     {
-        _spentList.Clear();
+        if (!IsPending) _spentList.Clear();
     }
 
     private async Task Confirm()
     {
         if (IsPending || !CanConfirm) return;
-
-        var spentDict = new Dictionary<EssenceType, int>();
-        foreach (var type in _spentList)
-        {
-            if (!spentDict.ContainsKey(type)) spentDict[type] = 0;
-            spentDict[type]++;
-        }
-
-        await OnConfirmExchange.InvokeAsync((spentDict, _gainedType!.Value));
+        var spent = _spentList.GroupBy(e => e).ToDictionary(g => g.Key, g => g.Count());
+        await OnConfirmExchange.InvokeAsync((spent, _gainedType!.Value));
     }
 
     private async Task Cancel()

@@ -1,0 +1,47 @@
+.combat-dialog {
+    --dialog-max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    color-scheme: dark;
+    width: min(560px, calc(100% - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right))));
+    max-width: none;
+    max-height: var(--dialog-max-height);
+    padding: 0;
+    margin: auto;
+    overflow: hidden;
+    border: 1px solid #a08c5c;
+    border-radius: 6px;
+    background: #14211b;
+    color: #f0eee4;
+    font: .875rem/1.5 "Segoe UI", sans-serif;
+    box-shadow: 0 20px 70px #0008;
+}
+.combat-dialog::backdrop { background: #03100bcb; backdrop-filter: blur(5px); }
+.dialog-frame { display: flex; flex-direction: column; max-height: calc(var(--dialog-max-height) - 2px); }
+.dialog-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 16px; padding: 28px 28px 16px; }
+.dialog-header h2 { margin: 0; color: #e3cf9f; font: 1.5rem/1.25 Georgia, serif; overflow-wrap: anywhere; }
+.dialog-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 8px 28px 16px; overflow-wrap: anywhere; }
+.dialog-body:focus-visible { outline: 2px solid #a4edeb; outline-offset: -3px; }
+.dialog-body ::deep .dialog-copy { margin: 0 0 16px; color: #c8d1ca; }
+.dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; flex-shrink: 0; padding: 8px 28px 28px; }
+.dialog-frame ::deep .dialog-button {
+    min-height: 44px; min-width: 44px; padding: 8px 14px;
+    border: 1px solid #667161; border-radius: 4px; background: #1c2923; color: #f0eee4;
+    font: inherit; line-height: 1.4; touch-action: manipulation; cursor: pointer;
+}
+.dialog-frame ::deep .dialog-button:hover:not(:disabled) { background: #344338; border-color: #d4b577; }
+.dialog-frame ::deep .dialog-primary { background: #c6ac76; border-color: #e8cf96; color: #171f17; font-weight: 700; }
+.dialog-frame ::deep .dialog-primary:hover:not(:disabled) { background: #e4ce9e; }
+.dialog-frame ::deep .dialog-danger { background: #32211f; border-color: #ae7770; color: #f1b3a8; }
+.dialog-frame ::deep .dialog-danger:hover:not(:disabled) { background: #46302b; }
+.dialog-frame ::deep button:disabled { opacity: .55; cursor: not-allowed; }
+.dialog-frame ::deep button:focus-visible { outline: 3px solid #a4edeb; outline-offset: -4px; }
+.dialog-close { flex-shrink: 0; font-size: 1.25rem !important; padding: 4px !important; }
+.dialog-frame ::deep .dialog-feedback { margin: 16px 0 0; color: #c8d1ca; white-space: pre-wrap; }
+.dialog-actions ::deep .dialog-progress { margin-right: auto; color: #c8d1ca; }
+@media (max-height: 650px), (max-width: 600px) {
+    .dialog-header { padding: 12px 20px 4px; }
+    .dialog-body { padding: 8px 20px; }
+    .dialog-actions { padding: 8px 20px 12px; }
+}
+@media (max-height: 380px) {
+    .dialog-header h2 { font-size: 1.125rem; }
+}

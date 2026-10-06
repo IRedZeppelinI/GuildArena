@@ -1,0 +1,29 @@
+@using GuildArena.Domain.Enums.Resources
+@using GuildArena.Web.Services
+@inject IAssetService AssetService
+
+<div class="essence-choices">
+    @foreach (var type in Types)
+    {
+        var selected = Selection.Count(e => e == type);
+        var remaining = Pool is null ? 0 : Pool.GetValueOrDefault(type) - selected;
+        <button type="button" class="essence-choice @(selected > 0 ? "essence-selected" : "")"
+                aria-label="@(Pool is null ? $"Gain {type}" : $"Select {type}. {remaining} available. {selected} selected.")"
+                aria-pressed="@(selected > 0 ? "true" : "false")"
+                disabled="@(IsPending || (Pool is not null && (remaining <= 0 || Selection.Count >= Limit)))"
+                @onclick="() => OnSelect.InvokeAsync(type)">
+            <img src="@AssetService.GetEssenceIconUrl(type.ToString())" width="28" height="28" alt="" />
+            <span>@type</span>
+            <small>@(Pool is null ? selected > 0 ? "Selected" : "Choose" : $"{remaining} left · {selected} selected")</small>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<EssenceType> Types { get; set; } = [];
+    [Parameter] public Dictionary<EssenceType, int>? Pool { get; set; }
+    [Parameter] public IReadOnlyCollection<EssenceType> Selection { get; set; } = [];
+    [Parameter] public int Limit { get; set; }
+    [Parameter] public bool IsPending { get; set; }
+    [Parameter] public EventCallback<EssenceType> OnSelect { get; set; }
+}

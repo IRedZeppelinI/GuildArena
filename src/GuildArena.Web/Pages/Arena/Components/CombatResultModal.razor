@@ -1,68 +1,39 @@
-﻿@using GuildArena.Shared.DTOs.Combat
+@using GuildArena.Shared.DTOs.Combat
 
-<div class="result-modal-backdrop">
-    <div class="result-modal-content @(Result.IsWinner ? "victory" : "defeat")">
-
-        <h1 class="result-title" tabindex="-1" @ref="_title">
-            @(Result.IsSurrender ? "SURRENDERED" : (Result.IsWinner ? "VICTORY!" : "DEFEAT"))
-        </h1>
-
-        @if (Result.IsWinner)
+<CombatDialog @ref="_dialog" Title="Battle complete" CssClass="result-dialog" CanDismiss="false" IsPending="IsPending">
+    <ChildContent>
+        <div class="result-summary @(Result.IsWinner ? "victory" : "defeat")">
+            <img class="result-brand" src="/images/ui/estandarte.svg" width="38" height="44" alt="" />
+            <h1 class="result-title" tabindex="-1" autofocus>@(Result.IsSurrender ? "Surrendered" : Result.IsWinner ? "Victory" : "Defeat")</h1>
+            <p>@(Result.IsWinner ? "The battle is won." : "This battle counts as a defeat.")
+                @if (ReturnToDungeon && !Result.IsWinner) { <span>Your expedition has ended.</span> }
+            </p>
+        </div>
+        <div class="result-rewards" aria-label="Confirmed rewards">
+            <div><strong><img src="/images/ui/gold.svg" width="22" height="22" alt="" /><span class="reward-amount">@Result.GoldGained</span></strong><span>Gold gained</span></div>
+            <div><strong><span class="reward-amount">@Result.XpGained XP</span></strong><span>Guild experience</span></div>
+        </div>
+        @if (Result.NewGuildLevel > 0)
         {
-            <p class="result-subtitle">The Arena claims another legend.</p>
-
-            <div class="rewards-box">
-                <h4 class="mb-3 border-bottom border-secondary pb-2">Rewards</h4>
-                <div class="d-flex justify-content-around">
-                    <div class="text-center">
-                        <span class="d-block fs-3">🪙</span>
-                        <span class="fw-bold text-warning fs-4">+@Result.GoldGained</span>
-                    </div>
-                    <div class="text-center">
-                        <span class="d-block fs-3">⭐</span>
-                        <span class="fw-bold text-info fs-4">+@Result.XpGained XP</span>
-                    </div>
-                </div>
-
-                @if (Result.NewGuildLevel > 0)
-                {
-                    <div class="level-up-alert mt-4 animate-pulse">
-                        🎉 GUILD LEVEL UP! You are now Level @Result.NewGuildLevel!
-                    </div>
-                }
-            </div>
+            <p class="result-level">Guild level <strong>@Result.NewGuildLevel</strong></p>
         }
-        else
+        @if (IsPending)
         {
-            <p class="result-subtitle text-muted">You fall back to the shadows...</p>
-
-            <div class="rewards-box defeat-box">
-                <h5 class="text-secondary mb-3">Consolation Rewards</h5>
-                <div class="text-center">
-                    <span class="text-warning fw-bold">+@Result.GoldGained Gold</span>
-                    <span class="mx-2 text-light">|</span>
-                    <span class="text-info fw-bold">+@Result.XpGained XP</span>
-                </div>
-            </div>
+            <p class="dialog-feedback" role="status">Finishing the pending request. Please wait before returning.</p>
         }
-
-        <button class="btn btn-lg return-btn mt-4 w-100" disabled="@IsPending" @onclick="OnReturnClicked">
+    </ChildContent>
+    <Actions>
+        <button type="button" class="dialog-button dialog-primary return-btn" disabled="@IsPending" @onclick="OnReturnClicked">
             @(IsPending ? "Finishing…" : ReturnToDungeon ? "Return to Dungeons" : "Return to Encounters")
         </button>
-    </div>
-</div>
+    </Actions>
+</CombatDialog>
 
 @code {
-    private ElementReference _title;
-    public ValueTask FocusAsync() => _title.FocusAsync(preventScroll: true);
-
+    private CombatDialog? _dialog;
+    public ValueTask FocusAsync() => _dialog?.FocusAsync() ?? ValueTask.CompletedTask;
     [Parameter] public bool IsPending { get; set; }
-    [Parameter, EditorRequired]
-    public required CombatResultDto Result { get; set; }
-
-    [Parameter]
-    public bool ReturnToDungeon { get; set; }
-
-    [Parameter]
-    public EventCallback OnReturnClicked { get; set; }
+    [Parameter, EditorRequired] public required CombatResultDto Result { get; set; }
+    [Parameter] public bool ReturnToDungeon { get; set; }
+    [Parameter] public EventCallback OnReturnClicked { get; set; }
 }

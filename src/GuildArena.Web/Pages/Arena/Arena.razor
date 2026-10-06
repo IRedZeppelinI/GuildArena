@@ -58,13 +58,13 @@ else if (string.IsNullOrEmpty(CombatState.CombatId))
 }
 else
 {
-    <ArenaModals ShowExchangeModal="_showExchangeModal"
+    <ArenaModals ShowExchangeModal="@(_showExchangeModal && CombatState.CombatResult is null)"
                   IsPending="@CombatState.IsCommandPending"
                   Feedback="@ActionFeedback"
                  PlayerEssencePool="LocalPlayerEssencePool"
                  OnConfirmExchange="ExecuteExchangeAsync"
                  OnCancelExchange="() => _showExchangeModal = false"
-                 ShowPaymentModal="_showPaymentModal"
+                 ShowPaymentModal="@(_showPaymentModal && CombatState.CombatResult is null)"
                  AvailableEssenceForPayment="_availableEssenceForPayment"
                  NeutralCostPending="_neutralCostPending"
                  OnConfirmPayment="ProcessManualPaymentAndExecute"

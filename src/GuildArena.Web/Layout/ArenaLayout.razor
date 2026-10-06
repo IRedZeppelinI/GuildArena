@@ -1,5 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @using GuildArena.Web.State
+@using GuildArena.Web.Pages.Arena.Components
+@using GuildArena.Domain.Enums.Matches
 @inject ICombatStateService CombatState
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -35,25 +37,42 @@
     </div>
 </dialog>
 
-<!-- Modal de Confirmação de Surrender -->
 @if (_showSurrenderModal)
 {
-    <div class="surrender-modal-backdrop" @onclick="CancelSurrender">
-        <div class="surrender-modal-content" @onclick:stopPropagation="true">
-            <h4 class="text-danger fw-bold mb-3 border-bottom border-danger pb-2">Retreat?</h4>
-            <p class="text-light">Are you sure you want to surrender this battle?</p>
-            <p class="small" style="color: #adb5bd;">This will count as a defeat and you will only receive consolation rewards.</p>
-
-            <div class="d-flex justify-content-center mt-4 gap-3">
-                <button class="btn btn-secondary px-4" @onclick="CancelSurrender">Cancel</button>
-                <button class="btn btn-danger fw-bold px-4" @onclick="ConfirmSurrender">Yes, Surrender</button>
-            </div>
-        </div>
-    </div>
+    <CombatDialog Title="Surrender this battle?" CssClass="surrender-dialog" IsPending="CombatState.IsCommandPending" OnDismiss="CancelSurrender">
+        <ChildContent>
+            <p class="dialog-copy">This counts as a defeat.</p>
+            @if (CombatState.MatchType == MatchType.Dungeon)
+            {
+                <p class="dialog-copy">Defeat ends the current expedition.</p>
+            }
+            <p class="dialog-copy">Rewards, if any, are shown only after the server confirms the result.</p>
+            @if (SurrenderFeedback is not null)
+            {
+                <p class="dialog-feedback" role="status">@SurrenderFeedback</p>
+            }
+        </ChildContent>
+        <Actions>
+            <button type="button" class="dialog-button dialog-primary" disabled="@CombatState.IsCommandPending" @onclick="CancelSurrender" autofocus>Keep fighting</button>
+            @if (CombatState.RequiresSynchronization || !CombatState.IsConnected)
+            {
+                <button type="button" class="dialog-button" disabled="@(CombatState.IsCommandPending || CombatState.IsConnecting)" @onclick="RefreshSurrenderState">Refresh combat</button>
+            }
+            <button type="button" class="dialog-button dialog-danger" disabled="@ActionsBlocked" @onclick="ConfirmSurrender">@(CombatState.IsCommandPending ? "Processing…" : "Surrender")</button>
+        </Actions>
+    </CombatDialog>
 }
 
 @code {
     private bool _showSurrenderModal = false;
+    private string? _surrenderFeedback;
+    private string? _surrenderRecoveryFeedback;
+    private string? SurrenderFeedback => CombatState.IsCommandPending ? "Surrendering… Waiting for the server."
+        : CombatState.IsConnecting ? "Restoring combat connection…"
+        : _surrenderRecoveryFeedback is not null ? _surrenderRecoveryFeedback
+        : !CombatState.IsConnected ? "Combat connection lost. Refresh combat before choosing another action."
+        : CombatState.RequiresSynchronization ? CombatState.LastCommandResult?.Message ?? "Refresh combat before choosing another action."
+        : _surrenderFeedback;
     private bool ActionsBlocked => CombatState.IsCommandPending || CombatState.IsConnecting || !CombatState.IsConnected || CombatState.RequiresSynchronization || CombatState.IsCombatUnavailable || CombatState.CombatResult is not null;
     private ElementReference _orientationGate;
     private ElementReference _orientationButton;
@@ -67,7 +86,14 @@
         CombatState.OnChange += OnCombatChanged;
     }
 
-    private void OnCombatChanged() => _ = InvokeAsync(StateHasChanged);
+    private void OnCombatChanged() => _ = InvokeAsync(() =>
+    {
+        if (CombatState.CombatResult is not null || CombatState.IsCombatUnavailable || string.IsNullOrEmpty(CombatState.CombatId))
+            _showSurrenderModal = false;
+        if (!CombatState.RequiresSynchronization && CombatState.IsConnected)
+            _surrenderRecoveryFeedback = null;
+        StateHasChanged();
+    });
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -78,7 +104,7 @@
             _orientationController = await _orientationModule.InvokeAsync<IJSObjectReference>("createOrientationGate", _orientationGate, _orientationButton, _orientationNote);
         }
         if (_orientationController is not null && !_disposed)
-            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId) && !CombatState.IsCombatUnavailable);
+            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId) && !CombatState.IsCombatUnavailable && CombatState.CombatResult is null);
     }
 
     public async ValueTask DisposeAsync()
@@ -97,18 +123,31 @@
     private void PromptSurrender()
     {
         if (ActionsBlocked) return;
+        _surrenderFeedback = null;
+        _surrenderRecoveryFeedback = null;
         _showSurrenderModal = true;
     }
 
     private void CancelSurrender()
     {
-        _showSurrenderModal = false;
+        if (!CombatState.IsCommandPending) _showSurrenderModal = false;
     }
 
     private async Task ConfirmSurrender()
     {
         if (ActionsBlocked) return;
-        _showSurrenderModal = false;
-        await CombatState.SurrenderAsync(); 
+        _surrenderFeedback = null;
+        _surrenderRecoveryFeedback = null;
+        var result = await CombatState.SurrenderAsync();
+        _surrenderFeedback = result.Message;
+    }
+
+    private async Task RefreshSurrenderState()
+    {
+        if (CombatState.IsCommandPending || CombatState.IsConnecting) return;
+        _surrenderRecoveryFeedback = null;
+        var refreshed = await CombatState.RefreshCombatAsync();
+        _surrenderFeedback = refreshed ? "Combat refreshed. No command was repeated." : null;
+        _surrenderRecoveryFeedback = refreshed ? null : "Unable to refresh combat. Check your connection and try again.";
     }
 }
