@@ -74,7 +74,7 @@
     },
     "AbilityIds": [ "ABIL_COMMON_PIERCING_ARROW" ]
   },
-  { // Rogue Acolyte  - SEM USO ACTUALMENTE
+  { // Rogue Acolyte 
     "Id": "MOB_CULTIST_ACOLYTE",
     "Name": "Rogue Acolyte",
     "RaceId": "RACE_PSYLIAN",

@@ -6,21 +6,27 @@
     <section class="desktop-inspection" aria-label="Inspection panel">
         <CombatInspection Ability="InspectedAbility" Combatant="InspectedCombatant">
             <HeadingAction>
-                <button type="button" class="expand-inspection" @onclick="ShowInspectionAsync" aria-label="Expand combat details" title="Expand combat details">
+                <button type="button" class="expand-inspection" disabled="@HasCombatResult" @onclick="ShowInspectionAsync" aria-label="Expand combat details" title="Expand combat details">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 19 5M10 5h9v9M5 9v10h10" /></svg>
                 </button>
             </HeadingAction>
         </CombatInspection>
     </section>
     <div class="desktop-logs-wrapper">
-        <BattleLogPanel Logs="BattleLogs.ToList()" ContainerId="desktop-logs-container" />
+        <BattleLogPanel Logs="BattleLogs" ContainerId="desktop-logs-container">
+            <HeadingAction>
+                <button type="button" class="utility-button expand-logs" disabled="@HasCombatResult" @onclick="ShowLogsAsync" aria-haspopup="dialog">
+                    Expand <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 16 19 5M10 5h9v9M5 9v10h10" /></svg>
+                </button>
+            </HeadingAction>
+        </BattleLogPanel>
     </div>
     <section class="mobile-command-deck" aria-label="Selected hero actions">
         <header class="deck-heading">
             <h2 title="@SelectedCombatant?.Name">@(SelectedCombatant?.Name ?? "Select a hero")</h2>
             @if (SelectedCombatant is { IsAlive: false }) { <span class="fallen-label">Fallen</span> }
             <button type="button" class="utility-button inspection-mode" aria-pressed="@(_inspectAbilities ? "true" : "false")" @onclick="() => _inspectAbilities = !_inspectAbilities">@(_inspectAbilities ? "Use abilities" : "Inspect abilities")</button>
-            <button type="button" class="utility-button" @onclick="OnToggleMobileLogs">Battle log</button>
+            <button type="button" class="utility-button mobile-log-button" disabled="@HasCombatResult" @onclick="ShowLogsAsync" aria-haspopup="dialog">Battle log</button>
         </header>
         <div class="deck-abilities" aria-label="@(_inspectAbilities ? "Choose an ability to inspect" : "Choose an ability to activate")">
             @if (SelectedCombatant is { } hero)
@@ -35,7 +41,8 @@
         </div>
     </section>
     <div class="footer-actions">
-        <button type="button" class="utility-button inspect-selected" disabled="@(SelectedCombatant is null)" @onclick="OnInspectSelectedCombatant">Inspect hero</button>
+        <p class="turn-hint">@(IsCommandPending ? "Waiting for the server." : IsTargetingActive ? "Choose your targets or cancel the action." : IsLocalPlayerTurn ? "Take your time. Plan your next move." : "Waiting for the enemy. Inspect the battlefield.")</p>
+        <button type="button" class="utility-button inspect-selected" disabled="@(SelectedCombatant is null || HasCombatResult)" @onclick="OnInspectSelectedCombatant">Inspect hero</button>
         @if (IsLocalPlayerTurn)
         {
             <button class="end-turn-btn" disabled="@(IsCommandPending || (IsActivationBlocked && !IsTargetingActive))" @onclick="@(IsTargetingActive ? OnCancelTargeting : OnEndTurn)">
@@ -59,12 +66,23 @@
     </div>
 </dialog>
 
+<dialog class="battle-log-dialog" @ref="_logDialog" aria-labelledby="battle-log-dialog-title">
+    <div class="dialog-layout">
+        <header class="dialog-heading">
+            <h2 id="battle-log-dialog-title">Battle log</h2>
+            <button type="button" class="utility-button" @onclick="CloseLogsAsync" autofocus>Close</button>
+        </header>
+        <div class="expanded-log"><BattleLogPanel Logs="BattleLogs" ContainerId="expanded-logs-container" ShowHeading="false" /></div>
+    </div>
+</dialog>
+
 @code {
     [Parameter] public AbilitySummaryDto? InspectedAbility { get; set; }
     [Parameter] public CombatantDto? InspectedCombatant { get; set; }
     [Parameter] public CombatantDto? SelectedCombatant { get; set; }
     [Parameter] public bool IsActivationBlocked { get; set; }
     [Parameter] public bool IsCommandPending { get; set; }
+    [Parameter] public bool HasCombatResult { get; set; }
     [Parameter] public EventCallback<(int SourceId, string AbilityId)> OnAbilityActivated { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbility { get; set; }
     [Parameter] public EventCallback<AbilitySummaryDto> OnInspectAbilityRequested { get; set; }
@@ -72,11 +90,11 @@
     [Parameter] public IReadOnlyList<string> BattleLogs { get; set; } = Array.Empty<string>();
     [Parameter] public bool IsLocalPlayerTurn { get; set; }
     [Parameter] public bool IsTargetingActive { get; set; }
-    [Parameter] public EventCallback OnToggleMobileLogs { get; set; }
     [Parameter] public EventCallback OnCancelTargeting { get; set; }
     [Parameter] public EventCallback OnEndTurn { get; set; }
 
     private ElementReference _inspectionDialog;
+    private ElementReference _logDialog;
     private IJSObjectReference? _module;
     private bool _effectsOnly;
     private bool _inspectAbilities;
@@ -93,16 +111,41 @@
 
     private async Task OpenInspectionAsync(bool effectsOnly)
     {
+        if (HasCombatResult) return;
         _effectsOnly = effectsOnly;
         StateHasChanged();
         _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./Pages/Arena/Components/ArenaFooter.razor.js");
-        await _module.InvokeVoidAsync("show", _inspectionDialog);
+        if (!HasCombatResult)
+            await _module.InvokeVoidAsync("show", _inspectionDialog);
     }
 
     private async Task CloseInspectionAsync()
     {
         if (_module is not null)
             await _module.InvokeVoidAsync("close", _inspectionDialog);
+    }
+
+    private async Task ShowLogsAsync()
+    {
+        if (HasCombatResult) return;
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./Pages/Arena/Components/ArenaFooter.razor.js");
+        if (!HasCombatResult)
+            await _module.InvokeVoidAsync("show", _logDialog);
+    }
+
+    public async Task CloseDialogsAsync()
+    {
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("close", _inspectionDialog);
+            await _module.InvokeVoidAsync("close", _logDialog);
+        }
+    }
+
+    private async Task CloseLogsAsync()
+    {
+        if (_module is not null)
+            await _module.InvokeVoidAsync("close", _logDialog);
     }
 
     public async ValueTask DisposeAsync()

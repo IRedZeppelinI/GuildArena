@@ -3,7 +3,7 @@
 <div class="result-modal-backdrop">
     <div class="result-modal-content @(Result.IsWinner ? "victory" : "defeat")">
 
-        <h1 class="result-title">
+        <h1 class="result-title" tabindex="-1" @ref="_title">
             @(Result.IsSurrender ? "SURRENDERED" : (Result.IsWinner ? "VICTORY!" : "DEFEAT"))
         </h1>
 
@@ -53,6 +53,9 @@
 </div>
 
 @code {
+    private ElementReference _title;
+    public ValueTask FocusAsync() => _title.FocusAsync(preventScroll: true);
+
     [Parameter] public bool IsPending { get; set; }
     [Parameter, EditorRequired]
     public required CombatResultDto Result { get; set; }

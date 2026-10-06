@@ -14,7 +14,7 @@
 
 @if (CombatState.CombatResult != null)
 {
-    <CombatResultModal Result="CombatState.CombatResult" IsPending="@(CombatState.IsCommandPending || _leavingArena)" ReturnToDungeon="@(CombatState.MatchType == MatchType.Dungeon)" OnReturnClicked="LeaveArena" />
+    <CombatResultModal @ref="_resultModal" Result="CombatState.CombatResult" IsPending="@(CombatState.IsCommandPending || _leavingArena)" ReturnToDungeon="@(CombatState.MatchType == MatchType.Dungeon)" OnReturnClicked="LeaveArena" />
 }
 
 
@@ -58,10 +58,7 @@ else if (string.IsNullOrEmpty(CombatState.CombatId))
 }
 else
 {
-    <ArenaModals ShowMobileLogs="_showMobileLogs"
-                 BattleLogs="CombatState.BattleLogs"
-                 OnCloseMobileLogs="ToggleMobileLogs"
-                  ShowExchangeModal="_showExchangeModal"
+    <ArenaModals ShowExchangeModal="_showExchangeModal"
                   IsPending="@CombatState.IsCommandPending"
                   Feedback="@ActionFeedback"
                  PlayerEssencePool="LocalPlayerEssencePool"
@@ -101,7 +98,8 @@ else
     <ArenaFooter @ref="_footer" InspectedAbility="_inspectedAbility"
                  SelectedCombatant="SelectedCombatant"
                  IsActivationBlocked="@(ActionsBlocked || _showPaymentModal || _showExchangeModal)"
-                 IsCommandPending="@CombatState.IsCommandPending"
+                  IsCommandPending="@CombatState.IsCommandPending"
+                  HasCombatResult="@(CombatState.CombatResult is not null)"
                  OnAbilityActivated="StartTargeting"
                  OnInspectAbility="ShowAbilityTooltip"
                  OnInspectAbilityRequested="InspectAbilityAsync"
@@ -110,13 +108,11 @@ else
                  BattleLogs="CombatState.BattleLogs"
                  IsLocalPlayerTurn="IsLocalPlayerTurn"
                  IsTargetingActive="_targetingState.IsActive"
-                 OnToggleMobileLogs="ToggleMobileLogs"
                  OnCancelTargeting="CancelTargeting"
                  OnEndTurn="EndTurnAsync" />
 }
 
 @code {
-    private bool _showMobileLogs = false;
     private bool _showExchangeModal = false;
     private bool _showPaymentModal = false;
     private bool _checkingCombat = true;
@@ -164,6 +160,8 @@ else
     private int? _selectedCombatantId;
     private CombatantDto? SelectedCombatant => CombatState.GameState?.Combatants.FirstOrDefault(c => c.Id == _selectedCombatantId);
     private ArenaFooter? _footer;
+    private CombatResultModal? _resultModal;
+    private bool _resultPresented;
     
     private readonly TargetingStateManager _targetingState = new();
 
@@ -178,6 +176,16 @@ else
     protected override void OnInitialized()
     {
         CombatState.OnChange += OnCombatStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (CombatState.CombatResult is null || _resultPresented) return;
+        _resultPresented = true;
+        if (_footer is not null)
+            await _footer.CloseDialogsAsync();
+        if (_resultModal is not null)
+            await _resultModal.FocusAsync();
     }
 
     protected override async Task OnInitializedAsync()
@@ -324,7 +332,6 @@ else
             _inspectedAbilitySourceId = null;
         }
     }
-    private void ToggleMobileLogs() => _showMobileLogs = !_showMobileLogs;
 
     private async Task InspectAbilityAsync(AbilitySummaryDto ability)
     {

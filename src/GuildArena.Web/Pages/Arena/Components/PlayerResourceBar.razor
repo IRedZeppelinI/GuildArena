@@ -2,7 +2,7 @@
 @using GuildArena.Web.Services
 @inject IAssetService AssetService
 
-<div class="resource-bar">
+<div class="resource-bar" tabindex="0" aria-label="@($"{Player.Name} essences")">
     <div class="player-name">@Player.Name</div>
 
     <div class="d-flex align-items-center">

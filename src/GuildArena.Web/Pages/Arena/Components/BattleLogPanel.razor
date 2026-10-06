@@ -1,34 +1,57 @@
-﻿@inject IJSRuntime JS
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
-<div id="@ContainerId" class="battle-logs-panel @CustomCssClass">
-    <ul class="log-list">
-        @foreach (var log in Logs)
+<section class="battle-logs-panel" aria-label="Battle log">
+    @if (ShowHeading)
+    {
+        <header class="log-heading">
+            <h2>Battle log</h2>
+            @HeadingAction
+        </header>
+    }
+    <div id="@ContainerId" class="log-scroll" @ref="_scroll" tabindex="0" aria-label="Battle log entries">
+        @if (Logs.Count == 0)
         {
-            <li>@log</li>
+            <p class="empty-log">No battle messages yet.</p>
         }
-    </ul>
-</div>
+        else
+        {
+            <ol class="log-list">
+                @for (var i = 0; i < Logs.Count; i++)
+                {
+                    <li><span class="entry-number" aria-hidden="true">@((i + 1).ToString("D2"))</span><span>@Logs[i]</span></li>
+                }
+            </ol>
+        }
+    </div>
+    <div class="log-updates" @ref="_updates" hidden>
+        <span role="status" aria-live="polite" aria-atomic="true"></span>
+        <button type="button">Show latest</button>
+    </div>
+</section>
 
 @code {
-    [Parameter, EditorRequired]
-    public required List<string> Logs { get; set; }
+    [Parameter, EditorRequired] public required IReadOnlyList<string> Logs { get; set; }
+    [Parameter] public string ContainerId { get; set; } = "battle-logs-container";
+    [Parameter] public bool ShowHeading { get; set; } = true;
+    [Parameter] public RenderFragment? HeadingAction { get; set; }
 
-    [Parameter]
-    public string ContainerId { get; set; } = "battle-logs-container";
+    private ElementReference _scroll;
+    private ElementReference _updates;
+    private IJSObjectReference? _module;
 
-    [Parameter]
-    public string CustomCssClass { get; set; } = "";
-
-    private int _previousLogCount = 0;
-
-    // Método nativo do Blazor que corre sempre que o HTML termina de ser desenhado no ecrã
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Faz scroll se a caixa for aberta pela primeira vez OU se a lista de logs aumentou
-        if (firstRender || Logs.Count > _previousLogCount)
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./Pages/Arena/Components/BattleLogPanel.razor.js");
+        await _module.InvokeVoidAsync("update", _scroll, _updates, Logs.Count);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
         {
-            _previousLogCount = Logs.Count;
-            await JS.InvokeVoidAsync("scrollToBottom", ContainerId);
+            await _module.InvokeVoidAsync("dispose", _scroll);
+            await _module.DisposeAsync();
         }
     }
 }

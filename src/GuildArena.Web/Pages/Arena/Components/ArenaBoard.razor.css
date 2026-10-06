@@ -132,6 +132,8 @@
         gap: 2px;
     }
 
+    .team-side ::deep .resource-bar { max-height: 40%; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+
     .turn-indicator {
         font-size: 0.9rem;
         padding: 2px 10px;
