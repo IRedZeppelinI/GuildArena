@@ -3,10 +3,9 @@
 @using GuildArena.Web.Pages.Arena.Components
 @using GuildArena.Domain.Enums.Matches
 @inject ICombatStateService CombatState
-@inject IJSRuntime JS
-@implements IAsyncDisposable
+@implements IDisposable
 
-<div class="arena-wrapper">
+<div class="arena-wrapper @(HasActiveCombat ? "arena-active" : null)">
     <header class="arena-header">
         <div class="arena-brand">
             <img src="/images/ui/estandarte.svg" width="30" height="34" alt="" />
@@ -24,62 +23,46 @@
     <main class="arena-main">
         @Body
     </main>
+
+    @if (_showSurrenderModal)
+    {
+        <CombatDialog Title="Surrender this battle?" CssClass="surrender-dialog" IsPending="CombatState.IsCommandPending" OnDismiss="CancelSurrender">
+            <ChildContent>
+                <p class="dialog-copy">This counts as a defeat.</p>
+                @if (CombatState.MatchType == MatchType.Dungeon)
+                {
+                    <p class="dialog-copy">Defeat ends the current expedition.</p>
+                }
+                <p class="dialog-copy">Any rewards will be shown in the battle results.</p>
+                @if (SurrenderFeedback is not null)
+                {
+                    <p class="dialog-feedback" role="status">@SurrenderFeedback</p>
+                }
+            </ChildContent>
+            <Actions>
+                <button type="button" class="dialog-button dialog-primary" disabled="@CombatState.IsCommandPending" @onclick="CancelSurrender" autofocus>Keep fighting</button>
+                @if (CombatState.RequiresSynchronization || !CombatState.IsConnected)
+                {
+                    <button type="button" class="dialog-button" disabled="@(CombatState.IsCommandPending || CombatState.IsConnecting)" @onclick="RefreshSurrenderState">Refresh combat</button>
+                }
+                <button type="button" class="dialog-button dialog-danger" disabled="@ActionsBlocked" @onclick="ConfirmSurrender">@(CombatState.IsCommandPending ? "Processing…" : "Surrender")</button>
+            </Actions>
+        </CombatDialog>
+    }
 </div>
-
-<dialog class="orientation-gate" @ref="_orientationGate" aria-labelledby="orientation-title" aria-describedby="orientation-description">
-    <div class="orientation-content">
-        <img src="/images/ui/estandarte.svg" width="54" height="64" alt="GuildArena" />
-        <div class="orientation-symbol" aria-hidden="true">↻</div>
-        <h1 id="orientation-title">Rotate to enter the arena</h1>
-        <p id="orientation-description">Combat requires landscape. Rotate your device to see both teams and the action controls.</p>
-        <button class="orientation-button" @ref="_orientationButton" autofocus>Try fullscreen &amp; landscape</button>
-        <p class="orientation-note" @ref="_orientationNote" role="status">If automatic rotation is unavailable, rotate your device manually. Combat continues while this message is shown.</p>
-    </div>
-</dialog>
-
-@if (_showSurrenderModal)
-{
-    <CombatDialog Title="Surrender this battle?" CssClass="surrender-dialog" IsPending="CombatState.IsCommandPending" OnDismiss="CancelSurrender">
-        <ChildContent>
-            <p class="dialog-copy">This counts as a defeat.</p>
-            @if (CombatState.MatchType == MatchType.Dungeon)
-            {
-                <p class="dialog-copy">Defeat ends the current expedition.</p>
-            }
-            <p class="dialog-copy">Rewards, if any, are shown only after the server confirms the result.</p>
-            @if (SurrenderFeedback is not null)
-            {
-                <p class="dialog-feedback" role="status">@SurrenderFeedback</p>
-            }
-        </ChildContent>
-        <Actions>
-            <button type="button" class="dialog-button dialog-primary" disabled="@CombatState.IsCommandPending" @onclick="CancelSurrender" autofocus>Keep fighting</button>
-            @if (CombatState.RequiresSynchronization || !CombatState.IsConnected)
-            {
-                <button type="button" class="dialog-button" disabled="@(CombatState.IsCommandPending || CombatState.IsConnecting)" @onclick="RefreshSurrenderState">Refresh combat</button>
-            }
-            <button type="button" class="dialog-button dialog-danger" disabled="@ActionsBlocked" @onclick="ConfirmSurrender">@(CombatState.IsCommandPending ? "Processing…" : "Surrender")</button>
-        </Actions>
-    </CombatDialog>
-}
 
 @code {
     private bool _showSurrenderModal = false;
     private string? _surrenderFeedback;
     private string? _surrenderRecoveryFeedback;
-    private string? SurrenderFeedback => CombatState.IsCommandPending ? "Surrendering… Waiting for the server."
+    private string? SurrenderFeedback => CombatState.IsCommandPending ? "Surrendering…"
         : CombatState.IsConnecting ? "Restoring combat connection…"
         : _surrenderRecoveryFeedback is not null ? _surrenderRecoveryFeedback
         : !CombatState.IsConnected ? "Combat connection lost. Refresh combat before choosing another action."
         : CombatState.RequiresSynchronization ? CombatState.LastCommandResult?.Message ?? "Refresh combat before choosing another action."
         : _surrenderFeedback;
     private bool ActionsBlocked => CombatState.IsCommandPending || CombatState.IsConnecting || !CombatState.IsConnected || CombatState.RequiresSynchronization || CombatState.IsCombatUnavailable || CombatState.CombatResult is not null;
-    private ElementReference _orientationGate;
-    private ElementReference _orientationButton;
-    private ElementReference _orientationNote;
-    private IJSObjectReference? _orientationModule;
-    private IJSObjectReference? _orientationController;
-    private bool _disposed;
+    private bool HasActiveCombat => !string.IsNullOrEmpty(CombatState.CombatId) && !CombatState.IsCombatUnavailable && CombatState.CombatResult is null;
 
     protected override void OnInitialized()
     {
@@ -95,29 +78,9 @@
         StateHasChanged();
     });
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    public void Dispose()
     {
-        if (_disposed) return;
-        if (firstRender)
-        {
-            _orientationModule = await JS.InvokeAsync<IJSObjectReference>("import", "./Layout/ArenaLayout.razor.js");
-            _orientationController = await _orientationModule.InvokeAsync<IJSObjectReference>("createOrientationGate", _orientationGate, _orientationButton, _orientationNote);
-        }
-        if (_orientationController is not null && !_disposed)
-            await _orientationController.InvokeVoidAsync("setActive", !string.IsNullOrEmpty(CombatState.CombatId) && !CombatState.IsCombatUnavailable && CombatState.CombatResult is null);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        _disposed = true;
         CombatState.OnChange -= OnCombatChanged;
-        if (_orientationController is not null)
-        {
-            await _orientationController.InvokeVoidAsync("dispose");
-            await _orientationController.DisposeAsync();
-        }
-        if (_orientationModule is not null)
-            await _orientationModule.DisposeAsync();
     }
 
     private void PromptSurrender()

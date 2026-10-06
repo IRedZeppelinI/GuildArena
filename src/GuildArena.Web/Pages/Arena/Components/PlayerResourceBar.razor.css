@@ -109,7 +109,7 @@
     box-shadow: 0 0 5px rgba(255, 216, 0, 0.5);
 }
 
-@media (max-height: 650px) {
+@container arena (max-height: 650px) {
     .resource-bar {
         padding: 2px 8px;
         margin-bottom: 4px;

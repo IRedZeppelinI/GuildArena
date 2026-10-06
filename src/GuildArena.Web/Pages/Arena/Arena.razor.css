@@ -19,6 +19,6 @@
 .action-error { border-color: #d4917e; }
 .action-feedback button { display: block; flex-shrink: 0; width: 100%; min-height: 44px; margin-top: 8px; padding: 6px; border: 1px solid #d4b577; border-radius: 4px; background: #29382c; color: #f0eee4; }
 .action-feedback button:focus-visible { outline: 3px solid #a4edeb; outline-offset: -3px; }
-@media (max-height: 650px), (max-width: 850px) {
+@container arena (max-height: 650px) or (max-width: 850px) {
     .action-feedback { padding: 5px; font-size: .75rem; }
 }

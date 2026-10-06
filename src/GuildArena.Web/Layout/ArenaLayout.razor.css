@@ -1,6 +1,14 @@
 ﻿.arena-wrapper {
     --arena-text: #f0eee4;
     --arena-brass: #d4b577;
+    --arena-viewport-width: 100dvw;
+    --arena-viewport-height: 100dvh;
+    --arena-safe-top: env(safe-area-inset-top);
+    --arena-safe-right: env(safe-area-inset-right);
+    --arena-safe-bottom: env(safe-area-inset-bottom);
+    --arena-safe-left: env(safe-area-inset-left);
+    --arena-dialog-rotation: 0deg;
+    container: arena / size;
     color-scheme: dark;
     display: flex;
     flex-direction: column;
@@ -17,7 +25,7 @@
     gap: 16px;
     min-height: 56px;
     flex-shrink: 0;
-    padding: env(safe-area-inset-top) max(22px, env(safe-area-inset-right)) 0 max(22px, env(safe-area-inset-left));
+    padding: var(--arena-safe-top) max(22px, var(--arena-safe-right)) 0 max(22px, var(--arena-safe-left));
     background: #101915;
     border-bottom: 1px solid #59614c;
     color: var(--arena-text);
@@ -79,16 +87,16 @@
     cursor: not-allowed;
 }
 
-@media (min-height: 651px) and (max-height: 800px) and (min-width: 851px) {
+@container arena (min-height: 651px) and (max-height: 800px) and (min-width: 851px) {
     .arena-header { min-height: 48px; }
 }
 
-@media (max-height: 650px), (max-width: 850px) {
+@container arena (max-height: 650px) or (max-width: 850px) {
     .arena-header {
         grid-template-columns: minmax(0, 1fr) auto;
         min-height: 48px;
         gap: 8px;
-        padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+        padding-inline: max(12px, var(--arena-safe-left)) max(12px, var(--arena-safe-right));
     }
     .arena-brand { font-size: 18px; gap: 7px; }
     .arena-brand img { width: 23px; height: 28px; }
@@ -104,24 +112,22 @@
     min-height: 0;
 }
 
-.orientation-gate {
-    color-scheme: dark;
-    inset: 0;
-    margin: 0;
-    width: 100%;
-    max-width: none;
-    height: 100dvh;
-    max-height: none;
-    padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
-    border: 0;
-    background: #111e18;
-    color: #f0eee4;
+/* Rotate the combat surface, not the device. Container queries use its logical
+   landscape dimensions even when the browser viewport remains portrait. */
+@media (orientation: portrait) and (max-width: 950px), (orientation: portrait) and (pointer: coarse) {
+    .arena-active {
+        --arena-viewport-width: 100dvh;
+        --arena-viewport-height: 100dvw;
+        --arena-safe-top: env(safe-area-inset-right);
+        --arena-safe-right: env(safe-area-inset-bottom);
+        --arena-safe-bottom: env(safe-area-inset-left);
+        --arena-safe-left: env(safe-area-inset-top);
+        --arena-dialog-rotation: 90deg;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: var(--arena-viewport-width);
+        height: var(--arena-viewport-height);
+        transform: translate(-50%, -50%) rotate(90deg);
+    }
 }
-.orientation-gate::backdrop { background: #111e18; }
-.orientation-content { min-height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px; text-align: center; max-width: 400px; margin: auto; }
-.orientation-content h1 { font: 2rem/1.2 Georgia, serif; margin: 0; }
-.orientation-content p { color: #c1d0c5; margin: 0; }
-.orientation-symbol { width: 85px; height: 46px; border: 2px solid #d4b577; border-radius: 8px; font-size: 28px; }
-.orientation-button { min-height: 44px; border: 1px solid #e8cf96; border-radius: 4px; padding: 10px 16px; background: #c6ac76; color: #171f17; font-weight: 700; }
-.orientation-button:focus-visible { outline: 3px solid #a4edeb; outline-offset: 3px; }
-.orientation-note { font-size: .85rem; }

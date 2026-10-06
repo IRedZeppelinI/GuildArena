@@ -215,9 +215,9 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 : await _http.PostAsJsonAsync($"api/combat/{combatId}/{endpoint}", request, timeout.Token);
 
             if (response.IsSuccessStatusCode)
-                result = new(CombatCommandOutcome.Accepted, "Action confirmed by the server.");
+                result = new(CombatCommandOutcome.Accepted, "Action confirmed.");
             else if ((int)response.StatusCode >= 500 || response.StatusCode == System.Net.HttpStatusCode.RequestTimeout)
-                result = new(CombatCommandOutcome.Unconfirmed, "The server did not confirm the outcome. Refresh combat before choosing another action.");
+                result = new(CombatCommandOutcome.Unconfirmed, "The outcome could not be confirmed. Refresh combat before choosing another action.");
             else
                 result = new(CombatCommandOutcome.Rejected, await ReadRejectionAsync(response, timeout.Token));
 
@@ -265,7 +265,7 @@ public class CombatStateService : ICombatStateService, IAsyncDisposable
                 return detail.GetString()!;
         }
         catch (JsonException) { }
-        return $"The server rejected the action (HTTP {(int)response.StatusCode}). Review the current state and battle log before trying again.";
+        return "The action could not be completed. Review the current state and battle log before trying again.";
     }
 
     private Task<bool> SynchronizeAsync()

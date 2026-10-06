@@ -4,7 +4,7 @@
     min-height: 0;
     display: flex;
     justify-content: space-between;
-    padding: 16px max(20px, env(safe-area-inset-right)) 32px max(20px, env(safe-area-inset-left));
+    padding: 16px max(20px, var(--arena-safe-right)) 32px max(20px, var(--arena-safe-left));
     background-color: #222;
     background-size: cover;
     background-position: center;
@@ -123,9 +123,9 @@
     grid-row: 3;
 }
 
-@media (max-height: 650px), (max-width: 850px) {
+@container arena (max-height: 650px) or (max-width: 850px) {
     .arena-board {
-        padding: 5px max(10px, env(safe-area-inset-right)) 10px max(10px, env(safe-area-inset-left));
+        padding: 5px max(10px, var(--arena-safe-right)) 10px max(10px, var(--arena-safe-left));
     }
 
     .combatants-column, .enemy-grid {

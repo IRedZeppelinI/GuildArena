@@ -94,13 +94,13 @@
     }
 
 
-@media (max-height: 650px) {
+@container arena (max-height: 650px) {
     .cooldown-overlay {
         font-size: 0.9rem;
     }
 }
 
-@media (max-height: 650px), (max-width: 850px) {
+@container arena (max-height: 650px) or (max-width: 850px) {
     .named-ability { height: 48px; }
     .named-ability .ability-icon { width: 32px; height: 32px; flex-basis: 32px; }
     .named-ability .cooldown-overlay { width: 32px; height: 32px; top: 7px; }

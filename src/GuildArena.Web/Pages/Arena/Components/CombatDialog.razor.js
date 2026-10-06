@@ -61,7 +61,7 @@ export function create(dialog, reference, returnFocusSelector) {
             if (dialog.open) dialog.close();
             // Let Blazor re-enable the launcher before attempting focus return.
             await new Promise(resolve => setTimeout(resolve, 0));
-            // A terminal result or the orientation gate may already own focus.
+            // Another dialog or a terminal result may already own focus.
             if (!document.querySelector('dialog[open], .result-dialog')) {
                 const target = trigger?.isConnected && !trigger.matches(':disabled') ? trigger
                     : document.querySelector('.end-turn-btn:not(:disabled), .arena-surrender:not(:disabled), .feedback-message');

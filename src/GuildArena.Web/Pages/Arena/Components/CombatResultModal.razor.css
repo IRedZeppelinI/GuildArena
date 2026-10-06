@@ -11,7 +11,7 @@
 .result-rewards img { flex-shrink: 0; }
 .result-rewards .reward-amount { min-width: 0; margin: 0; color: #f0eee4; font: inherit; overflow-wrap: anywhere; }
 .result-level { margin: 16px 0 0; text-align: center; color: #c8d1ca; }
-@media (max-height: 650px) {
+@container arena (max-height: 650px) {
     .result-brand { margin: 0 auto 8px; width: 28px; height: 32px; }
     .result-title { font-size: 2rem; margin-bottom: 8px; }
     .result-summary p { margin-bottom: 12px; }

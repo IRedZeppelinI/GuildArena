@@ -1,11 +1,14 @@
 .combat-dialog {
-    --dialog-max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+    --dialog-max-height: calc(var(--arena-viewport-height) - max(16px, var(--arena-safe-top)) - max(16px, var(--arena-safe-bottom)));
     color-scheme: dark;
-    width: min(560px, calc(100% - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right))));
+    width: min(560px, calc(var(--arena-viewport-width) - max(16px, var(--arena-safe-left)) - max(16px, var(--arena-safe-right))));
     max-width: none;
     max-height: var(--dialog-max-height);
     padding: 0;
-    margin: auto;
+    inset: 50% auto auto 50%;
+    margin: 0;
+    /* Native modal dialogs enter the top layer and do not inherit the Arena transform. */
+    transform: translate(-50%, -50%) rotate(var(--arena-dialog-rotation));
     overflow: hidden;
     border: 1px solid #a08c5c;
     border-radius: 6px;
@@ -37,11 +40,11 @@
 .dialog-close { flex-shrink: 0; font-size: 1.25rem !important; padding: 4px !important; }
 .dialog-frame ::deep .dialog-feedback { margin: 16px 0 0; color: #c8d1ca; white-space: pre-wrap; }
 .dialog-actions ::deep .dialog-progress { margin-right: auto; color: #c8d1ca; }
-@media (max-height: 650px), (max-width: 600px) {
+@container arena (max-height: 650px) or (max-width: 600px) {
     .dialog-header { padding: 12px 20px 4px; }
     .dialog-body { padding: 8px 20px; }
     .dialog-actions { padding: 8px 20px 12px; }
 }
-@media (max-height: 380px) {
+@container arena (max-height: 380px) {
     .dialog-header h2 { font-size: 1.125rem; }
 }

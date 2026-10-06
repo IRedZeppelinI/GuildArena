@@ -3,4 +3,4 @@
 .exchange-columns h3 { margin: 0 0 12px; color: #e3cf9f; font: 1rem/1.4 "Segoe UI", sans-serif; }
 .exchange-selection { margin-top: 12px; color: #c8d1ca; }
 .exchange-selection p { margin-bottom: 8px; }
-@media (max-width: 480px) { .exchange-columns { grid-template-columns: 1fr; } }
+@container arena (max-width: 480px) { .exchange-columns { grid-template-columns: 1fr; } }
